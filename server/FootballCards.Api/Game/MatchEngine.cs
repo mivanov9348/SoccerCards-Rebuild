@@ -190,7 +190,8 @@ public class MatchEngine(Random rng)
             }
             else if (ok)
             {
-                s.Zone = Math.Min(3, zone + Advance(a));
+                // Задържането в наказателното поле връща топката назад в зона Атака.
+                s.Zone = a == Cards.Hold && zone == 3 ? 2 : Math.Min(3, zone + Advance(a));
                 var key = a switch
                 {
                     Cards.Pass => "pass_ok", Cards.LongBall => "long_ok", Cards.Dribble => "dribble_ok",

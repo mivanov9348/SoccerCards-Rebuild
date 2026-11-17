@@ -55,6 +55,17 @@ app.UseExceptionHandler(errorApp => errorApp.Run(async ctx =>
     });
 }));
 
+// Очакваните грешки в правилата (напр. „мачът е приключил“) не се логват като сривове.
+app.Use(async (ctx, next) =>
+{
+    try { await next(); }
+    catch (GameRuleException ex) when (!ctx.Response.HasStarted)
+    {
+        ctx.Response.StatusCode = 400;
+        await ctx.Response.WriteAsJsonAsync(new { error = ex.Message });
+    }
+});
+
 app.UseCors();
 
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));

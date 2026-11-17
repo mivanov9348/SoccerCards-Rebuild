@@ -81,7 +81,7 @@ public static class CareerEndpoints
                 thisWeekFixture = thisWeek == null ? null : FixtureDto(thisWeek),
                 nextFixture = next == null ? null : FixtureDto(next),
                 activeMatchId = activeMatch,
-                position = table.FirstOrDefault(r => r.TeamId == season.TeamId)?.Position,
+                position = table.FirstOrDefault(r => r.TeamId == season.TeamId && r.Played > 0)?.Position,
                 table,
                 recent = mine.Where(f => f.Played).TakeLast(5).Select(FixtureDto),
                 messages = messages.Select(m => new { m.Id, m.Year, m.Week, m.Title, m.Body })

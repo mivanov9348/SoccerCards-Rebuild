@@ -95,7 +95,7 @@ public static class AiPlayer
         }
         else
         {
-            if (card == Cards.Foul) return (100, "спира");
+            if (card == Cards.Foul) return (100, "спира, но с риск");
             var guesses = AttackGuess(s);
             double sum = 0, wsum = 0;
             foreach (var (a, w) in guesses)
@@ -142,7 +142,7 @@ public static class AiPlayer
             Cards.Shot => p * Rules.GoalChance(Rules.ShotGoalBase(zone), att, def, home) / 100 - 0.03,
             Cards.Cross => p * Rules.GoalChance(Rules.HeaderGoalBase, att, def, home) / 100 - (1 - p) * Threat[2] * 0.5,
             Cards.Dribble when zone == 3 => p * Rules.GoalChance(Rules.CloseRangeGoalBase, att, def, home) / 100 - (1 - p) * Threat[2] * 0.5,
-            _ => p * Threat[Math.Min(3, zone + MatchEngine.Advance(attCard))] - (1 - p) * loss
+            _ => p * Threat[attCard == Cards.Hold && zone == 3 ? 2 : Math.Min(3, zone + MatchEngine.Advance(attCard))] - (1 - p) * loss
         };
 
         if (defCard == Cards.Tackle && attCard != Cards.Hold)

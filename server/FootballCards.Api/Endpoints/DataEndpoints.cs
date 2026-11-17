@@ -67,7 +67,7 @@ public static partial class DataEndpoints
             if (leagueId.HasValue) q = q.Where(t => t.LeagueId == leagueId);
             if (!string.IsNullOrWhiteSpace(country)) q = q.Where(t => t.Country == country);
             var teams = await q.ToListAsync();
-            return teams.OrderBy(t => t.League == null).ThenBy(t => t.League!.Name)
+            return teams.OrderBy(t => t.League == null).ThenBy(t => t.League?.Name ?? "")
                 .ThenByDescending(t => t.Overall).ThenBy(t => t.Name).Select(ToDto);
         });
 

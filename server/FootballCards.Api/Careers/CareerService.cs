@@ -410,7 +410,9 @@ public class CareerService(AppDbContext db, MatchService matches)
         var rng = Random.Shared;
         List<Team> offers;
         if (fired)
-            offers = ranking.Skip(myRank + 1).OrderBy(_ => rng.Next()).Take(2).ToList();
+            // уволненият треньор получава предложения от по-скромни клубове (долната част на класацията по сила)
+            offers = ranking.Where(t => t.Id != season.TeamId).Skip(Math.Max(0, ranking.Count - 7))
+                .OrderBy(_ => rng.Next()).Take(2).ToList();
         else if (score >= 1 || career.Reputation >= 70)
         {
             var reach = Math.Max(2, score + 2 + career.Reputation / 25);
