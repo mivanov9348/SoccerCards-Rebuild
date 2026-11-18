@@ -10,9 +10,10 @@ export default function HowToPlay() {
       <div className="panel prose">
         <h2>The match</h2>
         <p>
-          You play against the computer. All <b>25 cards of the match lie face down in a 5×5 grid</b>. The player whose turn it is
-          flips one card — you click the card you want, the computer picks one at random. A flipped card <b>stays face up</b> for
-          the rest of the match. The card decides what happens and <b>who flips next</b>.
+          You play against the computer. <b>25 cards lie face down in a 5×5 grid</b>. The player whose turn it is flips one card —
+          you click the card you want, the computer picks one at random. A flipped card <b>stays face up</b> until the half ends.
+          The card decides what happens and <b>who flips next</b>. At half time all cards go face down again and are reshuffled
+          for the second half.
         </p>
         <ul>
           <li>
@@ -29,17 +30,22 @@ export default function HowToPlay() {
             the keeper usually saves; different sides and it is almost always a goal. Then the other player flips.
           </li>
           <li>
-            <b>Half Time</b> — the first half ends, the other player starts the second half.
+            <b>Half Time</b> — only in the first-half grid. The first half ends, the cards are reshuffled face down and the other
+            player starts the second half.
           </li>
           <li>
-            <b>Full Time</b> — the match is over, whenever it comes: it can be the very first card or the very last one.
+            <b>Full Time</b> — only in the second-half grid, so it never comes before Half Time. It can be the first card of the
+            second half or the very last one.
           </li>
         </ul>
         <p>
           In cup and European knockout matches a draw at full time goes to a <b>penalty shootout</b> (5 kicks each, then sudden death)
           — you take every kick for your team and pick the dive for your keeper on every kick of theirs.
         </p>
-        <p>It is a game of pure luck — team ratings only matter for the board's expectations in career mode.</p>
+        <p>
+          It is a game of pure luck — team ratings only matter for the board's expectations in career mode. All the other matches
+          in your career are played in the background with exactly the same cards and rules, so the table is fair.
+        </p>
         <h2>Career</h2>
         <p>
           Take over a club in the Bulgarian First League. The board sets a target based on how big the club is. A season has 30
@@ -49,7 +55,7 @@ export default function HowToPlay() {
         </p>
       </div>
       <div className="panel">
-        <h2>The cards ({total} in the deck)</h2>
+        <h2>The cards (per half: {total - 2} cards + Half Time or Full Time)</h2>
         <div className="card-gallery">
           {cards?.map((c) => (
             <div key={c.code} className="gallery-item">

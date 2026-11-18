@@ -6,18 +6,18 @@ namespace FootballCards.Tests;
 
 public class MatchEngineTests(ITestOutputHelper output)
 {
-    // Same composition as seed.json (25 cards = a 5x5 grid)
+    // Same composition as seed.json: 24 cards per half + Half Time (1st half) / Full Time (2nd half) = 5x5 grid
     private static readonly List<CardDefinition> Deck =
     [
-        new() { Code = Cards.Pass, CopiesInDeck = 5 },
+        new() { Code = Cards.Pass, CopiesInDeck = 7 },
         new() { Code = Cards.Tackle, CopiesInDeck = 5 },
-        new() { Code = Cards.Corner, CopiesInDeck = 1 },
+        new() { Code = Cards.Corner, CopiesInDeck = 2 },
         new() { Code = Cards.FreeKick, CopiesInDeck = 1 },
         new() { Code = Cards.Offside, CopiesInDeck = 1 },
         new() { Code = Cards.Save, CopiesInDeck = 1 },
-        new() { Code = Cards.Miss, CopiesInDeck = 1 },
-        new() { Code = Cards.Goal, CopiesInDeck = 4 },
-        new() { Code = Cards.Penalty, CopiesInDeck = 2 },
+        new() { Code = Cards.Miss, CopiesInDeck = 2 },
+        new() { Code = Cards.Goal, CopiesInDeck = 2 },
+        new() { Code = Cards.Penalty, CopiesInDeck = 1 },
         new() { Code = Cards.YellowCard, CopiesInDeck = 1 },
         new() { Code = Cards.RedCard, CopiesInDeck = 1 },
         new() { Code = Cards.HalfTime, CopiesInDeck = 1 },
@@ -30,13 +30,30 @@ public class MatchEngineTests(ITestOutputHelper output)
         e.Create(new MatchSetup(T(1), T(2), human, knockout, "Test"), Deck);
 
     [Fact]
-    public void Grid_HoldsAllCards_FaceDown_WithOneFullTime()
+    public void FirstHalfGrid_HasHalfTime_SecondHalfGrid_HasFullTime()
     {
         var s = NewMatch(new MatchEngine(new Random(1)));
         Assert.Equal(25, s.Table.Count);
         Assert.All(s.Table, c => Assert.False(c.FaceUp));
-        Assert.Single(s.Table, c => c.Card == Cards.FullTime);
-        Assert.Equal(MatchPhase.Play, s.Phase);
+        Assert.Single(s.Table, c => c.Card == Cards.HalfTime);
+        Assert.DoesNotContain(s.Table, c => c.Card == Cards.FullTime);
+        Assert.Equal(25, s.SecondHalfTable.Count);
+        Assert.Single(s.SecondHalfTable, c => c.Card == Cards.FullTime);
+        Assert.DoesNotContain(s.SecondHalfTable, c => c.Card == Cards.HalfTime);
+    }
+
+    [Fact]
+    public void FullTime_NeverComesBeforeHalfTime()
+    {
+        var engine = new MatchEngine(new Random(11));
+        for (var i = 0; i < 500; i++)
+        {
+            var s = NewMatch(engine);
+            engine.SimulateToEnd(s);
+            var ht = s.Events.FindIndex(e => e.Card == Cards.HalfTime);
+            var ft = s.Events.FindIndex(e => e.Card == Cards.FullTime);
+            Assert.True(ht >= 0 && ft > ht);
+        }
     }
 
     [Fact]
@@ -68,7 +85,7 @@ public class MatchEngineTests(ITestOutputHelper output)
         }
         output.WriteLine($"avg goals {goals / n:F2}, avg flips {flips / n:F1}");
         Assert.InRange(goals / n, 1.0, 4.5);
-        Assert.InRange(flips / n, 5, 25);
+        Assert.InRange(flips / n, 10, 50);
     }
 
     [Fact]
@@ -87,10 +104,13 @@ public class MatchEngineTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void FullTime_AsFirstCard_EndsTheMatch()
+    public void FullTime_AsFirstCardOfSecondHalf_EndsTheMatch()
     {
         var engine = new MatchEngine(new Random(4));
         var s = NewMatch(engine, Side.Home);
+        s.Turn = Side.Home;
+        s.Table[0].Card = Cards.HalfTime;
+        engine.FlipHuman(s, 0);
         s.Turn = Side.Home;
         s.Table[5].Card = Cards.FullTime;
         engine.FlipHuman(s, 5);
@@ -98,15 +118,20 @@ public class MatchEngineTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void HalfTime_StartsSecondHalf_WithTheOtherPlayer()
+    public void HalfTime_DealsFreshFaceDownGrid_AndOtherPlayerStarts()
     {
         var engine = new MatchEngine(new Random(5));
         var s = NewMatch(engine, Side.Home);
         s.Turn = Side.Home;
+        s.Table[0].Card = Cards.Pass;
+        engine.FlipHuman(s, 0);
         s.Table[2].Card = Cards.HalfTime;
         engine.FlipHuman(s, 2);
         Assert.Equal(2, s.Half);
         Assert.Equal(Side.Away, s.Turn);
+        Assert.Equal(25, s.Table.Count);
+        Assert.All(s.Table, c => Assert.False(c.FaceUp));
+        Assert.Single(s.Table, c => c.Card == Cards.FullTime);
     }
 
     [Fact]

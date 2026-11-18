@@ -8,30 +8,32 @@ All numbers below match the code in `server/FootballCards.Api/Game/Rules.cs` and
 
 ## 1. The grid
 
-- All **25 cards** of the match are shuffled and laid **face down in a 5×5 grid**. There is no other deck.
+- Each half is played on its own **5×5 grid of 25 face-down cards**: the same 24 match cards plus one special card —
+  **Half Time** in the first-half grid, **Full Time** in the second-half grid. So Full Time can never come before Half Time.
 - A random player (you or the computer) kicks off.
 - The player whose turn it is flips **one** face-down card. You choose which card to click; the computer picks one at random.
-- A flipped card **stays face up** (marked with the team that flipped it) until the end of the match.
-- There is no clock — only the 1st and 2nd half. The **Full Time** card is somewhere in the grid: it can be the first card flipped or the very last one, so a match lasts between 1 and 25 flips (about 13 on average).
-- When the match ends, the cards nobody flipped are shown faded.
+- A flipped card **stays face up** (marked with the team that flipped it) until the half ends.
+- When Half Time is flipped, all cards go **face down again and are reshuffled** for the second half.
+- There is no clock — only the 1st and 2nd half. A half lasts between 1 and 25 flips (about 13 on average).
+- When the match ends, the second-half cards nobody flipped are shown faded.
 
 ## 2. The cards
 
-| Card | Copies | What happens | Who flips next |
+| Card | Copies per half | What happens | Who flips next |
 |---|---|---|---|
-| Pass | 5 | You keep the ball | **same player** |
-| Corner | 1 | Corner kick | **same player** |
+| Pass | 7 | You keep the ball | **same player** |
+| Corner | 2 | Corner kick | **same player** |
 | Free Kick | 1 | Free kick | **same player** |
 | Tackle | 5 | Ball lost | other player |
 | Offside | 1 | Offside | other player |
 | Save | 1 | The opposing keeper saves | other player |
-| Miss | 1 | Shot goes wide | other player |
+| Miss | 2 | Shot goes wide | other player |
 | Yellow Card | 1 | A player of the flipping team is booked | other player |
 | Red Card | 1 | A player of the flipping team is sent off | other player |
-| Goal! | 4 | The flipping team scores | other player (kick-off) |
-| Penalty | 2 | Penalty mini-game (see below) | other player |
-| Half Time | 1 | The first half ends | other player starts the 2nd half |
-| Full Time | 1 | **The match ends — at any moment** | — |
+| Goal! | 2 | The flipping team scores | other player (kick-off) |
+| Penalty | 1 | Penalty mini-game (see below) | other player |
+| Half Time | 1 (1st half only) | The first half ends, the grid is reshuffled | other player starts the 2nd half |
+| Full Time | 1 (2nd half only) | **The match ends** | — |
 
 Yellow and red cards are recorded in the match statistics; they do not change the odds (yet).
 
@@ -68,11 +70,11 @@ Cup and European matches cannot end in a draw. If the score is level when Full T
   - ≤ −4, or last place: **sacked**.
 - **Job offers**: a good season (or a high reputation) brings offers from bigger clubs; a sacked manager gets offers from smaller clubs. Accept one, or stay where you are.
 - **Reputation** (0–100) rises with success.
-- All matches you do not play yourself are simulated with exactly the same card rules.
+- All matches you do not play yourself are played in the background by the computer with exactly the same cards and rules (two grids, Half Time, Full Time, penalties), so the league table is fair.
 
 ## 6. Adding teams and leagues
 
 - In the game: **Team & league editor**.
 - Or in `server/FootballCards.Api/Data/Seed/seed.json` — on start-up the server adds missing teams and leagues (by name) without overwriting changes made in the editor.
 - A league marked as playable with at least 4 teams (an even number is best) can be chosen for a career. Teams without a league are used as European opponents.
-- The grid (card copies) is defined in `seed.json` (the `cards` section) and synced to the database on every start-up; the number of copies is the number of cards in the grid. The engine always adds a Full Time card if it is missing, so every match can end.
+- The cards per half are defined in `seed.json` (the `cards` section) and synced to the database on every start-up. The engine always adds exactly one Half Time card to the first-half grid and one Full Time card to the second-half grid.

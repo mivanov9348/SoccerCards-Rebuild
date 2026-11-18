@@ -79,15 +79,17 @@ public class MatchState
 
     /// <summary>State format version; matches saved by older versions are discarded on start-up.</summary>
     public int Version { get; set; } = CurrentVersion;
-    public const int CurrentVersion = 2;
+    public const int CurrentVersion = 3;
 
     public int Half { get; set; } = 1;
     public MatchPhase Phase { get; set; }
     /// <summary>The player whose turn it is to flip a card.</summary>
     public Side Turn { get; set; }
 
-    /// <summary>The grid. Every card of the match is on it from the start; flipped cards stay face up.</summary>
+    /// <summary>The grid of the current half. Flipped cards stay face up until the half ends.</summary>
     public List<TableCell> Table { get; set; } = new();
+    /// <summary>The (secret) grid for the second half, dealt at kick-off and laid out at half time.</summary>
+    public List<TableCell> SecondHalfTable { get; set; } = new();
     public Flip? LastFlip { get; set; }
 
     /// <summary>Who takes the penalty during the Penalty phase.</summary>

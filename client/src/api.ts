@@ -233,6 +233,7 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
 }
 
 export const api = {
+  info: () => request<{ saveFile: string }>('GET', '/info'),
   leagues: () => request<League[]>('GET', '/leagues'),
   createLeague: (l: Omit<League, 'id' | 'teamCount'>) => request<{ id: number }>('POST', '/leagues', l),
   updateLeague: (id: number, l: Omit<League, 'id' | 'teamCount'>) => request<void>('PUT', `/leagues/${id}`, l),

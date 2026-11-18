@@ -21,9 +21,8 @@ public static class Commentary
         ["penalty_saved"] = ["SAVED! The {O} keeper guesses right and stops the penalty!"],
         ["penalty_miss"] = ["The {T} penalty taker blazes it wide!"],
         ["HALF_TIME"] = ["Half time! {score}"],
-        ["kickoff2"] = ["The second half is under way — {T} start."],
+        ["kickoff2"] = ["The cards are shuffled for the second half — {T} start.", "Second half under way with a fresh grid — {T} kick off."],
         ["FULL_TIME"] = ["FULL TIME! {score}"],
-        ["full_time_early"] = ["FULL TIME already — the match ends in the first half! {score}", "The referee blows for FULL TIME early! {score}"],
     };
 
     public static string Get(string key, Random rng, string team, string opponent, string score = "")

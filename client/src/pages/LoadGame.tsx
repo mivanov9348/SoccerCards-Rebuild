@@ -7,6 +7,7 @@ export default function LoadGame() {
   const navigate = useNavigate()
   const { data: careers, error: loadError, reload } = useLoad(() => api.careers(), [])
   const [error, setError] = useState<string | null>(null)
+  const { data: info } = useLoad(() => api.info(), [])
 
   const rename = async (id: number, current: string) => {
     const name = prompt('New save name:', current)
@@ -32,7 +33,15 @@ export default function LoadGame() {
   return (
     <Screen title="Load game">
       <ErrorBox error={loadError ?? error} />
-      <p className="muted">Careers are saved automatically in the database after every card and every match.</p>
+      <p className="muted">
+        Careers are saved automatically after every card and every match — close the game any time and load it again here.
+        {info && (
+          <>
+            <br />
+            Save file: <code>{info.saveFile}</code>
+          </>
+        )}
+      </p>
       {careers && careers.length === 0 && (
         <div className="panel">
           <p>No saved careers yet.</p>

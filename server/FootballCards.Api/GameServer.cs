@@ -88,6 +88,12 @@ public static class GameServer
         app.UseCors();
 
         app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
+
+        // Where the saves live (shown on the Load game screen).
+        var saveFile = provider == "Sqlite"
+            ? Path.GetFullPath(new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder(connection).DataSource, builder.Environment.ContentRootPath)
+            : provider;
+        app.MapGet("/api/info", () => Results.Ok(new { saveFile }));
         app.MapDataEndpoints();
         app.MapMatchEndpoints();
         app.MapCareerEndpoints();

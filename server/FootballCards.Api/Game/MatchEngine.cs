@@ -15,11 +15,10 @@ public class MatchEngine(Random rng)
 {
     public MatchState Create(MatchSetup setup, IReadOnlyList<CardDefinition> cardDefs)
     {
-        var deck = new List<string>();
-        foreach (var d in cardDefs)
-            for (var i = 0; i < d.CopiesInDeck; i++) deck.Add(d.Code);
-        if (!deck.Contains(Cards.FullTime)) deck.Add(Cards.FullTime); // the match must be able to end
-        Shuffle(deck);
+        // The same set of cards is dealt for each half. The first-half grid gets exactly one Half Time card,
+        // the second-half grid exactly one Full Time card — so Full Time can never come before Half Time.
+        var cards = cardDefs.Where(d => d.Code is not (Cards.HalfTime or Cards.FullTime))
+            .SelectMany(d => Enumerable.Repeat(d.Code, d.CopiesInDeck)).ToList();
 
         var s = new MatchState
         {
@@ -29,7 +28,8 @@ public class MatchEngine(Random rng)
             Stadium = setup.Home.Stadium,
             IsKnockout = setup.IsKnockout,
             Turn = rng.Next(2) == 0 ? Side.Home : Side.Away,
-            Table = deck.Select(c => new TableCell { Card = c }).ToList(),
+            Table = Deal(cards, Cards.HalfTime),
+            SecondHalfTable = Deal(cards, Cards.FullTime),
         };
         AddEvent(s, "whistle", s.Turn, Text(s, "kickoff", s.Turn));
         return s;
@@ -140,14 +140,13 @@ public class MatchEngine(Random rng)
 
             case Cards.HalfTime when s.Half == 1:
                 AddEvent(s, "whistle", side, Text(s, card, side), card);
+                // Second half: a fresh, shuffled grid — every card face down again.
                 s.Half = 2;
+                s.Table = s.SecondHalfTable;
+                s.SecondHalfTable = new();
+                s.LastFlip!.Cell = -1;
                 s.Turn = side.Other();
                 AddEvent(s, "whistle", s.Turn, Text(s, "kickoff2", s.Turn));
-                break;
-
-            case Cards.HalfTime: // a second Half Time card (only if the deck was edited) — just change turns
-                AddEvent(s, "info", side, $"{team.Name} flip Half Time again — play on.", card);
-                s.Turn = side.Other();
                 break;
 
             case Cards.FullTime:
@@ -164,8 +163,7 @@ public class MatchEngine(Random rng)
 
     private void EndOfMatch(MatchState s, Side side)
     {
-        var key = s.Half == 1 ? "full_time_early" : Cards.FullTime;
-        AddEvent(s, "whistle", side, Text(s, key, side), Cards.FullTime);
+        AddEvent(s, "whistle", side, Text(s, Cards.FullTime, side), Cards.FullTime);
 
         if (s.IsKnockout && s.Home.Goals == s.Away.Goals)
         {
@@ -239,6 +237,13 @@ public class MatchEngine(Random rng)
         var cells = Enumerable.Range(0, s.Table.Count).Where(i => !s.Table[i].FaceUp).ToList();
         if (cells.Count == 0) throw new InvalidOperationException("No face-down cards left.");
         return cells[rng.Next(cells.Count)];
+    }
+
+    private List<TableCell> Deal(List<string> cards, string endCard)
+    {
+        var deck = new List<string>(cards) { endCard };
+        Shuffle(deck);
+        return deck.Select(c => new TableCell { Card = c }).ToList();
     }
 
     private void Shuffle(List<string> list)
