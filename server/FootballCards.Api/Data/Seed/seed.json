@@ -99,18 +99,18 @@
     { "code": "FRIENDLY", "name": "Friendly", "type": "Friendly", "tier": 1 }
   ],
   "cards": [
-    { "code": "PASS", "name": "Pass", "copies": 33, "description": "Good pass! Same player flips again." },
-    { "code": "TACKLE", "name": "Tackle", "copies": 24, "description": "Ball lost. The other player flips next." },
-    { "code": "CORNER", "name": "Corner", "copies": 6, "description": "Corner kick. Same player flips again." },
-    { "code": "FREE_KICK", "name": "Free Kick", "copies": 5, "description": "Free kick. Same player flips again." },
-    { "code": "OFFSIDE", "name": "Offside", "copies": 6, "description": "Flag up! The other player flips next." },
-    { "code": "SAVE", "name": "Save", "copies": 6, "description": "The keeper saves. The other player flips next." },
-    { "code": "MISS", "name": "Miss", "copies": 7, "description": "Shot goes wide. The other player flips next." },
+    { "code": "PASS", "name": "Pass", "copies": 5, "description": "Good pass! Same player flips again." },
+    { "code": "TACKLE", "name": "Tackle", "copies": 5, "description": "Ball lost. The other player flips next." },
+    { "code": "CORNER", "name": "Corner", "copies": 1, "description": "Corner kick. Same player flips again." },
+    { "code": "FREE_KICK", "name": "Free Kick", "copies": 1, "description": "Free kick. Same player flips again." },
+    { "code": "OFFSIDE", "name": "Offside", "copies": 1, "description": "Flag up! The other player flips next." },
+    { "code": "SAVE", "name": "Save", "copies": 1, "description": "The keeper saves. The other player flips next." },
+    { "code": "MISS", "name": "Miss", "copies": 1, "description": "Shot goes wide. The other player flips next." },
     { "code": "GOAL", "name": "Goal!", "copies": 4, "description": "GOAL! Then the other player kicks off." },
     { "code": "PENALTY", "name": "Penalty", "copies": 2, "description": "Penalty! Shooter and keeper pick a side. Then the other player flips." },
-    { "code": "YELLOW_CARD", "name": "Yellow Card", "copies": 4, "description": "Booked! The other player flips next." },
+    { "code": "YELLOW_CARD", "name": "Yellow Card", "copies": 1, "description": "Booked! The other player flips next." },
     { "code": "RED_CARD", "name": "Red Card", "copies": 1, "description": "Sent off! The other player flips next." },
     { "code": "HALF_TIME", "name": "Half Time", "copies": 1, "description": "End of the first half. The other player starts the second half." },
-    { "code": "FULL_TIME", "name": "Full Time", "copies": 1, "description": "The final whistle — the match is over, whenever it comes!" }
+    { "code": "FULL_TIME", "name": "Full Time", "copies": 1, "description": "The final whistle — the match is over, whether it is the first card or the last!" }
   ]
 }

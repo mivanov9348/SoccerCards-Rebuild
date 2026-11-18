@@ -39,6 +39,11 @@ using (var scope = app.Services.CreateScope())
     db.Database.EnsureCreated();
     var seedPath = Path.Combine(AppContext.BaseDirectory, "Data", "Seed", "seed.json");
     await DbSeeder.SeedAsync(db, seedPath, app.Logger);
+    // Unfinished matches saved by an older version of the game cannot be resumed — drop them.
+    var version = $"\"Version\":{MatchState.CurrentVersion}";
+    var stale = db.Matches.Where(m => m.Status == FootballCards.Api.Data.Entities.MatchStatus.InProgress && !m.StateJson.Contains(version));
+    db.Matches.RemoveRange(stale);
+    await db.SaveChangesAsync();
 }
 
 // Грешките в правилата на играта се връщат като 400 с текст на български.

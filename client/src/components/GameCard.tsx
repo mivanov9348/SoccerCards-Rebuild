@@ -19,7 +19,7 @@ interface FaceProps {
   code: string
   name: string
   description?: string
-  size?: 'small' | 'normal' | 'big'
+  size?: 'mini' | 'small' | 'normal' | 'big'
 }
 
 /** A face-up card. */
@@ -35,9 +35,9 @@ export function CardFace({ code, name, description, size = 'normal' }: FaceProps
 }
 
 /** A face-down card on the table. */
-export function CardBack({ onClick, disabled, highlight }: { onClick?: () => void; disabled?: boolean; highlight?: boolean }) {
+export function CardBack({ onClick, disabled }: { onClick?: () => void; disabled?: boolean }) {
   return (
-    <button className={`card-back-big ${highlight ? 'just-flipped' : ''}`} disabled={disabled} onClick={onClick} aria-label="Face-down card">
+    <button className="card-back-big" disabled={disabled} onClick={onClick} aria-label="Face-down card">
       <span>⚽</span>
     </button>
   )

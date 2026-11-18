@@ -34,13 +34,6 @@ public static class Cards
 /// <summary>Fixed numbers of the game. They are also described in docs/rules.md.</summary>
 public static class Rules
 {
-    /// <summary>Number of face-down cards on the table.</summary>
-    public const int TableSize = 24;
-
-    /// <summary>Game minutes that pass with each flipped card (random between min and max).</summary>
-    public const int MinMinutesPerFlip = 1;
-    public const int MaxMinutesPerFlip = 3;
-
     /// <summary>Penalty: shooter and keeper pick different sides → goal with this chance (otherwise wide).</summary>
     public const int PenaltyGoalChance = 88;
     /// <summary>Penalty: same side → keeper saves with this chance (center/center: lower).</summary>

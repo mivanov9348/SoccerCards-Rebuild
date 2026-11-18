@@ -6,33 +6,34 @@ All numbers below match the code in `server/FootballCards.Api/Game/Rules.cs` and
 
 ---
 
-## 1. The table
+## 1. The grid
 
-- At kick-off the 100-card deck is shuffled and **24 cards are laid face down** on the table.
+- All **25 cards** of the match are shuffled and laid **face down in a 5×5 grid**. There is no other deck.
 - A random player (you or the computer) kicks off.
 - The player whose turn it is flips **one** face-down card. You choose which card to click; the computer picks one at random.
-- The flipped card is shown face up, and a new face-down card from the deck takes its place. When the deck is empty, spots stay empty.
-- Every flip moves the clock 1–3 minutes. The clock stops at 45+ (or 90+) until the Half Time (or Full Time) card turns up.
+- A flipped card **stays face up** (marked with the team that flipped it) until the end of the match.
+- There is no clock — only the 1st and 2nd half. The **Full Time** card is somewhere in the grid: it can be the first card flipped or the very last one, so a match lasts between 1 and 25 flips (about 13 on average).
+- When the match ends, the cards nobody flipped are shown faded.
 
 ## 2. The cards
 
 | Card | Copies | What happens | Who flips next |
 |---|---|---|---|
-| Pass | 33 | You keep the ball | **same player** |
-| Corner | 6 | Corner kick | **same player** |
-| Free Kick | 5 | Free kick | **same player** |
-| Tackle | 24 | Ball lost | other player |
-| Offside | 6 | Offside | other player |
-| Save | 6 | The opposing keeper saves | other player |
-| Miss | 7 | Shot goes wide | other player |
-| Yellow Card | 4 | A player of the flipping team is booked | other player |
+| Pass | 5 | You keep the ball | **same player** |
+| Corner | 1 | Corner kick | **same player** |
+| Free Kick | 1 | Free kick | **same player** |
+| Tackle | 5 | Ball lost | other player |
+| Offside | 1 | Offside | other player |
+| Save | 1 | The opposing keeper saves | other player |
+| Miss | 1 | Shot goes wide | other player |
+| Yellow Card | 1 | A player of the flipping team is booked | other player |
 | Red Card | 1 | A player of the flipping team is sent off | other player |
 | Goal! | 4 | The flipping team scores | other player (kick-off) |
 | Penalty | 2 | Penalty mini-game (see below) | other player |
 | Half Time | 1 | The first half ends | other player starts the 2nd half |
-| Full Time | 1 | **The match ends — at any moment, even as the very first card** | — |
+| Full Time | 1 | **The match ends — at any moment** | — |
 
-Yellow and red cards are recorded in the match statistics; they do not change the odds.
+Yellow and red cards are recorded in the match statistics; they do not change the odds (yet).
 
 ## 3. Penalty mini-game
 
@@ -74,4 +75,4 @@ Cup and European matches cannot end in a draw. If the score is level when Full T
 - In the game: **Team & league editor**.
 - Or in `server/FootballCards.Api/Data/Seed/seed.json` — on start-up the server adds missing teams and leagues (by name) without overwriting changes made in the editor.
 - A league marked as playable with at least 4 teams (an even number is best) can be chosen for a career. Teams without a league are used as European opponents.
-- The deck (card copies) is also defined in `seed.json` (the `cards` section). The engine always keeps at least one Full Time card so every match can end.
+- The grid (card copies) is defined in `seed.json` (the `cards` section) and synced to the database on every start-up; the number of copies is the number of cards in the grid. The engine always adds a Full Time card if it is missing, so every match can end.

@@ -39,12 +39,20 @@ public class TeamMatchState
 public class MatchEvent
 {
     public int Id { get; set; }
-    public int Minute { get; set; }
-    public string MinuteLabel { get; set; } = "";
+    public int Half { get; set; } = 1;
     public string Type { get; set; } = "info";
     public Side? Side { get; set; }
     public string Text { get; set; } = "";
     public string? Card { get; set; }
+}
+
+/// <summary>One spot of the grid: a card that is face down until someone flips it.</summary>
+public class TableCell
+{
+    public string Card { get; set; } = "";
+    /// <summary>Who flipped it (null = still face down).</summary>
+    public Side? FlippedBy { get; set; }
+    public bool FaceUp => FlippedBy != null;
 }
 
 public class Flip
@@ -69,15 +77,17 @@ public class MatchState
     public string Stadium { get; set; } = "";
     public bool IsKnockout { get; set; }
 
-    public int Minute { get; set; }
+    /// <summary>State format version; matches saved by older versions are discarded on start-up.</summary>
+    public int Version { get; set; } = CurrentVersion;
+    public const int CurrentVersion = 2;
+
     public int Half { get; set; } = 1;
     public MatchPhase Phase { get; set; }
     /// <summary>The player whose turn it is to flip a card.</summary>
     public Side Turn { get; set; }
 
-    /// <summary>Face-down cards on the table; null = empty spot (deck ran out).</summary>
-    public List<string?> Table { get; set; } = new();
-    public List<string> Deck { get; set; } = new();
+    /// <summary>The grid. Every card of the match is on it from the start; flipped cards stay face up.</summary>
+    public List<TableCell> Table { get; set; } = new();
     public Flip? LastFlip { get; set; }
 
     /// <summary>Who takes the penalty during the Penalty phase.</summary>
@@ -95,10 +105,6 @@ public class MatchState
 
     /// <summary>Who shoots next in the shootout (home starts, then alternate).</summary>
     public Side NextShootoutShooter => Shootout.Count % 2 == 0 ? Side.Home : Side.Away;
-
-    public string MinuteLabel => Half == 1
-        ? Minute >= 45 ? "45+'" : $"{Math.Max(Minute, 1)}'"
-        : Minute >= 90 ? "90+'" : $"{Math.Max(Minute, 46)}'";
 
     public int? WinnerTeamId()
     {

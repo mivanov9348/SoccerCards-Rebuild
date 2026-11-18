@@ -23,13 +23,13 @@ public static class Commentary
         ["HALF_TIME"] = ["Half time! {score}"],
         ["kickoff2"] = ["The second half is under way — {T} start."],
         ["FULL_TIME"] = ["FULL TIME! {score}"],
-        ["full_time_early"] = ["FULL TIME already?! The referee ends the match at {minute}. {score}"],
+        ["full_time_early"] = ["FULL TIME already — the match ends in the first half! {score}", "The referee blows for FULL TIME early! {score}"],
     };
 
-    public static string Get(string key, Random rng, string team, string opponent, string score = "", string minute = "")
+    public static string Get(string key, Random rng, string team, string opponent, string score = "")
     {
         var options = Lines.TryGetValue(key, out var l) ? l : [key];
         return options[rng.Next(options.Length)]
-            .Replace("{T}", team).Replace("{O}", opponent).Replace("{score}", score).Replace("{minute}", minute);
+            .Replace("{T}", team).Replace("{O}", opponent).Replace("{score}", score);
     }
 }

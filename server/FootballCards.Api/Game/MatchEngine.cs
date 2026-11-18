@@ -7,8 +7,9 @@ public record MatchSetup(Team Home, Team Away, Side? HumanSide, bool IsKnockout,
 public class GameRuleException(string message) : Exception(message);
 
 /// <summary>
-/// Flip-card match engine. Face-down cards lie on the table; the player whose turn it is flips one.
-/// The card decides what happens and who flips next (see docs/rules.md). Pure luck — team strength does not matter.
+/// Flip-card match engine. All cards of the match lie face down in a grid; the player whose turn it is flips one,
+/// and it stays face up. The card decides what happens and who flips next (see docs/rules.md).
+/// Pure luck for now — team strength does not matter.
 /// </summary>
 public class MatchEngine(Random rng)
 {
@@ -28,13 +29,8 @@ public class MatchEngine(Random rng)
             Stadium = setup.Home.Stadium,
             IsKnockout = setup.IsKnockout,
             Turn = rng.Next(2) == 0 ? Side.Home : Side.Away,
+            Table = deck.Select(c => new TableCell { Card = c }).ToList(),
         };
-        for (var i = 0; i < Rules.TableSize && deck.Count > 0; i++)
-        {
-            s.Table.Add(deck[^1]);
-            deck.RemoveAt(deck.Count - 1);
-        }
-        s.Deck = deck;
         AddEvent(s, "whistle", s.Turn, Text(s, "kickoff", s.Turn));
         return s;
     }
@@ -53,7 +49,8 @@ public class MatchEngine(Random rng)
         var human = s.HumanSide ?? throw new GameRuleException("There is no human player in this match.");
         if (s.Phase != MatchPhase.Play) throw new GameRuleException("You cannot flip a card right now.");
         if (s.Turn != human) throw new GameRuleException("It is not your turn.");
-        if (cell < 0 || cell >= s.Table.Count || s.Table[cell] == null) throw new GameRuleException("There is no card there.");
+        if (cell < 0 || cell >= s.Table.Count) throw new GameRuleException("There is no card there.");
+        if (s.Table[cell].FaceUp) throw new GameRuleException("That card has already been flipped.");
         Flip(s, cell);
     }
 
@@ -108,18 +105,10 @@ public class MatchEngine(Random rng)
     {
         var side = s.Turn;
         var team = s.Team(side);
-        var card = s.Table[cell]!;
-        s.Table[cell] = null;
-        if (s.Deck.Count > 0)
-        {
-            s.Table[cell] = s.Deck[^1];
-            s.Deck.RemoveAt(s.Deck.Count - 1);
-        }
+        var card = s.Table[cell].Card;
+        s.Table[cell].FlippedBy = side;
         s.LastFlip = new Flip { Cell = cell, Card = card, Side = side };
         team.Stats.Flips++;
-
-        if (card is not (Cards.HalfTime or Cards.FullTime))
-            s.Minute = Math.Min(s.Half == 1 ? 45 : 90, s.Minute + rng.Next(Rules.MinMinutesPerFlip, Rules.MaxMinutesPerFlip + 1));
 
         switch (card)
         {
@@ -152,7 +141,6 @@ public class MatchEngine(Random rng)
             case Cards.HalfTime when s.Half == 1:
                 AddEvent(s, "whistle", side, Text(s, card, side), card);
                 s.Half = 2;
-                s.Minute = 45;
                 s.Turn = side.Other();
                 AddEvent(s, "whistle", s.Turn, Text(s, "kickoff2", s.Turn));
                 break;
@@ -176,9 +164,8 @@ public class MatchEngine(Random rng)
 
     private void EndOfMatch(MatchState s, Side side)
     {
-        var early = s.Half == 1 && s.Minute < 45;
-        AddEvent(s, "whistle", side, Commentary.Get(early ? "full_time_early" : Cards.FullTime, rng,
-            s.Team(side).Name, s.Team(side.Other()).Name, Score(s), s.MinuteLabel), Cards.FullTime);
+        var key = s.Half == 1 ? "full_time_early" : Cards.FullTime;
+        AddEvent(s, "whistle", side, Text(s, key, side), Cards.FullTime);
 
         if (s.IsKnockout && s.Home.Goals == s.Away.Goals)
         {
@@ -249,8 +236,8 @@ public class MatchEngine(Random rng)
 
     private int RandomCell(MatchState s)
     {
-        var cells = Enumerable.Range(0, s.Table.Count).Where(i => s.Table[i] != null).ToList();
-        if (cells.Count == 0) throw new InvalidOperationException("No cards left on the table.");
+        var cells = Enumerable.Range(0, s.Table.Count).Where(i => !s.Table[i].FaceUp).ToList();
+        if (cells.Count == 0) throw new InvalidOperationException("No face-down cards left.");
         return cells[rng.Next(cells.Count)];
     }
 
@@ -266,12 +253,12 @@ public class MatchEngine(Random rng)
     private static string Score(MatchState s) => $"{s.Home.Name} {s.Home.Goals}:{s.Away.Goals} {s.Away.Name}";
 
     private string Text(MatchState s, string key, Side side) =>
-        Commentary.Get(key, rng, s.Team(side).Name, s.Team(side.Other()).Name, Score(s), s.MinuteLabel);
+        Commentary.Get(key, rng, s.Team(side).Name, s.Team(side.Other()).Name, Score(s));
 
     private static void AddEvent(MatchState s, string type, Side? side, string text, string? card = null) =>
         s.Events.Add(new MatchEvent
         {
-            Id = s.NextEventId++, Minute = s.Minute, MinuteLabel = s.MinuteLabel, Type = type,
+            Id = s.NextEventId++, Half = s.Half, Type = type,
             Side = side, Text = text, Card = card
         });
 }

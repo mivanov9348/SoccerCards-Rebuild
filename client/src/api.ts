@@ -64,8 +64,7 @@ export interface MatchTeam {
 
 export interface MatchEvent {
   id: number
-  minute: number
-  minuteLabel: string
+  half: number
   type: string
   side: Side | null
   text: string
@@ -81,16 +80,14 @@ export interface MatchView {
   isKnockout: boolean
   home: MatchTeam
   away: MatchTeam
-  minute: number
-  minuteLabel: string
   half: number
   phase: "Play" | "Penalty" | "Shootout" | "Finished"
   turn: Side
   humanSide: Side | null
   humanRole: "flip" | "wait" | "shooter" | "keeper" | null
   penaltyShooter: Side | null
-  table: { index: number; empty: boolean }[]
-  deckLeft: number
+  table: { index: number; faceUp: boolean; card: string | null; name: string | null; flippedBy: Side | null }[]
+  cardsLeft: number
   lastFlip: { cell: number; card: string; name: string; side: Side } | null
   shootout: { side: Side; scored: boolean }[]
   homePenalties: number | null

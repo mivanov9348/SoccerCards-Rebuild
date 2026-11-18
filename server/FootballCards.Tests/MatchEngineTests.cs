@@ -6,19 +6,19 @@ namespace FootballCards.Tests;
 
 public class MatchEngineTests(ITestOutputHelper output)
 {
-    // Same composition as seed.json
+    // Same composition as seed.json (25 cards = a 5x5 grid)
     private static readonly List<CardDefinition> Deck =
     [
-        new() { Code = Cards.Pass, CopiesInDeck = 33 },
-        new() { Code = Cards.Tackle, CopiesInDeck = 24 },
-        new() { Code = Cards.Corner, CopiesInDeck = 6 },
-        new() { Code = Cards.FreeKick, CopiesInDeck = 5 },
-        new() { Code = Cards.Offside, CopiesInDeck = 6 },
-        new() { Code = Cards.Save, CopiesInDeck = 6 },
-        new() { Code = Cards.Miss, CopiesInDeck = 7 },
+        new() { Code = Cards.Pass, CopiesInDeck = 5 },
+        new() { Code = Cards.Tackle, CopiesInDeck = 5 },
+        new() { Code = Cards.Corner, CopiesInDeck = 1 },
+        new() { Code = Cards.FreeKick, CopiesInDeck = 1 },
+        new() { Code = Cards.Offside, CopiesInDeck = 1 },
+        new() { Code = Cards.Save, CopiesInDeck = 1 },
+        new() { Code = Cards.Miss, CopiesInDeck = 1 },
         new() { Code = Cards.Goal, CopiesInDeck = 4 },
         new() { Code = Cards.Penalty, CopiesInDeck = 2 },
-        new() { Code = Cards.YellowCard, CopiesInDeck = 4 },
+        new() { Code = Cards.YellowCard, CopiesInDeck = 1 },
         new() { Code = Cards.RedCard, CopiesInDeck = 1 },
         new() { Code = Cards.HalfTime, CopiesInDeck = 1 },
         new() { Code = Cards.FullTime, CopiesInDeck = 1 },
@@ -30,12 +30,26 @@ public class MatchEngineTests(ITestOutputHelper output)
         e.Create(new MatchSetup(T(1), T(2), human, knockout, "Test"), Deck);
 
     [Fact]
-    public void Table_HasFaceDownCards_AndDeckHoldsTheRest()
+    public void Grid_HoldsAllCards_FaceDown_WithOneFullTime()
     {
         var s = NewMatch(new MatchEngine(new Random(1)));
-        Assert.Equal(Rules.TableSize, s.Table.Count);
-        Assert.Equal(100 - Rules.TableSize, s.Deck.Count);
+        Assert.Equal(25, s.Table.Count);
+        Assert.All(s.Table, c => Assert.False(c.FaceUp));
+        Assert.Single(s.Table, c => c.Card == Cards.FullTime);
         Assert.Equal(MatchPhase.Play, s.Phase);
+    }
+
+    [Fact]
+    public void FlippedCard_StaysFaceUp_AndCannotBeFlippedAgain()
+    {
+        var engine = new MatchEngine(new Random(10));
+        var s = NewMatch(engine, Side.Home);
+        s.Turn = Side.Home;
+        s.Table[0].Card = Cards.Pass;
+        engine.FlipHuman(s, 0);
+        Assert.True(s.Table[0].FaceUp);
+        Assert.Equal(Side.Home, s.Table[0].FlippedBy);
+        Assert.Throws<GameRuleException>(() => engine.FlipHuman(s, 0));
     }
 
     [Fact]
@@ -54,6 +68,7 @@ public class MatchEngineTests(ITestOutputHelper output)
         }
         output.WriteLine($"avg goals {goals / n:F2}, avg flips {flips / n:F1}");
         Assert.InRange(goals / n, 1.0, 4.5);
+        Assert.InRange(flips / n, 5, 25);
     }
 
     [Fact]
@@ -62,11 +77,11 @@ public class MatchEngineTests(ITestOutputHelper output)
         var engine = new MatchEngine(new Random(3));
         var s = NewMatch(engine, Side.Home);
         s.Turn = Side.Home;
-        s.Table[0] = Cards.Pass;
+        s.Table[0].Card = Cards.Pass;
         engine.FlipHuman(s, 0);
         Assert.Equal(Side.Home, s.Turn);
 
-        s.Table[1] = Cards.Tackle;
+        s.Table[1].Card = Cards.Tackle;
         engine.FlipHuman(s, 1);
         Assert.Equal(Side.Away, s.Turn);
     }
@@ -77,7 +92,7 @@ public class MatchEngineTests(ITestOutputHelper output)
         var engine = new MatchEngine(new Random(4));
         var s = NewMatch(engine, Side.Home);
         s.Turn = Side.Home;
-        s.Table[5] = Cards.FullTime;
+        s.Table[5].Card = Cards.FullTime;
         engine.FlipHuman(s, 5);
         Assert.Equal(MatchPhase.Finished, s.Phase);
     }
@@ -88,7 +103,7 @@ public class MatchEngineTests(ITestOutputHelper output)
         var engine = new MatchEngine(new Random(5));
         var s = NewMatch(engine, Side.Home);
         s.Turn = Side.Home;
-        s.Table[2] = Cards.HalfTime;
+        s.Table[2].Card = Cards.HalfTime;
         engine.FlipHuman(s, 2);
         Assert.Equal(2, s.Half);
         Assert.Equal(Side.Away, s.Turn);
@@ -100,7 +115,7 @@ public class MatchEngineTests(ITestOutputHelper output)
         var engine = new MatchEngine(new Random(6));
         var s = NewMatch(engine, Side.Away);
         s.Turn = Side.Away;
-        s.Table[3] = Cards.Goal;
+        s.Table[3].Card = Cards.Goal;
         engine.FlipHuman(s, 3);
         Assert.Equal(1, s.Away.Goals);
         Assert.Equal(Side.Home, s.Turn);
@@ -112,7 +127,7 @@ public class MatchEngineTests(ITestOutputHelper output)
         var engine = new MatchEngine(new Random(7));
         var s = NewMatch(engine, Side.Home);
         s.Turn = Side.Home;
-        s.Table[0] = Cards.Penalty;
+        s.Table[0].Card = Cards.Penalty;
         engine.FlipHuman(s, 0);
         Assert.Equal(MatchPhase.Penalty, s.Phase);
         Assert.Throws<GameRuleException>(() => engine.FlipHuman(s, 1));
@@ -144,7 +159,7 @@ public class MatchEngineTests(ITestOutputHelper output)
 
         var h = NewMatch(engine, Side.Home, knockout: true);
         h.Turn = Side.Home;
-        h.Table[0] = Cards.FullTime;
+        h.Table[0].Card = Cards.FullTime;
         engine.FlipHuman(h, 0);
         Assert.Equal(MatchPhase.Shootout, h.Phase);
         var guard = 0;

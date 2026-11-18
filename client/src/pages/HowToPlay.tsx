@@ -10,10 +10,9 @@ export default function HowToPlay() {
       <div className="panel prose">
         <h2>The match</h2>
         <p>
-          You play against the computer. {` `}
-          <b>24 cards lie face down</b> on the table. The player whose turn it is flips one card — you click the card you want, the
-          computer picks one at random. The card decides what happens and <b>who flips next</b>. A new card from the deck takes the
-          place of the flipped one.
+          You play against the computer. All <b>25 cards of the match lie face down in a 5×5 grid</b>. The player whose turn it is
+          flips one card — you click the card you want, the computer picks one at random. A flipped card <b>stays face up</b> for
+          the rest of the match. The card decides what happens and <b>who flips next</b>.
         </p>
         <ul>
           <li>
@@ -33,7 +32,7 @@ export default function HowToPlay() {
             <b>Half Time</b> — the first half ends, the other player starts the second half.
           </li>
           <li>
-            <b>Full Time</b> — the match is over, whenever it comes. Even if it is the very first card!
+            <b>Full Time</b> — the match is over, whenever it comes: it can be the very first card or the very last one.
           </li>
         </ul>
         <p>

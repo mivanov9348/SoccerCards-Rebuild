@@ -1,13 +1,13 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
-// В режим на разработка заявките към /api се препращат към C# сървъра.
+// In dev mode /api requests are forwarded to the C# server (override with the API_URL env variable).
 export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
     proxy: {
-      '/api': 'http://localhost:5080',
+      '/api': process.env.API_URL ?? 'http://localhost:5080',
     },
   },
 })

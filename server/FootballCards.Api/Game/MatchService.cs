@@ -78,8 +78,6 @@ public class MatchService(AppDbContext db)
             isKnockout = s.IsKnockout,
             home = TeamView(s.Home),
             away = TeamView(s.Away),
-            minute = s.Minute,
-            minuteLabel = s.MinuteLabel,
             half = s.Half,
             phase = s.Phase.ToString(),
             turn = s.Turn.ToString(),
@@ -87,8 +85,16 @@ public class MatchService(AppDbContext db)
             humanRole,
             penaltyShooter = s.Phase == MatchPhase.Penalty ? s.PenaltyShooter?.ToString()
                 : s.Phase == MatchPhase.Shootout ? s.NextShootoutShooter.ToString() : null,
-            table = s.Table.Select((c, i) => new { index = i, empty = c == null }),
-            deckLeft = s.Deck.Count,
+            table = s.Table.Select((c, i) => new
+            {
+                index = i,
+                faceUp = c.FaceUp,
+                // face-down cards stay secret until the match is over
+                card = c.FaceUp || s.Phase == MatchPhase.Finished ? c.Card : null,
+                name = c.FaceUp || s.Phase == MatchPhase.Finished ? Cards.Name(c.Card) : null,
+                flippedBy = c.FlippedBy?.ToString()
+            }),
+            cardsLeft = s.Table.Count(c => !c.FaceUp),
             lastFlip = s.LastFlip == null ? null : new
             {
                 cell = s.LastFlip.Cell, card = s.LastFlip.Card, name = Cards.Name(s.LastFlip.Card), side = s.LastFlip.Side.ToString()
@@ -98,7 +104,7 @@ public class MatchService(AppDbContext db)
             awayPenalties = s.AwayPenalties,
             events = s.Events.Select(e => new
             {
-                e.Id, e.Minute, e.MinuteLabel, e.Type, side = e.Side?.ToString(), e.Text, e.Card
+                e.Id, e.Half, e.Type, side = e.Side?.ToString(), e.Text, e.Card
             }),
         };
     }

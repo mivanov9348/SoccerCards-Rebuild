@@ -54,15 +54,21 @@ public static class DbSeeder
             added++;
         }
 
+        // Cards are game rules, not user data: always keep them in sync with seed.json.
         foreach (var c in seed.Cards)
         {
-            if (await db.Cards.AnyAsync(x => x.Code == c.Code)) continue;
-            db.Cards.Add(new CardDefinition
+            var card = await db.Cards.FirstOrDefaultAsync(x => x.Code == c.Code);
+            if (card is null)
             {
-                Code = c.Code, Name = c.Name, Description = c.Description, CopiesInDeck = c.Copies
-            });
-            added++;
+                db.Cards.Add(card = new CardDefinition { Code = c.Code });
+                added++;
+            }
+            card.Name = c.Name;
+            card.Description = c.Description;
+            card.CopiesInDeck = c.Copies;
         }
+        var codes = seed.Cards.Select(c => c.Code).ToList();
+        db.Cards.RemoveRange(db.Cards.Where(x => !codes.Contains(x.Code)));
 
         await db.SaveChangesAsync();
         if (added > 0) logger.LogInformation("Seed: added {Count} records.", added);

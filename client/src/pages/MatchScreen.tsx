@@ -171,7 +171,7 @@ export default function MatchScreen() {
               pens {m.homePenalties}:{m.awayPenalties}
             </div>
           )}
-          <div className="clock">{finished ? 'Full time' : `${m.minuteLabel} · ${m.half === 1 ? '1st' : '2nd'} half`}</div>
+          <div className="clock">{finished ? 'Full time' : m.half === 1 ? '1st half' : '2nd half'}</div>
           <div className="muted small">
             {m.competition} · {m.stadium}
           </div>
@@ -196,12 +196,25 @@ export default function MatchScreen() {
           <div className="table-area">
             <div className="flip-grid">
               {m.table.map((c) =>
-                c.empty ? (
-                  <div key={c.index} className="card-slot-empty" />
+                c.faceUp && c.card ? (
+                  <div
+                    key={c.index}
+                    className={`grid-face ${last?.cell === c.index ? 'just-flipped' : ''}`}
+                    style={{ borderColor: (c.flippedBy === 'Home' ? m.home : m.away).primaryColor }}
+                    title={`${c.name} — flipped by ${(c.flippedBy === 'Home' ? m.home : m.away).name}`}
+                  >
+                    <CardFace code={c.card} name={c.name ?? ''} size="mini" />
+                    <span className="grid-owner" style={{ background: (c.flippedBy === 'Home' ? m.home : m.away).primaryColor }}>
+                      {(c.flippedBy === 'Home' ? m.home : m.away).shortName}
+                    </span>
+                  </div>
+                ) : c.card ? (
+                  <div key={c.index} className="grid-face unflipped" title="Not flipped">
+                    <CardFace code={c.card} name={c.name ?? ''} size="mini" />
+                  </div>
                 ) : (
                   <CardBack
                     key={c.index}
-                    highlight={last?.cell === c.index}
                     disabled={!myTurn || busy}
                     onClick={() => run(() => api.flip(m.id, c.index))}
                   />
@@ -218,7 +231,7 @@ export default function MatchScreen() {
               ) : (
                 <div className="reveal-empty">No card flipped yet</div>
               )}
-              <span className="muted small">{m.deckLeft} cards left in the deck</span>
+              <span className="muted small">{m.cardsLeft} cards still face down</span>
             </div>
           </div>
 
@@ -268,7 +281,7 @@ export default function MatchScreen() {
           <ol className="events">
             {events.map((e, i) => (
               <li key={e.id} className={`ev ev-${e.type} ${e.side === human ? 'ours' : e.side ? 'theirs' : ''} ${i === 0 ? 'fresh' : ''}`}>
-                <span className="ev-min">{e.minuteLabel}</span>
+                <span className="ev-min">{e.half === 1 ? '1st' : '2nd'}</span>
                 <span className="ev-text">{e.text}</span>
               </li>
             ))}
