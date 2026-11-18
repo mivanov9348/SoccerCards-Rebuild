@@ -1,7 +1,6 @@
-// Типове и функции за връзка с C# сървъра.
+// Types and requests for the C# server.
 
 export type Side = 'Home' | 'Away'
-export type Tactic = 'Balanced' | 'Attacking' | 'Defensive'
 
 export interface League {
   id: number
@@ -35,17 +34,21 @@ export interface CardInfo {
   code: string
   name: string
   description: string
-  kind: 'Attack' | 'Defense'
   copiesInDeck: number
 }
 
-export interface HandCard {
-  index: number
-  code: string
-  name: string
-  legal: boolean
-  hint: number
-  hintLabel: string
+export interface TeamStats {
+  passes: number
+  tackles: number
+  corners: number
+  freeKicks: number
+  offsides: number
+  saves: number
+  misses: number
+  yellowCards: number
+  redCards: number
+  penalties: number
+  flips: number
 }
 
 export interface MatchTeam {
@@ -55,12 +58,8 @@ export interface MatchTeam {
   primaryColor: string
   secondaryColor: string
   goals: number
-  tactic: Tactic
   isHuman: boolean
-  attack: number
-  midfield: number
-  defense: number
-  stats: { shots: number; onTarget: number; fouls: number; yellow: number; red: number; possessionTurns: number }
+  stats: TeamStats
 }
 
 export interface MatchEvent {
@@ -70,8 +69,7 @@ export interface MatchEvent {
   type: string
   side: Side | null
   text: string
-  attackCard: string | null
-  defenseCard: string | null
+  card: string | null
 }
 
 export interface MatchView {
@@ -86,16 +84,15 @@ export interface MatchView {
   minute: number
   minuteLabel: string
   half: number
-  phase: 'Play' | 'Penalty' | 'Finished'
-  possession: Side
-  zone: number
-  zoneName: string
-  counterAvailable: boolean
+  phase: "Play" | "Penalty" | "Shootout" | "Finished"
+  turn: Side
   humanSide: Side | null
-  humanRole: 'attack' | 'defense' | 'shooter' | 'keeper'
-  hand: HandCard[] | null
-  basic: { code: string; name: string; hint: number; hintLabel: string } | null
-  opponentHand: { attack: number; defense: number } | null
+  humanRole: "flip" | "wait" | "shooter" | "keeper" | null
+  penaltyShooter: Side | null
+  table: { index: number; empty: boolean }[]
+  deckLeft: number
+  lastFlip: { cell: number; card: string; name: string; side: Side } | null
+  shootout: { side: Side; scored: boolean }[]
   homePenalties: number | null
   awayPenalties: number | null
   events: MatchEvent[]
@@ -161,7 +158,6 @@ export interface CareerView {
   saveName: string
   managerName: string
   reputation: number
-  difficulty: number
   status: 'Active' | 'Fired'
   team: {
     id: number
@@ -222,15 +218,15 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
       body: body !== undefined ? JSON.stringify(body) : undefined,
     })
   } catch {
-    throw new ApiError('Няма връзка със сървъра. Стартиран ли е C# сървърът (dotnet run)?')
+    throw new ApiError('Cannot reach the server. Is the C# server running (dotnet run)?')
   }
   if (!res.ok) {
-    let message = `Грешка ${res.status}`
+    let message = `Error ${res.status}`
     try {
       const data = await res.json()
       if (data?.error) message = data.error
     } catch {
-      /* празен отговор */
+      /* empty response */
     }
     throw new ApiError(message)
   }
@@ -252,32 +248,25 @@ export const api = {
 
   cards: () => request<CardInfo[]>('GET', '/cards'),
 
-  createFriendly: (homeTeamId: number, awayTeamId: number, humanSide: Side, tactic: Tactic, difficulty: number) =>
-    request<MatchView>('POST', '/matches', { homeTeamId, awayTeamId, humanSide, tactic, difficulty }),
+  createFriendly: (homeTeamId: number, awayTeamId: number, humanSide: Side) =>
+    request<MatchView>('POST', '/matches', { homeTeamId, awayTeamId, humanSide }),
   match: (id: number) => request<MatchView>('GET', `/matches/${id}`),
-  play: (id: number, action: { cardIndex?: number; swapIndex?: number; penaltyDirection?: number }) =>
-    request<MatchView>('POST', `/matches/${id}/play`, action),
+  flip: (id: number, cell: number) => request<MatchView>('POST', `/matches/${id}/flip`, { cell }),
+  aiFlip: (id: number) => request<MatchView>('POST', `/matches/${id}/ai-flip`),
+  penalty: (id: number, direction: number) => request<MatchView>('POST', `/matches/${id}/penalty`, { direction }),
   simulateMatch: (id: number) => request<MatchView>('POST', `/matches/${id}/simulate`),
 
   careers: () => request<CareerSlot[]>('GET', '/careers'),
-  createCareer: (saveName: string, managerName: string, teamId: number, difficulty: number) =>
-    request<{ id: number }>('POST', '/careers', { saveName, managerName, teamId, difficulty }),
+  createCareer: (saveName: string, managerName: string, teamId: number) =>
+    request<{ id: number }>('POST', '/careers', { saveName, managerName, teamId }),
   career: (id: number) => request<CareerView>('GET', `/careers/${id}`),
   renameCareer: (id: number, saveName: string) => request<void>('PUT', `/careers/${id}`, { saveName }),
   deleteCareer: (id: number) => request<void>('DELETE', `/careers/${id}`),
   careerFixtures: (id: number) => request<Fixture[]>('GET', `/careers/${id}/fixtures`),
-  playCareer: (id: number, tactic: Tactic) => request<{ matchId: number }>('POST', `/careers/${id}/play`, { tactic }),
+  playCareer: (id: number) => request<{ matchId: number }>('POST', `/careers/${id}/play`),
   simulateCareer: (id: number) => request<void>('POST', `/careers/${id}/simulate`),
   nextSeason: (id: number, acceptTeamId?: number) =>
     request<void>('POST', `/careers/${id}/next-season`, { acceptTeamId: acceptTeamId ?? null }),
 }
-
-export const tacticNames: Record<Tactic, string> = {
-  Balanced: 'Балансирана',
-  Attacking: 'Атакуваща',
-  Defensive: 'Дефанзивна',
-}
-
-export const difficultyNames = ['Лесно', 'Нормално', 'Трудно']
 
 export const seasonLabel = (year: number) => `${year}/${String((year + 1) % 100).padStart(2, '0')}`

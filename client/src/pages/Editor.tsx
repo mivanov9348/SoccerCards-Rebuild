@@ -6,7 +6,7 @@ const emptyTeam: TeamInput = {
   name: '',
   shortName: '',
   city: '',
-  country: 'България',
+  country: 'Bulgaria',
   stadium: '',
   primaryColor: '#1f6f3f',
   secondaryColor: '#ffffff',
@@ -35,35 +35,35 @@ function TeamForm({ initial, leagues, onSave, onCancel }: { initial: TeamInput; 
       <div className="form-preview">
         <Badge name={t.name || '?'} primary={t.primaryColor} secondary={t.secondaryColor} size={56} />
         <div>
-          <h3>{t.name || 'Нов отбор'}</h3>
-          <span className="muted">Обща сила: {overall}</span>
+          <h3>{t.name || 'New team'}</h3>
+          <span className="muted">Overall rating: {overall}</span>
         </div>
       </div>
       <div className="form-grid">
         <label>
-          Име*
+          Name*
           <input required maxLength={60} value={t.name} onChange={(e) => set('name', e.target.value)} />
         </label>
         <label>
-          Съкращение
+          Short name
           <input maxLength={5} value={t.shortName} onChange={(e) => set('shortName', e.target.value)} />
         </label>
         <label>
-          Град
+          City
           <input maxLength={60} value={t.city} onChange={(e) => set('city', e.target.value)} />
         </label>
         <label>
-          Държава
+          Country
           <input maxLength={60} value={t.country} onChange={(e) => set('country', e.target.value)} />
         </label>
         <label>
-          Стадион
+          Stadium
           <input maxLength={80} value={t.stadium} onChange={(e) => set('stadium', e.target.value)} />
         </label>
         <label>
-          Лига
+          League
           <select value={t.leagueId ?? ''} onChange={(e) => set('leagueId', e.target.value ? Number(e.target.value) : null)}>
-            <option value="">— без лига (европейски клуб) —</option>
+            <option value="">— no league (European club) —</option>
             {leagues.map((l) => (
               <option key={l.id} value={l.id}>
                 {l.name} ({l.country})
@@ -72,26 +72,26 @@ function TeamForm({ initial, leagues, onSave, onCancel }: { initial: TeamInput; 
           </select>
         </label>
         <label>
-          Основен цвят
+          Primary color
           <input type="color" value={t.primaryColor} onChange={(e) => set('primaryColor', e.target.value)} />
         </label>
         <label>
-          Втори цвят
+          Secondary color
           <input type="color" value={t.secondaryColor} onChange={(e) => set('secondaryColor', e.target.value)} />
         </label>
         {(['attack', 'midfield', 'defense'] as const).map((k) => (
           <label key={k}>
-            {k === 'attack' ? 'Атака' : k === 'midfield' ? 'Полузащита' : 'Защита'}: <b>{t[k]}</b>
+            {k === 'attack' ? 'Attack' : k === 'midfield' ? 'Midfield' : 'Defense'}: <b>{t[k]}</b>
             <input type="range" min={30} max={99} value={t[k]} onChange={(e) => set(k, Number(e.target.value))} />
           </label>
         ))}
       </div>
       <div className="row-buttons">
         <button className="btn btn-primary" disabled={busy} type="submit">
-          Запази
+          Save
         </button>
         <button className="btn" type="button" onClick={onCancel}>
-          Отказ
+          Cancel
         </button>
       </div>
     </form>
@@ -100,7 +100,7 @@ function TeamForm({ initial, leagues, onSave, onCancel }: { initial: TeamInput; 
 
 function LeagueForm({ onSave }: { onSave: (l: Omit<League, 'id' | 'teamCount'>) => Promise<void> }) {
   const [name, setName] = useState('')
-  const [country, setCountry] = useState('България')
+  const [country, setCountry] = useState('Bulgaria')
   const [tier, setTier] = useState(2)
   const [isPlayable, setPlayable] = useState(true)
   return (
@@ -113,23 +113,23 @@ function LeagueForm({ onSave }: { onSave: (l: Omit<League, 'id' | 'teamCount'>) 
       }}
     >
       <label>
-        Име на лигата
-        <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="напр. Втора лига" />
+        League name
+        <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Second League" />
       </label>
       <label>
-        Държава
+        Country
         <input required value={country} onChange={(e) => setCountry(e.target.value)} />
       </label>
       <label>
-        Ниво
+        Tier
         <input type="number" min={1} max={10} value={tier} onChange={(e) => setTier(Number(e.target.value))} />
       </label>
       <label className="checkbox">
         <input type="checkbox" checked={isPlayable} onChange={(e) => setPlayable(e.target.checked)} />
-        Може да се играе в кариера (нужни са поне 4 отбора, препоръчително четен брой)
+        Playable in career mode (needs at least 4 teams, an even number is best)
       </label>
       <button className="btn btn-primary" type="submit">
-        Добави лига
+        Add league
       </button>
     </form>
   )
@@ -162,7 +162,7 @@ export default function Editor() {
   const shown = (teams ?? []).filter((t) => (filter === 'all' ? true : filter === 'none' ? t.leagueId === null : t.leagueId === Number(filter)))
 
   return (
-    <Screen title="Редактор на отбори и лиги">
+    <Screen title="Team & league editor">
       <ErrorBox error={loadError ?? error} />
       {notice && <div className="notice">{notice}</div>}
 
@@ -175,7 +175,7 @@ export default function Editor() {
           onSave={async (t) => {
             const ok = await guard(
               () => (editing === 'new' ? api.createTeam(t) : api.updateTeam(editing.id, t)),
-              editing === 'new' ? `Отборът „${t.name}“ е добавен.` : 'Промените са запазени.',
+              editing === 'new' ? `Team "${t.name}" added.` : 'Changes saved.',
             )
             if (ok) setEditing(null)
           }}
@@ -185,28 +185,28 @@ export default function Editor() {
       <div className="two-col wide-left">
         <div className="panel">
           <div className="panel-head">
-            <h2>Отбори ({shown.length})</h2>
+            <h2>Teams ({shown.length})</h2>
             <select value={filter} onChange={(e) => setFilter(e.target.value)}>
-              <option value="all">Всички</option>
+              <option value="all">All</option>
               {leagues?.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.name}
                 </option>
               ))}
-              <option value="none">Европейски клубове (без лига)</option>
+              <option value="none">European clubs (no league)</option>
             </select>
             <button className="btn btn-primary" onClick={() => setEditing('new')}>
-              + Нов отбор
+              + New team
             </button>
           </div>
           <table className="table">
             <thead>
               <tr>
-                <th className="left">Отбор</th>
-                <th className="left">Лига / държава</th>
-                <th>А</th>
-                <th>П</th>
-                <th>З</th>
+                <th className="left">Team</th>
+                <th className="left">League / country</th>
+                <th>ATT</th>
+                <th>MID</th>
+                <th>DEF</th>
                 <th></th>
               </tr>
             </thead>
@@ -223,11 +223,11 @@ export default function Editor() {
                   <td>{t.defense}</td>
                   <td className="actions">
                     <button className="btn btn-small" onClick={() => setEditing(t)}>
-                      Редактирай
+                      Edit
                     </button>
                     <button
                       className="btn btn-small btn-danger"
-                      onClick={() => confirm(`Да изтрия ли „${t.name}“?`) && guard(() => api.deleteTeam(t.id), 'Отборът е изтрит.')}
+                      onClick={() => confirm(`Delete "${t.name}"?`) && guard(() => api.deleteTeam(t.id), 'Team deleted.')}
                     >
                       ✕
                     </button>
@@ -238,26 +238,26 @@ export default function Editor() {
           </table>
         </div>
         <div className="panel">
-          <h2>Лиги</h2>
+          <h2>Leagues</h2>
           <ul className="league-list">
             {leagues?.map((l) => (
               <li key={l.id}>
                 <b>{l.name}</b> <span className="muted">
-                  {l.country} · ниво {l.tier} · {l.teamCount} отбора {l.isPlayable ? '· играема' : ''}
+                  {l.country} · tier {l.tier} · {l.teamCount} teams {l.isPlayable ? '· playable' : ''}
                 </span>
                 {l.teamCount === 0 && (
-                  <button className="btn btn-small btn-danger" onClick={() => guard(() => api.deleteLeague(l.id), 'Лигата е изтрита.')}>
+                  <button className="btn btn-small btn-danger" onClick={() => guard(() => api.deleteLeague(l.id), 'League deleted.')}>
                     ✕
                   </button>
                 )}
               </li>
             ))}
           </ul>
-          <h3>Нова лига</h3>
-          <LeagueForm onSave={async (l) => void (await guard(() => api.createLeague(l), `Лигата „${l.name}“ е добавена.`))} />
+          <h3>New league</h3>
+          <LeagueForm onSave={async (l) => void (await guard(() => api.createLeague(l), `League "${l.name}" added.`))} />
           <p className="muted small">
-            Съвет: можете да добавяте отбори и директно във файла <code>server/FootballCards.Api/Data/Seed/seed.json</code> — при
-            следващо стартиране на сървъра липсващите отбори се добавят автоматично.
+            Tip: you can also add teams directly in <code>server/FootballCards.Api/Data/Seed/seed.json</code> — missing teams
+            are added automatically the next time the server starts.
           </p>
         </div>
       </div>

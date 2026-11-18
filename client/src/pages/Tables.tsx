@@ -13,15 +13,15 @@ export default function Tables() {
   const shown = (teams ?? []).filter((t) => (group === 'BG' ? t.leagueId !== null : t.leagueId === null))
 
   return (
-    <Screen title="Класирания и отбори">
+    <Screen title="Tables & teams">
       <ErrorBox error={error} />
       <div className="two-col">
         <div className="panel">
-          <h2>Класиране в кариера</h2>
-          {careers && careers.length === 0 && <p className="muted">Започнете кариера, за да видите класиране.</p>}
+          <h2>Career league table</h2>
+          {careers && careers.length === 0 && <p className="muted">Start a career to see a league table.</p>}
           {careers && careers.length > 0 && (
             <label className="inline">
-              Запис
+              Save
               <select value={active ?? ''} onChange={(e) => setCareerId(Number(e.target.value))}>
                 {careers.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -34,24 +34,24 @@ export default function Tables() {
           {career && <StandingsTable rows={career.table} highlight={career.team.id} />}
         </div>
         <div className="panel">
-          <h2>Сила на отборите</h2>
+          <h2>Team ratings</h2>
           <div className="tabs small">
             <button className={group === 'BG' ? 'active' : ''} onClick={() => setGroup('BG')}>
-              Първа лига
+              First League
             </button>
             <button className={group === 'EU' ? 'active' : ''} onClick={() => setGroup('EU')}>
-              Европейски клубове
+              European clubs
             </button>
           </div>
           <table className="table">
             <thead>
               <tr>
-                <th className="left">Отбор</th>
-                <th className="left">Град</th>
-                <th>А</th>
-                <th>П</th>
-                <th>З</th>
-                <th>Общо</th>
+                <th className="left">Team</th>
+                <th className="left">City</th>
+                <th>ATT</th>
+                <th>MID</th>
+                <th>DEF</th>
+                <th>OVR</th>
               </tr>
             </thead>
             <tbody>

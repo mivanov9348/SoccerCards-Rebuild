@@ -14,46 +14,46 @@ export default function MainMenu() {
           <span className="logo-card c2">⚡</span>
           <span className="logo-card c3">🛡</span>
         </div>
-        <h1>Карти Футбол</h1>
-        <p className="tagline">Футболен мениджър със ситуационни карти · Първа лига и европейските турнири</p>
+        <h1>Soccer Cards</h1>
+        <p className="tagline">The football card game · Bulgarian First League and European cups</p>
       </div>
 
       <nav className="menu">
         {latest && (
           <Link className="menu-item primary" to={`/career/${latest.id}`}>
-            Продължи кариерата
+            Continue career
             <small>
-              {latest.team} · {latest.year ? seasonLabel(latest.year) : ''} · седмица {latest.week}/{latest.totalWeeks}
+              {latest.team} · {latest.year ? seasonLabel(latest.year) : ''} · week {latest.week}/{latest.totalWeeks}
             </small>
           </Link>
         )}
         <Link className="menu-item" to="/friendly">
-          Приятелски мач
-          <small>Изберете два отбора и играйте</small>
+          Friendly match
+          <small>Pick two teams and play the computer</small>
         </Link>
         <Link className="menu-item" to="/career/new">
-          Нова кариера
-          <small>Поемете малък клуб и го изведете до върха</small>
+          New career
+          <small>Take over a small club and lead it to glory</small>
         </Link>
         <Link className="menu-item" to="/load">
-          Зареди игра
-          <small>Запазени кариери</small>
+          Load game
+          <small>Saved careers</small>
         </Link>
         <Link className="menu-item" to="/tables">
-          Класирания и отбори
+          Tables & teams
         </Link>
         <Link className="menu-item" to="/editor">
-          Редактор на отбори и лиги
+          Team & league editor
         </Link>
         <Link className="menu-item" to="/how-to-play">
-          Как се играе
+          How to play
         </Link>
         <Link className="menu-item" to="/settings">
-          Настройки
+          Settings
         </Link>
       </nav>
       {error && <p className="error-box">{error}</p>}
-      <footer className="footer">Оригинална игра · Емблемите са генерирани · Данните могат да се редактират</footer>
+      <footer className="footer">Original game · Generated badges · All data is editable</footer>
     </div>
   )
 }

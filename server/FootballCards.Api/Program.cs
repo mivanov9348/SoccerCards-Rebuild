@@ -10,7 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // База данни. По подразбиране SQLite (без инсталация). За SQL Server/PostgreSQL вижте README.md.
 var provider = builder.Configuration["Database:Provider"] ?? "Sqlite";
-var connection = builder.Configuration["Database:ConnectionString"] ?? "Data Source=football-cards.db";
+var connection = builder.Configuration["Database:ConnectionString"] ?? "Data Source=soccer-cards.db";
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     switch (provider)
@@ -21,7 +21,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
         // case "SqlServer": options.UseSqlServer(connection); break;   // пакет Microsoft.EntityFrameworkCore.SqlServer
         // case "Postgres":  options.UseNpgsql(connection); break;      // пакет Npgsql.EntityFrameworkCore.PostgreSQL
         default:
-            throw new InvalidOperationException($"Неподдържан доставчик на база данни: {provider}");
+            throw new InvalidOperationException($"Unsupported database provider: {provider}");
     }
 });
 
@@ -50,8 +50,8 @@ app.UseExceptionHandler(errorApp => errorApp.Run(async ctx =>
     await ctx.Response.WriteAsJsonAsync(new
     {
         error = ex is GameRuleException ? ex.Message
-            : ex is BadHttpRequestException ? "Невалидна заявка."
-            : "Възникна неочаквана грешка на сървъра."
+            : ex is BadHttpRequestException ? "Invalid request."
+            : "Unexpected server error."
     });
 }));
 

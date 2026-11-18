@@ -1,54 +1,35 @@
 namespace FootballCards.Api.Game;
 
-/// <summary>Коментари на български. {A} = отборът с топката, {D} = защитаващият се отбор.</summary>
+/// <summary>Match commentary. {T} = the team that flipped the card, {O} = the opponent.</summary>
 public static class Commentary
 {
     private static readonly Dictionary<string, string[]> Lines = new()
     {
-        ["kickoff"] = ["{A} започва мача от центъра.", "Съдията свири начало! Топката е за {A}."],
-        ["kickoff2"] = ["Започва второто полувреме. {A} разиграва от центъра."],
-        ["kickoff_after_goal"] = ["{A} подновява играта от центъра."],
-        ["halftime"] = ["Свирка за полувремето! {score}"],
-        ["fulltime"] = ["Последен съдийски сигнал! Краен резултат: {score}"],
-
-        ["pass_ok"] = ["{A} разиграва търпеливо и придвижва топката до зона {zone}.", "Точен пас на {A} — топката вече е в зона {zone}.", "Хубава комбинация на {A}, играта се пренася в зона {zone}."],
-        ["long_ok"] = ["Дълъг пас над защитата! {A} вече е в зона {zone}.", "{A} прескача центъра с дълга топка — зона {zone}."],
-        ["dribble_ok"] = ["Чудесен дрибъл! Играч на {A} оставя противника зад себе си.", "Финт и пробив за {A} — топката е в зона {zone}."],
-        ["counter_ok"] = ["Светкавична контраатака на {A}! Защитата на {D} е разкъсана.", "{A} контраатакува с бясно темпо — зона {zone}!"],
-        ["hold_ok"] = ["{A} задържа топката и разиграва назад.", "{A} не бърза и контролира темпото.", "Спокойно разиграване в средата за {A}."],
-        ["cross_ok"] = ["Центриране от фланга! Играч на {A} засича с глава...", "Подаване в наказателното поле, {A} е първи на топката!"],
-        ["dribble_box_ok"] = ["Невероятно! Играч на {A} минава двама в наказателното поле и стреля...", "Пробив в наказателното поле на {A}, ударът е от упор..."],
-
-        ["lost_press"] = ["Пресата на {D} дава резултат — топката е отнета!", "{D} притиска високо и печели топката."],
-        ["lost_tackle"] = ["Чист шпагат! {D} си връща топката.", "Твърдо, но коректно отнемане от {D}."],
-        ["lost_intercept"] = ["{D} прочита паса и прихваща топката.", "Прихващане! {D} е на топката."],
-        ["lost_block"] = ["Защитата на {D} е плътна — топката е избита.", "{D} затваря пространствата и избива."],
-        ["lost_position"] = ["Неточно подаване на {A}, топката е за {D}.", "{A} губи топката след лошо приемане."],
-
-        ["shot_blocked"] = ["Ударът на {A} е блокиран от защитник на {D}!", "Блокиран удар! {D} хвърля тела пред топката."],
-        ["corner"] = ["Ъглов удар за {A}.", "Топката излиза в корнер — {A} ще изпълнява ъглов."],
-        ["save"] = ["Вратарят на {D} спасява!", "Страхотно спасяване на стража на {D}!", "Ударът е в ръцете на вратаря на {D}."],
-        ["miss"] = ["Покрай вратата! {A} пропуска.", "Над напречната греда! Шансът за {A} отива нахалост.", "В страничната мрежа... {A} пропусна."],
-        ["goal"] = ["ГОООЛ! {A} вкарва! {score}", "Топката е в мрежата! Гол за {A}! {score}", "Какъв гол! {A} се разписва! {score}"],
-
-        ["foul"] = ["Нарушение на {D} — свирка на съдията.", "{D} спира атаката с нарушение."],
-        ["free_kick"] = ["Пряк свободен удар за {A} от опасна позиция!"],
-        ["free_kick_goal"] = ["Шедьовър от пряк свободен удар! Гол за {A}! {score}"],
-        ["free_kick_miss"] = ["Свободният удар на {A} е над вратата."],
-        ["yellow"] = ["Жълт картон за играч на {D}."],
-        ["red"] = ["Червен картон! {D} ще играе с човек по-малко!"],
-        ["penalty_awarded"] = ["ДУЗПА! Нарушение в наказателното поле — дузпа за {A}!"],
-        ["penalty_goal"] = ["Дузпата е изпълнена безупречно — гол за {A}! {score}"],
-        ["penalty_saved"] = ["Вратарят на {D} отгатва посоката и спасява дузпата!"],
-        ["penalty_miss"] = ["Изпълнителят на {A} пропуска дузпата!"],
-        ["goal_kick"] = ["Удар от вратата за {A}."],
+        ["kickoff"] = ["The referee blows the whistle — {T} kick off!", "We're under way! {T} start with the ball."],
+        ["PASS"] = ["Neat passing from {T}.", "{T} keep the ball moving.", "Lovely one-two from {T}!", "{T} work it forward patiently."],
+        ["TACKLE"] = ["Strong tackle — {O} win the ball!", "{O} snatch it back with a crunching challenge.", "Possession lost by {T}."],
+        ["CORNER"] = ["Corner kick for {T}.", "Deflected out — {T} have a corner."],
+        ["FREE_KICK"] = ["Free kick to {T} after a foul.", "{T} are fouled and win a free kick."],
+        ["OFFSIDE"] = ["The flag is up — {T} caught offside.", "Offside! The attack of {T} breaks down."],
+        ["SAVE"] = ["Shot from {T}... saved by the {O} keeper!", "Great stop by the {O} goalkeeper!"],
+        ["MISS"] = ["{T} shoot... and it's wide!", "Over the bar from {T}!", "So close! {T} drag it just past the post."],
+        ["GOAL"] = ["GOAL! {T} score! {score}", "It's in the net! Goal for {T}! {score}", "What a finish! {T} find the net! {score}"],
+        ["YELLOW_CARD"] = ["Yellow card for a {T} player.", "The referee books a player from {T}."],
+        ["RED_CARD"] = ["RED CARD! A {T} player is sent off!"],
+        ["PENALTY"] = ["PENALTY to {T}! The referee points to the spot!"],
+        ["penalty_goal"] = ["The penalty is converted — goal for {T}! {score}"],
+        ["penalty_saved"] = ["SAVED! The {O} keeper guesses right and stops the penalty!"],
+        ["penalty_miss"] = ["The {T} penalty taker blazes it wide!"],
+        ["HALF_TIME"] = ["Half time! {score}"],
+        ["kickoff2"] = ["The second half is under way — {T} start."],
+        ["FULL_TIME"] = ["FULL TIME! {score}"],
+        ["full_time_early"] = ["FULL TIME already?! The referee ends the match at {minute}. {score}"],
     };
 
-    public static string Get(string key, Random rng, string attacker, string defender, string? score = null, int zone = 1)
+    public static string Get(string key, Random rng, string team, string opponent, string score = "", string minute = "")
     {
         var options = Lines.TryGetValue(key, out var l) ? l : [key];
-        var text = options[rng.Next(options.Length)];
-        return text.Replace("{A}", attacker).Replace("{D}", defender)
-            .Replace("{score}", score ?? "").Replace("{zone}", Rules.ZoneName(zone));
+        return options[rng.Next(options.Length)]
+            .Replace("{T}", team).Replace("{O}", opponent).Replace("{score}", score).Replace("{minute}", minute);
     }
 }

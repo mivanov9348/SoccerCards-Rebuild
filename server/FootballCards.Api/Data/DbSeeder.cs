@@ -16,7 +16,7 @@ public static class DbSeeder
     {
         if (!File.Exists(seedPath))
         {
-            logger.LogWarning("Seed файлът {Path} не е намерен.", seedPath);
+            logger.LogWarning("Seed file {Path} not found.", seedPath);
             return;
         }
 
@@ -59,14 +59,13 @@ public static class DbSeeder
             if (await db.Cards.AnyAsync(x => x.Code == c.Code)) continue;
             db.Cards.Add(new CardDefinition
             {
-                Code = c.Code, Name = c.Name, Description = c.Description, Kind = c.Kind,
-                CopiesInDeck = c.Copies, Minutes = c.Minutes
+                Code = c.Code, Name = c.Name, Description = c.Description, CopiesInDeck = c.Copies
             });
             added++;
         }
 
         await db.SaveChangesAsync();
-        if (added > 0) logger.LogInformation("Seed: добавени {Count} записа.", added);
+        if (added > 0) logger.LogInformation("Seed: added {Count} records.", added);
     }
 
     private static async Task<int> AddTeamIfMissing(AppDbContext db, SeedTeam t, string country, int? leagueId)
@@ -129,8 +128,6 @@ public static class DbSeeder
         public string Code { get; set; } = "";
         public string Name { get; set; } = "";
         public string Description { get; set; } = "";
-        public CardKind Kind { get; set; }
         public int Copies { get; set; }
-        public int Minutes { get; set; }
     }
 }

@@ -37,17 +37,17 @@ public class CareerService(AppDbContext db, MatchService matches)
 {
     public const string LeagueCode = "BG1";
     public const string CupCode = "BGCUP";
-    public static readonly string[] KnockoutStages = ["1/8-финал", "1/4-финал", "1/2-финал", "Финал"];
+    public static readonly string[] KnockoutStages = ["Round of 16", "Quarter-final", "Semi-final", "Final"];
     private static readonly Dictionary<int, int> CupAfterRound = new() { [5] = 0, [12] = 1, [20] = 2, [28] = 3 };
     private static readonly Dictionary<int, int> EuropeAfterRound = new() { [3] = 0, [9] = 1, [16] = 2, [24] = 3 };
     private const int StartYear = 2026;
 
     public static string ExpectationText(BoardExpectation e) => e switch
     {
-        BoardExpectation.Title => "Спечелване на титлата",
-        BoardExpectation.Europe => "Класиране в топ 4 (евротурнири)",
-        BoardExpectation.MidTable => "Място в горната половина (до 8-мо)",
-        _ => "Оцеляване (поне 13-то място)"
+        BoardExpectation.Title => "Win the title",
+        BoardExpectation.Europe => "Finish in the top 4",
+        BoardExpectation.MidTable => "Finish in the top half (8th or better)",
+        _ => "Avoid the drop (13th or better)"
     };
 
     private static int TargetPosition(BoardExpectation e) => e switch
@@ -57,20 +57,19 @@ public class CareerService(AppDbContext db, MatchService matches)
 
     // ------------------------------------------------------------------ create
 
-    public async Task<Career> CreateAsync(string saveName, string managerName, int teamId, int difficulty)
+    public async Task<Career> CreateAsync(string saveName, string managerName, int teamId)
     {
         var team = await db.Teams.Include(t => t.League).FirstOrDefaultAsync(t => t.Id == teamId)
-                   ?? throw new GameRuleException("Няма такъв отбор.");
+                   ?? throw new GameRuleException("Team not found.");
         if (team.League is not { IsPlayable: true })
-            throw new GameRuleException("Кариера може да се започне само с отбор от играема лига.");
+            throw new GameRuleException("A career can only start with a team from a playable league.");
 
         var career = new Career
         {
             SaveName = string.IsNullOrWhiteSpace(saveName) ? $"{managerName} – {team.Name}" : saveName.Trim(),
-            ManagerName = string.IsNullOrWhiteSpace(managerName) ? "Треньор" : managerName.Trim(),
+            ManagerName = string.IsNullOrWhiteSpace(managerName) ? "Manager" : managerName.Trim(),
             TeamId = team.Id,
             LeagueId = team.League.Id,
-            Difficulty = Math.Clamp(difficulty, 0, 2),
             Reputation = 30
         };
         db.Careers.Add(career);
@@ -81,9 +80,9 @@ public class CareerService(AppDbContext db, MatchService matches)
         string? euro = rank switch { 0 => "UCL", 1 => "UEL", 2 or 3 => "UECL", _ => null };
         var season = await CreateSeasonAsync(career, team.Id, StartYear, euro);
 
-        AddMessage(career, season, "Добре дошли!",
-            $"Бордът на {team.Name} ви поздравява с назначението. Очакване за сезона: {ExpectationText(season.Expectation)}." +
-            (euro != null ? $" Отборът ще участва в турнира {await CompetitionName(euro)}." : ""));
+        AddMessage(career, season, "Welcome!",
+            $"The {team.Name} board welcomes you as the new manager. Season target: {ExpectationText(season.Expectation)}." +
+            (euro != null ? $" The club will play in the {await CompetitionName(euro)}." : ""));
         await db.SaveChangesAsync();
         return career;
     }
@@ -121,11 +120,11 @@ public class CareerService(AppDbContext db, MatchService matches)
         var rounds = RoundRobin(teamIds);
         for (var r = 1; r <= rounds.Count; r++)
         {
-            slots.Add(new ScheduleSlot(week, LeagueCode, r, $"{r}-ви кръг"));
+            slots.Add(new ScheduleSlot(week, LeagueCode, r, $"Round {r}"));
             foreach (var (h, a) in rounds[r - 1])
                 season.Fixtures.Add(new Fixture
                 {
-                    CompetitionId = comps[LeagueCode].Id, Week = week, Round = r, Stage = $"{r}-ви кръг",
+                    CompetitionId = comps[LeagueCode].Id, Week = week, Round = r, Stage = $"Round {r}",
                     HomeTeamId = h, AwayTeamId = a
                 });
             week++;
@@ -251,16 +250,16 @@ public class CareerService(AppDbContext db, MatchService matches)
     // ------------------------------------------------------------------ playing
 
     /// <summary>Стартира (или продължава) интерактивния мач от текущата седмица.</summary>
-    public async Task<Match> StartUserMatchAsync(Career career, Tactic tactic)
+    public async Task<Match> StartUserMatchAsync(Career career)
     {
         var season = await CurrentSeasonAsync(career.Id);
         EnsurePlayable(career, season);
-        var fixture = await UserFixtureThisWeekAsync(season) ?? throw new GameRuleException("Тази седмица отборът ви не играе.");
+        var fixture = await UserFixtureThisWeekAsync(season) ?? throw new GameRuleException("Your team does not play this week.");
         var existing = await db.Matches.FirstOrDefaultAsync(m => m.FixtureId == fixture.Id && m.Status == MatchStatus.InProgress);
         if (existing != null) return existing;
 
         var humanSide = fixture.HomeTeamId == season.TeamId ? Side.Home : Side.Away;
-        return await matches.CreateAsync(fixture.HomeTeam!, fixture.AwayTeam!, humanSide, tactic, career.Difficulty,
+        return await matches.CreateAsync(fixture.HomeTeam!, fixture.AwayTeam!, humanSide,
             fixture.IsKnockout, $"{fixture.Competition!.Name} – {fixture.Stage}", fixture.Id, career.Id);
     }
 
@@ -308,12 +307,12 @@ public class CareerService(AppDbContext db, MatchService matches)
 
     private static void EnsurePlayable(Career career, CareerSeason season)
     {
-        if (season.Finished) throw new GameRuleException("Сезонът е приключил. Започнете следващия сезон.");
+        if (season.Finished) throw new GameRuleException("The season is over. Start the next season.");
     }
 
     public async Task CompleteWeekAsync(Career career, CareerSeason season)
     {
-        if (season.Finished) throw new GameRuleException("Сезонът е приключил.");
+        if (season.Finished) throw new GameRuleException("The season is over.");
         var week = season.CurrentWeek;
         var fixtures = await db.Fixtures.Include(f => f.HomeTeam).Include(f => f.AwayTeam).Include(f => f.Competition)
             .Where(f => f.CareerSeasonId == season.Id && f.Week == week).ToListAsync();
@@ -327,15 +326,15 @@ public class CareerService(AppDbContext db, MatchService matches)
         {
             var won = mine.WinnerTeamId() == season.TeamId;
             var draw = mine.WinnerTeamId() == null;
-            var pens = mine.HomePenalties.HasValue ? $" (дузпи {mine.HomePenalties}:{mine.AwayPenalties})" : "";
+            var pens = mine.HomePenalties.HasValue ? $" (pens {mine.HomePenalties}:{mine.AwayPenalties})" : "";
             AddMessage(career, season, $"{mine.Competition!.Name}, {mine.Stage}",
                 $"{mine.HomeTeam!.Name} {mine.HomeGoals}:{mine.AwayGoals} {mine.AwayTeam!.Name}{pens} — " +
-                (won ? "победа!" : draw ? "равенство." : "загуба."));
+                (won ? "a win!" : draw ? "a draw." : "a defeat."));
             if (mine.IsKnockout && !won)
-                AddMessage(career, season, "Отпадане", $"Отборът отпадна от турнира {mine.Competition.Name} на фаза {mine.Stage}.");
+                AddMessage(career, season, "Knocked out", $"Your team is out of the {mine.Competition.Name} ({mine.Stage}).");
             if (mine.IsKnockout && won && mine.Stage == KnockoutStages[^1])
             {
-                AddMessage(career, season, "ТРОФЕЙ!", $"Печелите {mine.Competition.Name}! Феновете празнуват по улиците.");
+                AddMessage(career, season, "TROPHY!", $"You win the {mine.Competition.Name}! The fans are celebrating in the streets.");
                 career.Reputation = Math.Min(100, career.Reputation + 5);
             }
         }
@@ -390,16 +389,16 @@ public class CareerService(AppDbContext db, MatchService matches)
             var last = mine.LastOrDefault();
             var compName = await CompetitionName(season.EuropeanCode);
             euroResult = last == null ? null
-                : last.WinnerTeamId() == season.TeamId && last.Stage == KnockoutStages[^1] ? $"{compName}: ПОБЕДИТЕЛ!"
-                : $"{compName}: отпадане на фаза {last.Stage}";
+                : last.WinnerTeamId() == season.TeamId && last.Stage == KnockoutStages[^1] ? $"{compName}: WINNERS!"
+                : $"{compName}: out in the {last.Stage}";
         }
 
         var score = TargetPosition(season.Expectation) - pos + (cupWinnerId == season.TeamId ? 2 : 0) + euroWins;
         var fired = score <= -4 || pos == table.Count;
-        var verdict = fired ? "Бордът не е доволен от резултатите и ви освобождава от поста."
-            : score >= 3 ? "Бордът е възхитен! Надминахте всички очаквания."
-            : score >= 0 ? "Бордът е доволен — изпълнихте целите за сезона."
-            : "Бордът е разочарован, но ви дава още един шанс.";
+        var verdict = fired ? "The board is unhappy with the results and has sacked you."
+            : score >= 3 ? "The board is delighted! You smashed every target."
+            : score >= 0 ? "The board is satisfied — you met the season target."
+            : "The board is disappointed, but gives you one more chance.";
 
         var repChange = Math.Clamp(score * 3, -15, 15) + (cupWinnerId == season.TeamId ? 5 : 0) + euroWins * 2;
         career.Reputation = Math.Clamp(career.Reputation + repChange, 0, 100);
@@ -440,10 +439,10 @@ public class CareerService(AppDbContext db, MatchService matches)
         season.SummaryJson = JsonSerializer.Serialize(summary);
         if (fired) career.Status = CareerStatus.Fired;
 
-        AddMessage(career, season, "Край на сезона",
-            $"Класирахте се на {pos}-о място. Шампион: {table[0].Name}. {verdict}");
+        AddMessage(career, season, "End of season",
+            $"You finished {Ordinal(pos)}. Champions: {table[0].Name}. {verdict}");
         foreach (var o in offers)
-            AddMessage(career, season, "Оферта за работа", $"{o.Name} ви предлага поста старши треньор.");
+            AddMessage(career, season, "Job offer", $"{o.Name} want you as their new manager.");
     }
 
     public static SeasonSummary? Summary(CareerSeason s) =>
@@ -452,21 +451,21 @@ public class CareerService(AppDbContext db, MatchService matches)
     public async Task NextSeasonAsync(Career career, int? acceptTeamId)
     {
         var season = await CurrentSeasonAsync(career.Id);
-        if (!season.Finished) throw new GameRuleException("Текущият сезон още не е приключил.");
+        if (!season.Finished) throw new GameRuleException("The current season is not over yet.");
         var summary = Summary(season)!;
 
         var teamId = season.TeamId;
         if (acceptTeamId is { } accepted && accepted != season.TeamId)
         {
             if (summary.Offers.All(o => o.TeamId != accepted))
-                throw new GameRuleException("Нямате оферта от този клуб.");
+                throw new GameRuleException("You have no offer from this club.");
             teamId = accepted;
         }
         else if (career.Status == CareerStatus.Fired)
         {
             throw new GameRuleException(summary.Offers.Count == 0
-                ? "Уволнени сте и нямате оферти — кариерата приключи."
-                : "Уволнени сте — трябва да приемете една от офертите.");
+                ? "You were sacked and have no offers — your career is over."
+                : "You were sacked — you must accept one of the offers.");
         }
 
         career.TeamId = teamId;
@@ -479,12 +478,14 @@ public class CareerService(AppDbContext db, MatchService matches)
 
         var newSeason = await CreateSeasonAsync(career, teamId, season.Year + 1, euro);
         var team = await db.Teams.FindAsync(teamId);
-        AddMessage(career, newSeason, $"Сезон {newSeason.Year}/{(newSeason.Year + 1) % 100:00}",
-            $"Нов сезон начело на {team!.Name}. Очакване на борда: {ExpectationText(newSeason.Expectation)}." +
-            (euro != null ? $" Участвате в {await CompetitionName(euro)}." : ""));
+        AddMessage(career, newSeason, $"Season {newSeason.Year}/{(newSeason.Year + 1) % 100:00}",
+            $"A new season in charge of {team!.Name}. Board target: {ExpectationText(newSeason.Expectation)}." +
+            (euro != null ? $" You will play in the {await CompetitionName(euro)}." : ""));
         career.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
     }
+
+    public static string Ordinal(int n) => n + (n % 100 is 11 or 12 or 13 ? "th" : (n % 10) switch { 1 => "st", 2 => "nd", 3 => "rd", _ => "th" });
 
     private void AddMessage(Career career, CareerSeason season, string title, string body) =>
         db.CareerMessages.Add(new CareerMessage

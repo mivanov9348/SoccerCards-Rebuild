@@ -1,15 +1,13 @@
 import { useCallback, useState } from 'react'
-import type { Tactic } from './api'
 
 export interface Settings {
-  difficulty: number
-  showHints: boolean
-  defaultTactic: Tactic
+  /** Delay (ms) before each computer card flip, so you can follow the computer's turn. */
+  aiDelay: number
   managerName: string
 }
 
-const KEY = 'karti-futbol-settings'
-const defaults: Settings = { difficulty: 1, showHints: true, defaultTactic: 'Balanced', managerName: '' }
+const KEY = 'soccer-cards-settings'
+const defaults: Settings = { aiDelay: 900, managerName: '' }
 
 export function loadSettings(): Settings {
   try {
@@ -28,7 +26,7 @@ export function useSettings(): [Settings, (patch: Partial<Settings>) => void] {
       try {
         localStorage.setItem(KEY, JSON.stringify(next))
       } catch {
-        /* localStorage недостъпен */
+        /* storage unavailable */
       }
       return next
     })

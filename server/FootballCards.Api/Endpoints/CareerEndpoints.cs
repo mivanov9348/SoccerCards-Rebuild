@@ -6,9 +6,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FootballCards.Api.Endpoints;
 
-public record CreateCareerRequest(string SaveName, string ManagerName, int TeamId, int Difficulty);
+public record CreateCareerRequest(string SaveName, string ManagerName, int TeamId);
 public record RenameCareerRequest(string SaveName);
-public record PlayCareerRequest(Tactic Tactic);
 public record NextSeasonRequest(int? AcceptTeamId);
 
 public static class CareerEndpoints
@@ -37,7 +36,7 @@ public static class CareerEndpoints
 
         api.MapPost("/", async (CreateCareerRequest req, CareerService careers) =>
         {
-            var c = await careers.CreateAsync(req.SaveName, req.ManagerName, req.TeamId, req.Difficulty);
+            var c = await careers.CreateAsync(req.SaveName, req.ManagerName, req.TeamId);
             return Results.Ok(new { c.Id });
         });
 
@@ -63,7 +62,7 @@ public static class CareerEndpoints
 
             return Results.Ok(new
             {
-                career.Id, career.SaveName, career.ManagerName, career.Reputation, career.Difficulty,
+                career.Id, career.SaveName, career.ManagerName, career.Reputation,
                 status = career.Status.ToString(),
                 team = new
                 {
@@ -92,7 +91,7 @@ public static class CareerEndpoints
         {
             var career = await db.Careers.FindAsync(id);
             if (career is null) return Results.NotFound();
-            if (string.IsNullOrWhiteSpace(req.SaveName)) throw new GameRuleException("Въведете име на записа.");
+            if (string.IsNullOrWhiteSpace(req.SaveName)) throw new GameRuleException("Enter a save name.");
             career.SaveName = req.SaveName.Trim();
             await db.SaveChangesAsync();
             return Results.NoContent();
@@ -115,23 +114,23 @@ public static class CareerEndpoints
             return fixtures.Select(FixtureDto);
         });
 
-        api.MapPost("/{id:int}/play", async (int id, PlayCareerRequest req, CareerService careers) =>
+        api.MapPost("/{id:int}/play", async (int id, CareerService careers) =>
         {
-            var career = await careers.LoadAsync(id) ?? throw new GameRuleException("Няма такава кариера.");
-            var match = await careers.StartUserMatchAsync(career, req.Tactic);
+            var career = await careers.LoadAsync(id) ?? throw new GameRuleException("Career not found.");
+            var match = await careers.StartUserMatchAsync(career);
             return Results.Ok(new { matchId = match.Id });
         });
 
         api.MapPost("/{id:int}/simulate", async (int id, CareerService careers) =>
         {
-            var career = await careers.LoadAsync(id) ?? throw new GameRuleException("Няма такава кариера.");
+            var career = await careers.LoadAsync(id) ?? throw new GameRuleException("Career not found.");
             await careers.SimulateUserWeekAsync(career);
             return Results.NoContent();
         });
 
         api.MapPost("/{id:int}/next-season", async (int id, NextSeasonRequest req, CareerService careers) =>
         {
-            var career = await careers.LoadAsync(id) ?? throw new GameRuleException("Няма такава кариера.");
+            var career = await careers.LoadAsync(id) ?? throw new GameRuleException("Career not found.");
             await careers.NextSeasonAsync(career, req.AcceptTeamId);
             return Results.NoContent();
         });

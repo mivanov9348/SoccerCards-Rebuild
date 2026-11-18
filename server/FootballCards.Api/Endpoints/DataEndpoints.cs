@@ -30,7 +30,7 @@ public static partial class DataEndpoints
         {
             ValidateLeague(input);
             if (await db.Leagues.AnyAsync(l => l.Name == input.Name.Trim()))
-                throw new GameRuleException("Вече има лига с това име.");
+                throw new GameRuleException("A league with this name already exists.");
             var league = new League { Name = input.Name.Trim(), Country = input.Country.Trim(), Tier = input.Tier, IsPlayable = input.IsPlayable };
             db.Leagues.Add(league);
             await db.SaveChangesAsync();
@@ -54,8 +54,8 @@ public static partial class DataEndpoints
         {
             var league = await db.Leagues.Include(l => l.Teams).FirstOrDefaultAsync(l => l.Id == id);
             if (league is null) return Results.NotFound();
-            if (league.Teams.Count > 0) throw new GameRuleException("Първо преместете или изтрийте отборите от лигата.");
-            if (await db.Careers.AnyAsync(c => c.LeagueId == id)) throw new GameRuleException("Лигата се използва в кариера.");
+            if (league.Teams.Count > 0) throw new GameRuleException("Move or delete the league's teams first.");
+            if (await db.Careers.AnyAsync(c => c.LeagueId == id)) throw new GameRuleException("The league is used by a saved career.");
             db.Leagues.Remove(league);
             await db.SaveChangesAsync();
             return Results.NoContent();
@@ -101,7 +101,7 @@ public static partial class DataEndpoints
             if (team is null) return Results.NotFound();
             var used = await db.Fixtures.AnyAsync(f => f.HomeTeamId == id || f.AwayTeamId == id)
                        || await db.Careers.AnyAsync(c => c.TeamId == id);
-            if (used) throw new GameRuleException("Отборът участва в запазена кариера и не може да бъде изтрит.");
+            if (used) throw new GameRuleException("The team is part of a saved career and cannot be deleted.");
             db.Matches.RemoveRange(db.Matches.Where(m => m.HomeTeamId == id || m.AwayTeamId == id));
             db.Teams.Remove(team);
             await db.SaveChangesAsync();
@@ -109,8 +109,8 @@ public static partial class DataEndpoints
         });
 
         api.MapGet("/cards", async (AppDbContext db) =>
-            await db.Cards.OrderBy(c => c.Kind).ThenBy(c => c.Id)
-                .Select(c => new { c.Code, c.Name, c.Description, kind = c.Kind.ToString(), c.CopiesInDeck }).ToListAsync());
+            await db.Cards.OrderBy(c => c.Id)
+                .Select(c => new { c.Code, c.Name, c.Description, c.CopiesInDeck }).ToListAsync());
 
         api.MapGet("/competitions", async (AppDbContext db) =>
             await db.Competitions.OrderBy(c => c.Type).ThenBy(c => c.Tier)
@@ -125,22 +125,22 @@ public static partial class DataEndpoints
 
     private static void ValidateLeague(LeagueInput i)
     {
-        if (string.IsNullOrWhiteSpace(i.Name)) throw new GameRuleException("Името на лигата е задължително.");
-        if (string.IsNullOrWhiteSpace(i.Country)) throw new GameRuleException("Държавата е задължителна.");
-        if (i.Tier is < 1 or > 10) throw new GameRuleException("Нивото трябва да е между 1 и 10.");
+        if (string.IsNullOrWhiteSpace(i.Name)) throw new GameRuleException("League name is required.");
+        if (string.IsNullOrWhiteSpace(i.Country)) throw new GameRuleException("Country is required.");
+        if (i.Tier is < 1 or > 10) throw new GameRuleException("Tier must be between 1 and 10.");
     }
 
     private static async Task ValidateTeam(TeamInput i, AppDbContext db, int? id)
     {
-        if (string.IsNullOrWhiteSpace(i.Name)) throw new GameRuleException("Името на отбора е задължително.");
+        if (string.IsNullOrWhiteSpace(i.Name)) throw new GameRuleException("Team name is required.");
         if (await db.Teams.AnyAsync(t => t.Name == i.Name.Trim() && t.Id != id))
-            throw new GameRuleException("Вече има отбор с това име.");
-        foreach (var (v, label) in new[] { (i.Attack, "Атака"), (i.Midfield, "Полузащита"), (i.Defense, "Защита") })
-            if (v is < 1 or > 99) throw new GameRuleException($"{label}: рейтингът трябва да е между 1 и 99.");
+            throw new GameRuleException("A team with this name already exists.");
+        foreach (var (v, label) in new[] { (i.Attack, "Attack"), (i.Midfield, "Midfield"), (i.Defense, "Defense") })
+            if (v is < 1 or > 99) throw new GameRuleException($"{label}: rating must be between 1 and 99.");
         if (!HexColor().IsMatch(i.PrimaryColor ?? "") || !HexColor().IsMatch(i.SecondaryColor ?? ""))
-            throw new GameRuleException("Цветовете трябва да са във формат #RRGGBB.");
+            throw new GameRuleException("Colors must be in #RRGGBB format.");
         if (i.LeagueId.HasValue && !await db.Leagues.AnyAsync(l => l.Id == i.LeagueId))
-            throw new GameRuleException("Няма такава лига.");
+            throw new GameRuleException("League not found.");
     }
 
     private static void Apply(Team t, TeamInput i)

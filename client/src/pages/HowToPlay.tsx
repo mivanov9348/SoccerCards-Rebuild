@@ -1,77 +1,62 @@
 import { api } from '../api'
 import { Screen, useLoad } from '../components/common'
-import { GameCard } from '../components/GameCard'
+import { CardFace } from '../components/GameCard'
 
 export default function HowToPlay() {
   const { data: cards } = useLoad(() => api.cards(), [])
+  const total = (cards ?? []).reduce((sum, c) => sum + c.copiesInDeck, 0)
   return (
-    <Screen title="Как се играе">
+    <Screen title="How to play">
       <div className="panel prose">
-        <h2>Идеята</h2>
+        <h2>The match</h2>
         <p>
-          Мачът е поредица от <b>ситуации</b>. Във всяка ситуация отборът с топката играе <b>атакуваща карта</b>, а
-          защитаващият се — <b>защитна карта</b>. Двете карти се избират едновременно — компютърът не вижда вашата.
-          Комбинацията от двете карти, силата на отборите и малко късмет решават дали атаката продължава.
+          You play against the computer. {` `}
+          <b>24 cards lie face down</b> on the table. The player whose turn it is flips one card — you click the card you want, the
+          computer picks one at random. The card decides what happens and <b>who flips next</b>. A new card from the deck takes the
+          place of the flipped one.
         </p>
-        <h2>Игрището</h2>
-        <p>
-          Топката се движи през зони: <b>Защита → Център → Атака → Наказателно поле</b>. Колкото по-напред сте, толкова по-голям е
-          шансът за гол, но и толкова по-трудно е да се напредва. Ако загубите топката далеч напред, съперникът я взима в
-          собствената си половина; ако я загубите в своята защита — съперникът е опасно близо до вратата ви.
-        </p>
-        <h2>Ход по ход</h2>
         <ul>
-          <li>Държите 4 атакуващи и 3 защитни карти. След всяка изиграна карта теглите нова.</li>
           <li>
-            Винаги можете да изберете <b>основно действие</b> (Задържане / Позиционна защита), без да харчите карта.
+            <b>Pass, Corner, Free Kick</b> — you keep the ball: flip again.
           </li>
           <li>
-            Бутонът <b>↻ смени</b> изиграва основното действие и заменя избраната карта с нова — полезно, когато ръката ви не пасва
-            на ситуацията.
-          </li>
-          <li>Всяко действие отнема 2–4 минути. Мачът е 2 полувремена с добавено време — около 30–40 ситуации.</li>
-          <li>
-            <b>Контраатака</b> може да се играе само веднага след като сте отнели топката. Времето на изиграване е ключово!
+            <b>Tackle, Offside, Save, Miss, Yellow Card, Red Card</b> — the other player flips next.
           </li>
           <li>
-            <b>Тактическото нарушение</b> винаги спира атаката, но в наказателното поле води до дузпа, а близо до него — до пряк
-            свободен удар. Носи риск от картон; червеният картон отслабва отбора до края.
+            <b>Goal!</b> — you score, then the other player kicks off.
           </li>
-          <li>При дузпа избирате посока — като изпълнител или като вратар.</li>
-          <li>Числото върху картата (ако е включено в Настройки) е приблизителният шанс за успех/гол срещу типична защита.</li>
+          <li>
+            <b>Penalty</b> — a mini-game: the shooter picks left, center or right and the keeper picks where to dive. Same side and
+            the keeper usually saves; different sides and it is almost always a goal. Then the other player flips.
+          </li>
+          <li>
+            <b>Half Time</b> — the first half ends, the other player starts the second half.
+          </li>
+          <li>
+            <b>Full Time</b> — the match is over, whenever it comes. Even if it is the very first card!
+          </li>
         </ul>
-        <h2>Кое срещу кое</h2>
-        <table className="table matchup">
-          <thead>
-            <tr>
-              <th className="left">Атака</th>
-              <th>Силна защита срещу нея</th>
-              <th>Слаба защита срещу нея</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td className="left">Пас</td><td>Пресинг</td><td>Блокиране, Шпагат</td></tr>
-            <tr><td className="left">Дълъг пас</td><td>Прихващане</td><td>Пресинг, Шпагат</td></tr>
-            <tr><td className="left">Дрибъл</td><td>Шпагат</td><td>Прихващане, Пресинг</td></tr>
-            <tr><td className="left">Центриране</td><td>Блокиране</td><td>Шпагат, Пресинг</td></tr>
-            <tr><td className="left">Удар</td><td>Блокиране</td><td>Прихващане</td></tr>
-            <tr><td className="left">Контраатака</td><td>Прихващане</td><td>Шпагат</td></tr>
-          </tbody>
-        </table>
-        <h2>Кариера</h2>
         <p>
-          Поемете клуб от Първа лига. Бордът поставя цел според силата на отбора. Сезонът включва 30 кръга, Купа на България и —
-          ако сте се класирали — европейски турнир. В края на сезона бордът ви оценява: при успех идват оферти от по-големи
-          клубове, а при провал може да бъдете уволнен. Шампионът играе в Шампионска лига, вторият и носителят на купата — в Лига
-          Европа, третият — в Лига на конференциите.
+          In cup and European knockout matches a draw at full time goes to a <b>penalty shootout</b> (5 kicks each, then sudden death)
+          — you take every kick for your team and pick the dive for your keeper on every kick of theirs.
         </p>
-        <p className="muted">Пълните правила с всички вероятности са в docs/rules.md.</p>
+        <p>It is a game of pure luck — team ratings only matter for the board's expectations in career mode.</p>
+        <h2>Career</h2>
+        <p>
+          Take over a club in the Bulgarian First League. The board sets a target based on how big the club is. A season has 30
+          league rounds, the Bulgarian Cup and — if you qualified — a European cup. At the end of the season the board judges you:
+          do well and bigger clubs will offer you a job; do badly and you may be sacked. Champions play in the Champions Cup, the
+          runners-up and the cup winners in the Europa Cup, third place in the Conference Cup.
+        </p>
       </div>
       <div className="panel">
-        <h2>Картите</h2>
-        <div className="hand wrap">
+        <h2>The cards ({total} in the deck)</h2>
+        <div className="card-gallery">
           {cards?.map((c) => (
-            <GameCard key={c.code} code={c.code} name={c.name} description={`${c.description} (${c.copiesInDeck} в тестето)`} small />
+            <div key={c.code} className="gallery-item">
+              <CardFace code={c.code} name={c.name} description={c.description} size="small" />
+              <span className="muted small">× {c.copiesInDeck}</span>
+            </div>
           ))}
         </div>
       </div>

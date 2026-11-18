@@ -1,26 +1,28 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { api, seasonLabel, tacticNames, type CareerView, type Fixture, type Tactic } from '../api'
-import { Badge, ErrorBox, FixtureRow, RatingBar, Screen, StandingsTable, useLoad } from '../components/common'
-import { useSettings } from '../settings'
+import { api, seasonLabel, type CareerView, type Fixture } from '../api'
+import { Badge, ErrorBox, FixtureRow, Screen, StandingsTable, useLoad } from '../components/common'
 
 type Tab = 'overview' | 'table' | 'fixtures' | 'cup' | 'europe' | 'news'
 
-function NextMatch({ c, busy, onPlay, onSimulate }: { c: CareerView; busy: boolean; onPlay: (t: Tactic) => void; onSimulate: () => void }) {
-  const [settings] = useSettings()
-  const [tactic, setTactic] = useState<Tactic>(settings.defaultTactic)
+const ordinal = (n: number) => {
+  const s = n % 100 >= 11 && n % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'
+  return `${n}${s}`
+}
+
+function NextMatch({ c, busy, onPlay, onSimulate }: { c: CareerView; busy: boolean; onPlay: () => void; onSimulate: () => void }) {
   const f = c.thisWeekFixture
   if (c.season.finished) return null
 
   if (!f) {
     return (
       <div className="panel next-match">
-        <h2>Седмица {c.season.currentWeek}</h2>
+        <h2>Week {c.season.currentWeek}</h2>
         <p>
-          Тази седмица се играе <b>{c.season.weekCompetition ?? 'друг турнир'}</b>, но вашият отбор не участва.
+          This week's games are in the <b>{c.season.weekCompetition ?? 'another competition'}</b>, but your team is not playing.
         </p>
         <button className="btn btn-primary" disabled={busy} onClick={onSimulate}>
-          Продължи към следващата седмица ▶
+          Continue to next week ▶
         </button>
       </div>
     )
@@ -38,45 +40,24 @@ function NextMatch({ c, busy, onPlay, onSimulate }: { c: CareerView; busy: boole
           <Badge name={f.home.name} primary={f.home.primaryColor} secondary={f.home.secondaryColor} size={54} />
           <b>{f.home.name}</b>
         </div>
-        <span className="vs-text">срещу</span>
+        <span className="vs-text">vs</span>
         <div className="vs-team">
           <Badge name={f.away.name} primary={f.away.primaryColor} secondary={f.away.secondaryColor} size={54} />
           <b>{f.away.name}</b>
         </div>
       </div>
       <p className="muted center">
-        {home ? 'Домакин' : 'Гост'} · съперник: {opp.name}
-        {f.isKnockout && ' · елиминация (при равенство — дузпи)'}
+        {home ? 'Home' : 'Away'} · opponent: {opp.name}
+        {f.isKnockout && ' · knockout (penalties if level)'}
       </p>
-      {c.activeMatchId ? (
-        <div className="row-buttons">
-          <button className="btn btn-primary" onClick={() => onPlay(tactic)}>
-            Продължи започнатия мач ▶
-          </button>
-          <button className="btn" disabled={busy} onClick={onSimulate}>
-            Симулирай остатъка
-          </button>
-        </div>
-      ) : (
-        <div className="row-buttons">
-          <label className="inline">
-            Тактика
-            <select value={tactic} onChange={(e) => setTactic(e.target.value as Tactic)}>
-              {Object.entries(tacticNames).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button className="btn btn-primary" disabled={busy} onClick={() => onPlay(tactic)}>
-            Играй мача ▶
-          </button>
-          <button className="btn" disabled={busy} onClick={onSimulate}>
-            Симулирай
-          </button>
-        </div>
-      )}
+      <div className="row-buttons">
+        <button className="btn btn-primary" disabled={busy} onClick={onPlay}>
+          {c.activeMatchId ? 'Resume match ▶' : 'Play match ▶'}
+        </button>
+        <button className="btn" disabled={busy} onClick={onSimulate}>
+          {c.activeMatchId ? 'Simulate the rest' : 'Simulate'}
+        </button>
+      </div>
     </div>
   )
 }
@@ -86,34 +67,34 @@ function SeasonEnd({ c, busy, onNext }: { c: CareerView; busy: boolean; onNext: 
   if (!c.season.finished || !s) return null
   return (
     <div className={`panel season-end ${s.fired ? 'fired' : ''}`}>
-      <h2>Край на сезон {seasonLabel(c.season.year)}</h2>
+      <h2>End of season {seasonLabel(c.season.year)}</h2>
       <div className="summary-grid">
         <div>
-          <span className="muted">Крайно място</span>
+          <span className="muted">Final position</span>
           <b>
-            {s.position}-о ({s.points} т.)
+            {ordinal(s.position)} ({s.points} pts)
           </b>
         </div>
         <div>
-          <span className="muted">Шампион</span>
+          <span className="muted">Champions</span>
           <b>{s.champion}</b>
         </div>
         <div>
-          <span className="muted">Купа на България</span>
+          <span className="muted">Bulgarian Cup</span>
           <b>{s.cupWinner ?? '—'}</b>
         </div>
         {s.europeResult && (
           <div>
-            <span className="muted">Европа</span>
+            <span className="muted">Europe</span>
             <b>{s.europeResult}</b>
           </div>
         )}
         <div>
-          <span className="muted">Цел на борда</span>
+          <span className="muted">Board target</span>
           <b>{s.expectation}</b>
         </div>
         <div>
-          <span className="muted">Репутация</span>
+          <span className="muted">Reputation</span>
           <b>
             {c.reputation} ({s.reputationChange >= 0 ? '+' : ''}
             {s.reputationChange})
@@ -124,15 +105,13 @@ function SeasonEnd({ c, busy, onNext }: { c: CareerView; busy: boolean; onNext: 
 
       {s.offers.length > 0 && (
         <>
-          <h3>Оферти за работа</h3>
+          <h3>Job offers</h3>
           <div className="offers">
             {s.offers.map((o) => (
               <div key={o.teamId} className="offer">
-                <span>
-                  {o.name} <span className="muted">(сила {o.overall})</span>
-                </span>
+                <span>{o.name}</span>
                 <button className="btn btn-primary" disabled={busy} onClick={() => onNext(o.teamId)}>
-                  Приеми
+                  Accept
                 </button>
               </div>
             ))}
@@ -142,10 +121,10 @@ function SeasonEnd({ c, busy, onNext }: { c: CareerView; busy: boolean; onNext: 
       <div className="row-buttons">
         {!s.fired && (
           <button className="btn btn-primary" disabled={busy} onClick={() => onNext()}>
-            Остани в {c.team.name} — нов сезон ▶
+            Stay at {c.team.name} — next season ▶
           </button>
         )}
-        {s.fired && s.offers.length === 0 && <p className="error-box">Кариерата приключи — никой клуб не ви предложи работа.</p>}
+        {s.fired && s.offers.length === 0 && <p className="error-box">Career over — no club offered you a job.</p>}
       </div>
     </div>
   )
@@ -193,10 +172,10 @@ export default function CareerHub() {
     }
   }
 
-  const play = async (tactic: Tactic) => {
+  const play = async () => {
     setBusy(true)
     try {
-      const { matchId } = await api.playCareer(careerId, tactic)
+      const { matchId } = await api.playCareer(careerId)
       navigate(`/match/${matchId}`)
     } catch (e) {
       setError((e as Error).message)
@@ -204,51 +183,49 @@ export default function CareerHub() {
     }
   }
 
-  const all = fixtures ?? []
+  const all = useMemo(() => fixtures ?? [], [fixtures])
   const myFixtures = useMemo(() => all.filter((f) => c && (f.home.id === c.team.id || f.away.id === c.team.id)), [all, c])
 
-  if (loadError) return <Screen title="Кариера"><ErrorBox error={loadError} /></Screen>
-  if (!c) return <div className="screen loading">Зареждане…</div>
+  if (loadError)
+    return (
+      <Screen title="Career">
+        <ErrorBox error={loadError} />
+      </Screen>
+    )
+  if (!c) return <div className="screen loading">Loading…</div>
 
-  const leagueByRound = all.filter((f) => f.competitionCode === 'BG1')
+  const league = all.filter((f) => f.competitionCode === 'BG1')
   const cup = all.filter((f) => f.competitionCode === 'BGCUP')
   const europe = all.filter((f) => ['UCL', 'UEL', 'UECL'].includes(f.competitionCode))
 
   return (
-    <Screen
-      title={c.saveName}
-      actions={
-        <span className="muted small">
-          Автоматично записване · {c.managerName}
-        </span>
-      }
-    >
+    <Screen title={c.saveName} actions={<span className="muted small">Auto-saved · {c.managerName}</span>}>
       <div className="career-header panel">
         <Badge name={c.team.name} primary={c.team.primaryColor} secondary={c.team.secondaryColor} size={64} />
         <div className="career-title">
           <h2>{c.team.name}</h2>
           <span className="muted">
-            Старши треньор: {c.managerName} · {c.team.city}, „{c.team.stadium}“
+            Manager: {c.managerName} · {c.team.city}, {c.team.stadium}
           </span>
-          {c.status === 'Fired' && <span className="error-text">Освободен от поста</span>}
+          {c.status === 'Fired' && <span className="error-text">Sacked</span>}
         </div>
         <div className="career-stats">
           <div>
-            <span className="muted">Сезон</span>
+            <span className="muted">Season</span>
             <b>{seasonLabel(c.season.year)}</b>
           </div>
           <div>
-            <span className="muted">Седмица</span>
+            <span className="muted">Week</span>
             <b>
               {c.season.currentWeek}/{c.season.totalWeeks}
             </b>
           </div>
           <div>
-            <span className="muted">Място</span>
+            <span className="muted">Position</span>
             <b>{c.position ?? '—'}</b>
           </div>
           <div>
-            <span className="muted">Репутация</span>
+            <span className="muted">Reputation</span>
             <b>{c.reputation}</b>
           </div>
         </div>
@@ -257,12 +234,12 @@ export default function CareerHub() {
       <div className="tabs">
         {(
           [
-            ['overview', 'Преглед'],
-            ['table', 'Класиране'],
-            ['fixtures', 'Програма'],
-            ['cup', 'Купа на България'],
-            ['europe', c.season.european ?? 'Европа'],
-            ['news', 'Новини'],
+            ['overview', 'Overview'],
+            ['table', 'Table'],
+            ['fixtures', 'Fixtures'],
+            ['cup', 'Bulgarian Cup'],
+            ['europe', c.season.european ?? 'Europe'],
+            ['news', 'News'],
           ] as [Tab, string][]
         ).map(([k, label]) => (
           <button key={k} className={tab === k ? 'active' : ''} onClick={() => setTab(k)}>
@@ -278,22 +255,19 @@ export default function CareerHub() {
             <SeasonEnd c={c} busy={busy} onNext={(teamId) => run(() => api.nextSeason(careerId, teamId))} />
             <NextMatch c={c} busy={busy} onPlay={play} onSimulate={() => run(() => api.simulateCareer(careerId))} />
             <div className="panel">
-              <h2>Цели и отбор</h2>
+              <h2>Season targets</h2>
               <p>
-                Очакване на борда: <b>{c.season.expectation}</b>
+                Board target: <b>{c.season.expectation}</b>
               </p>
               {c.season.european && (
                 <p>
-                  Европейски турнир: <b>{c.season.european}</b>
+                  European cup: <b>{c.season.european}</b>
                 </p>
               )}
-              <RatingBar label="Атака" value={c.team.attack} />
-              <RatingBar label="Полузащита" value={c.team.midfield} />
-              <RatingBar label="Защита" value={c.team.defense} />
             </div>
             <div className="panel">
-              <h2>Последни резултати</h2>
-              {c.recent.length === 0 && <p className="muted">Още няма изиграни мачове.</p>}
+              <h2>Recent results</h2>
+              {c.recent.length === 0 && <p className="muted">No matches played yet.</p>}
               {[...c.recent].reverse().map((f) => (
                 <div key={f.id}>
                   <span className="muted small">
@@ -306,11 +280,11 @@ export default function CareerHub() {
           </div>
           <div>
             <div className="panel">
-              <h2>Първа лига</h2>
+              <h2>First League</h2>
               <StandingsTable rows={c.table} highlight={c.team.id} />
             </div>
             <div className="panel">
-              <h2>Новини</h2>
+              <h2>News</h2>
               {c.messages.slice(0, 5).map((m) => (
                 <div key={m.id} className="message">
                   <b>{m.title}</b>
@@ -326,8 +300,8 @@ export default function CareerHub() {
         <div className="panel">
           <StandingsTable rows={c.table} highlight={c.team.id} />
           <p className="muted small legend">
-            <span className="lg champion" /> Шампионска лига <span className="lg europe" /> Лига Европа / Лига на конференциите{' '}
-            <span className="lg bottom" /> Последно място
+            <span className="lg champion" /> Champions Cup <span className="lg europe" /> Europa Cup / Conference Cup{' '}
+            <span className="lg bottom" /> Last place
           </p>
         </div>
       )}
@@ -335,22 +309,22 @@ export default function CareerHub() {
       {tab === 'fixtures' && (
         <div className="two-col">
           <div className="panel">
-            <h2>Вашите мачове</h2>
+            <h2>Your matches</h2>
             {myFixtures.map((f) => (
               <div key={f.id} className={f.week === c.season.currentWeek ? 'current-week' : ''}>
                 <span className="muted small">
-                  Седмица {f.week} · {f.competition} · {f.stage}
+                  Week {f.week} · {f.competition} · {f.stage}
                 </span>
                 <FixtureRow f={f} highlight={c.team.id} />
               </div>
             ))}
           </div>
           <div className="panel">
-            <h2>Всички кръгове</h2>
-            {[...new Set(leagueByRound.map((f) => f.round))].map((r) => (
-              <details key={r} open={leagueByRound.some((f) => f.round === r && f.week === c.season.currentWeek)}>
-                <summary>{r}-ви кръг</summary>
-                {leagueByRound
+            <h2>All rounds</h2>
+            {[...new Set(league.map((f) => f.round))].map((r) => (
+              <details key={r} open={league.some((f) => f.round === r && f.week === c.season.currentWeek)}>
+                <summary>Round {r}</summary>
+                {league
                   .filter((f) => f.round === r)
                   .map((f) => (
                     <FixtureRow key={f.id} f={f} highlight={c.team.id} />
@@ -363,7 +337,7 @@ export default function CareerHub() {
 
       {tab === 'cup' && (
         <div className="panel">
-          <KnockoutView fixtures={cup} teamId={c.team.id} empty="Купата още не е започнала." />
+          <KnockoutView fixtures={cup} teamId={c.team.id} empty="The cup has not started yet." />
         </div>
       )}
 
@@ -372,7 +346,7 @@ export default function CareerHub() {
           <KnockoutView
             fixtures={europe}
             teamId={c.team.id}
-            empty="Този сезон отборът ви не участва в европейски турнир. Класирайте се в топ 3 или спечелете купата!"
+            empty="Your team is not in a European cup this season. Finish in the top 3 or win the cup!"
           />
         </div>
       )}
@@ -382,7 +356,7 @@ export default function CareerHub() {
           {c.messages.map((m) => (
             <div key={m.id} className="message">
               <span className="muted small">
-                {seasonLabel(m.year)} · седмица {m.week}
+                {seasonLabel(m.year)} · week {m.week}
               </span>
               <b>{m.title}</b>
               <p>{m.body}</p>

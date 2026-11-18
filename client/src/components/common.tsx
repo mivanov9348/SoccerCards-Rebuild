@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { Fixture, StandingRow } from '../api'
 
-/** Генерирана емблема: щит в цветовете на клуба със съкращението му (без реални логота). */
+/** Generated badge: a shield in the club colors with its initials (no real crests). */
 export function Badge({ name, primary, secondary, size = 40 }: { name: string; primary: string; secondary: string; size?: number }) {
   const letters = name
     .split(/[\s-]+/)
@@ -38,7 +38,7 @@ export function Screen({ title, back = '/', children, actions }: { title: string
       <header className="screen-header">
         {back !== null && (
           <Link className="btn btn-ghost" to={back}>
-            ← Назад
+            ← Back
           </Link>
         )}
         <h1>{title}</h1>
@@ -54,7 +54,7 @@ export function ErrorBox({ error }: { error: string | null }) {
   return <div className="error-box">{error}</div>
 }
 
-/** Зарежда данни асинхронно и пази грешката като текст. */
+/** Loads data asynchronously and keeps the error as text. */
 export function useLoad<T>(loader: () => Promise<T>, deps: unknown[]) {
   const [data, setData] = useState<T | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -85,14 +85,14 @@ export function StandingsTable({ rows, highlight }: { rows: StandingRow[]; highl
       <thead>
         <tr>
           <th>#</th>
-          <th className="left">Отбор</th>
-          <th>М</th>
-          <th>П</th>
-          <th>Р</th>
-          <th>З</th>
-          <th>Голове</th>
-          <th>ГР</th>
-          <th>Т</th>
+          <th className="left">Team</th>
+          <th>P</th>
+          <th>W</th>
+          <th>D</th>
+          <th>L</th>
+          <th>Goals</th>
+          <th>GD</th>
+          <th>Pts</th>
         </tr>
       </thead>
       <tbody>
@@ -136,7 +136,7 @@ export function FixtureRow({ f, highlight }: { f: Fixture; highlight?: number })
       </span>
       <span className="fx-score">
         {result}
-        {f.homePenalties != null && <small> (д. {f.homePenalties}:{f.awayPenalties})</small>}
+        {f.homePenalties != null && <small> (p. {f.homePenalties}:{f.awayPenalties})</small>}
       </span>
       <span className={`fx-team away ${f.winnerId === f.away.id ? 'winner' : ''}`}>
         <Badge name={f.away.name} primary={f.away.primaryColor} secondary={f.away.secondaryColor} size={18} />

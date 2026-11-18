@@ -1,176 +1,77 @@
-# Карти Футбол — правила на играта
+# Soccer Cards — rules
 
-„Карти Футбол“ е оригинална футболна игра със ситуационни карти. Късметът има значение, но **кои карти играете и кога** решава мача. Силата на отборите влияе върху шансовете на всяка карта.
+Soccer Cards is a single-player football card game against the computer. Every match is played by flipping face-down cards. It is a game of luck; team ratings only matter for the board's targets in career mode.
 
-Всички числа по-долу съвпадат с кода в `server/FootballCards.Api/Game/Rules.cs`.
+All numbers below match the code in `server/FootballCards.Api/Game/Rules.cs` and the deck in `server/FootballCards.Api/Data/Seed/seed.json`.
 
 ---
 
-## 1. Мачът накратко
+## 1. The table
 
-- Мачът е поредица от **ситуации** (около 30–40 на мач, ~10–15 минути игра).
-- Във всяка ситуация отборът **с топката** играе една **атакуваща карта**, а другият — една **защитна карта**.
-- Двете карти се избират **едновременно**: компютърът не вижда вашата карта, а вие не виждате неговата.
-- Резултатът зависи от: комбинацията от карти, зоната на игрището, силата на отборите, домакинството и малко късмет.
-- Всяко действие отнема игрово време (2–4 минути). Има две полувремена с добавено време (1–3 мин. и 2–5 мин.).
+- At kick-off the 100-card deck is shuffled and **24 cards are laid face down** on the table.
+- A random player (you or the computer) kicks off.
+- The player whose turn it is flips **one** face-down card. You choose which card to click; the computer picks one at random.
+- The flipped card is shown face up, and a new face-down card from the deck takes its place. When the deck is empty, spots stay empty.
+- Every flip moves the clock 1–3 minutes. The clock stops at 45+ (or 90+) until the Half Time (or Full Time) card turns up.
 
-## 2. Игрището
+## 2. The cards
 
-Топката е в една от четирите зони, гледано откъм отбора, който я притежава:
-
-| Зона | Име | Значение |
-|---|---|---|
-| 0 | Защита | собствената половина |
-| 1 | Център | средата на терена (начален удар) |
-| 2 | Атака | пред наказателното поле на съперника |
-| 3 | Наказателно поле | най-голям шанс за гол |
-
-**Загуба на топката** — съперникът я получава в огледалната зона:
-
-| Губите топката в… | Съперникът я получава в своята… |
-|---|---|
-| Защита (0) | Атака (2) — опасно! |
-| Център (1) | Център (1) |
-| Атака / Наказателно поле (2–3) | Защита (0) |
-
-След гол противникът започва от центъра. След спасяване или пропуск противникът изпълнява удар от вратата (своя Защита, без право на контраатака).
-
-## 3. Картите
-
-Всеки отбор има **две тестета**: атакуващо (31 карти) и защитно (20 карти). В ръката си държите **4 атакуващи и 3 защитни карти**. След всяка изиграна карта теглите нова от съответното тесте; когато тестето свърши, изиграните карти се разбъркват отново.
-
-### Атакуващи карти
-
-| Карта | Копия | Минути | Къде | Ефект при успех |
-|---|---|---|---|---|
-| Пас | 9 | 2 | зони 0–2 | +1 зона |
-| Дълъг пас | 4 | 2 | зони 0–1 | +2 зони |
-| Дрибъл | 5 | 2 | всички | +1 зона; в наказателното поле — удар от близко разстояние |
-| Центриране | 4 | 2 | само зона 2 | удар с глава |
-| Удар | 6 | 2 | зони 1–3 | удар към вратата |
-| Контраатака | 3 | 2 | зони 0–1, само веднага след отнета топка | +2 зони |
-| *Задържане* (основно действие) | ∞ | 3 | всички | топката остава; в наказателното поле се връща в зона Атака |
-
-### Защитни карти
-
-| Карта | Копия | Силна срещу | Особеност |
+| Card | Copies | What happens | Who flips next |
 |---|---|---|---|
-| Пресинг | 5 | Пас, Задържане | — |
-| Шпагат | 5 | Дрибъл | 18% шанс да е нарушение (виж т. 5) |
-| Прихващане | 4 | Дълъг пас, Контраатака | — |
-| Блокиране | 4 | Центриране, Удар | — |
-| Тактическо нарушение | 2 | всичко | винаги спира действието, но с последствия |
-| *Позиционна защита* (основно действие) | ∞ | — | не харчи карта |
+| Pass | 33 | You keep the ball | **same player** |
+| Corner | 6 | Corner kick | **same player** |
+| Free Kick | 5 | Free kick | **same player** |
+| Tackle | 24 | Ball lost | other player |
+| Offside | 6 | Offside | other player |
+| Save | 6 | The opposing keeper saves | other player |
+| Miss | 7 | Shot goes wide | other player |
+| Yellow Card | 4 | A player of the flipping team is booked | other player |
+| Red Card | 1 | A player of the flipping team is sent off | other player |
+| Goal! | 4 | The flipping team scores | other player (kick-off) |
+| Penalty | 2 | Penalty mini-game (see below) | other player |
+| Half Time | 1 | The first half ends | other player starts the 2nd half |
+| Full Time | 1 | **The match ends — at any moment, even as the very first card** | — |
 
-### Основни действия и смяна на карта
+Yellow and red cards are recorded in the match statistics; they do not change the odds.
 
-- **Задържане** и **Позиционна защита** са винаги достъпни и не изразходват карта.
-- **↻ Смени**: изигравате основното действие и едновременно заменяте една карта от ръката с нова от тестето. Така никога не оставате „заклещени“ с неподходящи карти — но губите темпо.
+## 3. Penalty mini-game
 
-## 4. Таблица на шансовете
+When a Penalty card is flipped, the flipping team takes a penalty:
 
-Базов шанс (%) атакуващото действие да успее срещу дадена защита. За **Удар** числото е шансът ударът да **не бъде блокиран**.
+- The shooter picks **left, center or right**; the keeper picks where to dive. You make the pick for your side — as the shooter or as the keeper. The computer picks at random.
+- Different sides → goal in **88%** of cases (otherwise the shot goes wide).
+- Same side → the keeper saves in **75%** of cases (**70%** if both pick the center).
+- After the penalty the other player flips.
 
-| Атака \ Защита | Пресинг | Шпагат | Прихващане | Блокиране | Позиционна |
-|---|---|---|---|---|---|
-| Пас | 45 | 72 | 58 | 78 | 76 |
-| Дълъг пас | 68 | 72 | 30 | 55 | 56 |
-| Дрибъл | 68 | 35 | 70 | 52 | 62 |
-| Центриране | 70 | 75 | 52 | 35 | 60 |
-| Контраатака | 62 | 68 | 35 | 55 | 64 |
-| Задържане | 70 | 90 | 94 | 96 | 95 |
-| Удар (неблокиран) | 85 | 82 | 90 | 55 | 86 |
+## 4. Knockout matches
 
-**Модификатори** (добавят се към базовия шанс):
+Cup and European matches cannot end in a draw. If the score is level when Full Time is flipped, there is a **penalty shootout**:
 
-- **Сила на отборите**: (рейтинг на атакуващия − рейтинг на защитаващия) × 0,6. Сравняваните рейтинги зависят от картата:
-  - Пас, Задържане: Полузащита срещу Полузащита
-  - Дълъг пас: Полузащита срещу Защита
-  - Контраатака: Атака срещу Полузащита
-  - Дрибъл, Центриране, Удар: Атака срещу Защита
-  - При Удар този модификатор се взима с тегло 0,3.
-- **Домакинство**: +2 за домакина, −2 за госта.
-- **Зона**: Пас и Дрибъл от зона Атака: −10. Дълъг пас от Центъра: −6. Всяко действие (освен Задържане) от собствената Защита: +5.
-- Крайният шанс винаги е между **5% и 95%**.
+- Home team shoots first, then the teams alternate; 5 kicks each, then sudden death.
+- Each kick is a penalty mini-game: you shoot for your team and dive for your keeper on every kick of the opponent.
+- The shootout ends as soon as one team cannot be caught.
 
-### Шанс за гол
+## 5. Career
 
-Когато ударът не е блокиран (или при глава/дрибъл/свободен удар), шансът за гол е:
+- Manage a club in the Bulgarian **First League** (16 teams, home and away — 30 rounds).
+- A season also includes the **Bulgarian Cup** (16 teams, knockout from the Round of 16) and, if you qualified, a **European cup** (16 teams, knockout).
+- A season has 34–38 weeks; each week is either a league round or a cup/European round.
+- **Board target**, based on the club's rating rank in the league:
+  - top 2 clubs: Win the title
+  - 3rd–5th: Finish in the top 4
+  - 6th–10th: Finish in the top half (8th or better)
+  - the rest: Avoid the drop (13th or better)
+- **European places**: 1st → Champions Cup; 2nd and the cup winners → Europa Cup; 3rd → Conference Cup. In the first season the places go to the highest-rated clubs.
+- **End-of-season review**: score = target position − actual position, +2 for winning the cup, +1 per European knockout win.
+  - ≥ 3: the board is delighted; ≥ 0: satisfied; −1 to −3: one more chance;
+  - ≤ −4, or last place: **sacked**.
+- **Job offers**: a good season (or a high reputation) brings offers from bigger clubs; a sacked manager gets offers from smaller clubs. Accept one, or stay where you are.
+- **Reputation** (0–100) rises with success.
+- All matches you do not play yourself are simulated with exactly the same card rules.
 
-`база + (Атака на стрелящия − Защита на противника) × 0,5 ± 1 (домакинство)`, ограничен между 3% и 80%.
+## 6. Adding teams and leagues
 
-| Ситуация | База |
-|---|---|
-| Удар от наказателното поле | 58 |
-| Удар от зона Атака | 34 |
-| Удар отдалеч (Център) | 11 |
-| Глава след успешно Центриране | 40 |
-| Дрибъл в наказателното поле | 56 |
-| Пряк свободен удар | 20 |
-
-Ако не е гол: 55% от останалите случаи са спасявания от вратаря, другите — пропуск покрай вратата.
-Блокиран удар: 35% шанс за ъглов удар (атакуващите запазват топката в зона Атака), иначе защитата изчиства към Центъра и може да контраатакува.
-
-## 5. Нарушения, картони и дузпи
-
-Нарушение настъпва при **Тактическо нарушение** (винаги) или при **Шпагат** (18% от случаите, освен срещу Задържане).
-
-- Жълт картон: 40% при Тактическо нарушение, 25% при нарушение от Шпагат.
-- Ако отборът вече има 2+ жълти картона, картонът може (25%) да е **червен**. Червеният картон намалява всички рейтинги на отбора с 5 до края на мача (най-много 2 червени).
-- Последици според зоната на атакуващия:
-  - **Наказателно поле → ДУЗПА.**
-  - **Атака → пряк свободен удар** (шанс за гол с база 20).
-  - Защита/Център → атакуващите запазват топката, но не напредват.
-
-**Дузпа**: изпълнителят и вратарят избират едновременно Ляво / Център / Дясно.
-- Различни посоки → гол в ~88% от случаите.
-- Еднакви посоки → вратарят спасява в 75% (70% ако и двамата изберат Център).
-
-**Елиминационни мачове** (купа и Европа) при равенство след 90 минути се решават с автоматична серия дузпи (5 + „внезапна смърт“).
-
-## 6. Тактика и трудност
-
-| Тактика | Ефект |
-|---|---|
-| Балансирана | без промяна |
-| Атакуваща | Атака +4, Защита −4 |
-| Дефанзивна | Атака −4, Защита +4 |
-
-| Трудност | Рейтинги на компютъра | Грешки на компютъра |
-|---|---|---|
-| Лесно | −4 | 40% случайни ходове |
-| Нормално | 0 | 15% случайни ходове |
-| Трудно | +4 | 3% случайни ходове |
-
-Компютърът оценява очакваната стойност на всяка карта със същите таблици. Когато води в края на мача, предпочита да задържа топката; когато губи — стреля по-често.
-
-## 7. Тайминг — кога коя карта
-
-- **Контраатака** е силна, но само в хода веднага след като сте отнели топката. Пазете я за този момент.
-- **Пресинг** е най-добър, когато съперникът е в собствената си половина и вероятно ще подава.
-- **Блокиране** пазете за моментите, когато съперникът е в зона Атака или в наказателното поле.
-- **Тактическото нарушение** е безопасно далеч от вратата, рисковано пред наказателното поле и почти винаги грешка вътре в него.
-- Когато водите в края, **Задържане** изяжда по 3–4 минути с много малък риск.
-
-## 8. Кариера
-
-- Започвате начело на клуб от **Първа лига** (16 отбора, двоен кръгов турнир — 30 кръга).
-- Сезонът включва още **Купа на България** (16 отбора, елиминации от 1/8-финал до финал) и — ако сте се класирали — **европейски турнир** (16 отбора, елиминации).
-- Седмиците са общо 34–38; във всяка седмица се играе кръг от лигата или кръг от купа/Европа.
-- **Очакване на борда** според силата на отбора в лигата:
-  - 1–2 най-силни: Титла
-  - 3–5: Топ 4
-  - 6–10: Горна половина (до 8-мо място)
-  - останалите: Оцеляване (поне 13-то място)
-- **Европейски квоти**: 1-во място → Шампионска лига; 2-ро място и носителят на купата → Лига Европа; 3-то място → Лига на конференциите. В първия сезон квотите се определят по сила на отборите.
-- **Оценка в края на сезона**: `целево място − реално място` + 2 за спечелена купа + 1 за всяка победа в Европа.
-  - ≥ 3: бордът е възхитен; ≥ 0: доволен; −1…−3: последен шанс;
-  - ≤ −4 или последно място: **уволнение**.
-- **Оферти**: при добър сезон (или висока репутация) идват оферти от по-силни клубове; уволненият треньор получава оферти от по-скромни клубове. Можете да приемете оферта или да останете.
-- **Репутацията** (0–100) расте с успехите и отваря вратите към по-големите клубове.
-
-## 9. Добавяне на отбори и лиги
-
-- През екрана **Редактор** в играта, или
-- във файла `server/FootballCards.Api/Data/Seed/seed.json` — при стартиране сървърът добавя липсващите отбори/лиги (по име), без да презаписва промените от редактора.
-- Лига, маркирана като „играема“ и с поне 4 отбора (препоръчително четен брой), може да се избира за кариера. Отбори без лига се използват като европейски съперници.
+- In the game: **Team & league editor**.
+- Or in `server/FootballCards.Api/Data/Seed/seed.json` — on start-up the server adds missing teams and leagues (by name) without overwriting changes made in the editor.
+- A league marked as playable with at least 4 teams (an even number is best) can be chosen for a career. Teams without a league are used as European opponents.
+- The deck (card copies) is also defined in `seed.json` (the `cards` section). The engine always keeps at least one Full Time card so every match can end.

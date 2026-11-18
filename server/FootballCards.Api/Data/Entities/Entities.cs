@@ -47,18 +47,14 @@ public class Competition
     public League? League { get; set; }
 }
 
-public enum CardKind { Attack = 0, Defense = 1 }
-
-/// <summary>Дефиниция на ситуационна карта и колко копия има в тестето.</summary>
+/// <summary>A match card and how many copies of it are in the deck.</summary>
 public class CardDefinition
 {
     public int Id { get; set; }
     public string Code { get; set; } = "";
     public string Name { get; set; } = "";
     public string Description { get; set; } = "";
-    public CardKind Kind { get; set; }
     public int CopiesInDeck { get; set; }
-    public int Minutes { get; set; }
 }
 
 public enum CareerStatus { Active = 0, Fired = 1 }
@@ -73,7 +69,6 @@ public class Career
     public Team? Team { get; set; }
     public int LeagueId { get; set; }
     public int Reputation { get; set; } = 30;
-    public int Difficulty { get; set; } = 1;
     public CareerStatus Status { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

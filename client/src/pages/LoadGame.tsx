@@ -9,7 +9,7 @@ export default function LoadGame() {
   const [error, setError] = useState<string | null>(null)
 
   const rename = async (id: number, current: string) => {
-    const name = prompt('Ново име на записа:', current)
+    const name = prompt('New save name:', current)
     if (!name) return
     try {
       await api.renameCareer(id, name)
@@ -20,7 +20,7 @@ export default function LoadGame() {
   }
 
   const remove = async (id: number, name: string) => {
-    if (!confirm(`Да изтрия ли записа „${name}“? Това не може да бъде отменено.`)) return
+    if (!confirm(`Delete the save "${name}"? This cannot be undone.`)) return
     try {
       await api.deleteCareer(id)
       await reload()
@@ -30,14 +30,14 @@ export default function LoadGame() {
   }
 
   return (
-    <Screen title="Зареди игра">
+    <Screen title="Load game">
       <ErrorBox error={loadError ?? error} />
-      <p className="muted">Кариерите се записват автоматично в базата данни след всеки мач и всяко действие.</p>
+      <p className="muted">Careers are saved automatically in the database after every card and every match.</p>
       {careers && careers.length === 0 && (
         <div className="panel">
-          <p>Няма запазени кариери.</p>
+          <p>No saved careers yet.</p>
           <button className="btn btn-primary" onClick={() => navigate('/career/new')}>
-            Започни нова кариера
+            Start a new career
           </button>
         </div>
       )}
@@ -48,20 +48,20 @@ export default function LoadGame() {
             <div className="save-info">
               <b>{c.saveName}</b>
               <span className="muted">
-                {c.managerName} · {c.team} · {c.year ? seasonLabel(c.year) : ''} · седмица {c.week}/{c.totalWeeks}
-                {c.status === 'Fired' && ' · уволнен'}
+                {c.managerName} · {c.team} · {c.year ? seasonLabel(c.year) : ''} · week {c.week}/{c.totalWeeks}
+                {c.status === 'Fired' && ' · sacked'}
               </span>
-              <span className="muted small">Последна промяна: {new Date(c.updatedAt).toLocaleString('bg-BG')}</span>
+              <span className="muted small">Last played: {new Date(c.updatedAt).toLocaleString('en-GB')}</span>
             </div>
             <div className="row-buttons">
               <button className="btn btn-primary" onClick={() => navigate(`/career/${c.id}`)}>
-                Зареди
+                Load
               </button>
               <button className="btn" onClick={() => rename(c.id, c.saveName)}>
-                Преименувай
+                Rename
               </button>
               <button className="btn btn-danger" onClick={() => remove(c.id, c.saveName)}>
-                Изтрий
+                Delete
               </button>
             </div>
           </div>
