@@ -63,6 +63,24 @@ dotnet run
 
 Ако папката `client/dist` съществува, сървърът я обслужва сам — играта е на http://localhost:5080.
 
+## Настолна версия (Windows)
+
+Играта може да се пусне като самостоятелна програма — без браузър и без отделен сървър.
+C# сървърът работи вътре в програмата на свободен локален порт, а играта се показва в собствен прозорец (Photino + WebView2).
+
+Пакетиране с една команда (от главната папка на проекта):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scriptspublish-desktop.ps1
+```
+
+Резултат:
+- `distSoccerCards-win-x64SoccerCards.exe` — готова папка (за Steam се качва именно тя);
+- `distSoccerCards-win-x64.zip` — същото като архив (~50 MB, за itch.io или за пращане).
+
+Пакетът съдържа .NET, така че играчът не трябва да инсталира нищо (WebView2 вече е част от Windows 10/11).
+Записите на играча са в `%LOCALAPPDATA%SoccerCardssoccer-cards.db`; при грешка при стартиране там се появява `error.log`.
+
 ## Тестове
 
 ```bash
@@ -84,6 +102,7 @@ server/
     Game/                   двигател на мача (обръщане на карти, дузпи), коментари
     Careers/                кариера: график, симулация, борд, оферти
     Endpoints/              REST API
+  FootballCards.Desktop/    настолна програма (прозорец + вграден сървър)
   FootballCards.Tests/      тестове
 docs/rules.md               правила на играта
 ```
