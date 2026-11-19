@@ -109,8 +109,8 @@ public static partial class DataEndpoints
         });
 
         api.MapGet("/cards", async (AppDbContext db) =>
-            await db.Cards.OrderBy(c => c.Id)
-                .Select(c => new { c.Code, c.Name, c.Description, c.CopiesInDeck }).ToListAsync());
+            await db.Cards.OrderBy(c => c.Kind).ThenBy(c => c.Id)
+                .Select(c => new { c.Code, c.Name, c.Description, kind = c.Kind.ToString(), rarity = c.Rarity.ToString(), c.CopiesInDeck, c.Cost, c.Price }).ToListAsync());
 
         api.MapGet("/competitions", async (AppDbContext db) =>
             await db.Competitions.OrderBy(c => c.Type).ThenBy(c => c.Tier)

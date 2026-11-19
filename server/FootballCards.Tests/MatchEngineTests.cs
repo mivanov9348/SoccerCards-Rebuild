@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FootballCards.Api.Data.Entities;
 using FootballCards.Api.Game;
 using Xunit.Abstractions;
@@ -6,190 +7,282 @@ namespace FootballCards.Tests;
 
 public class MatchEngineTests(ITestOutputHelper output)
 {
-    // Same composition as seed.json: 24 cards per half + Half Time (1st half) / Full Time (2nd half) = 5x5 grid
-    private static readonly List<CardDefinition> Deck =
-    [
-        new() { Code = Cards.Pass, CopiesInDeck = 7 },
-        new() { Code = Cards.Tackle, CopiesInDeck = 5 },
-        new() { Code = Cards.Corner, CopiesInDeck = 2 },
-        new() { Code = Cards.FreeKick, CopiesInDeck = 1 },
-        new() { Code = Cards.Offside, CopiesInDeck = 1 },
-        new() { Code = Cards.Save, CopiesInDeck = 1 },
-        new() { Code = Cards.Miss, CopiesInDeck = 2 },
-        new() { Code = Cards.Goal, CopiesInDeck = 2 },
-        new() { Code = Cards.Penalty, CopiesInDeck = 1 },
-        new() { Code = Cards.YellowCard, CopiesInDeck = 1 },
-        new() { Code = Cards.RedCard, CopiesInDeck = 1 },
-        new() { Code = Cards.HalfTime, CopiesInDeck = 1 },
-        new() { Code = Cards.FullTime, CopiesInDeck = 1 },
-    ];
+    /// <summary>The real card catalog from seed.json, so the tests check the shipped numbers.</summary>
+    private static readonly CardCatalog Catalog = LoadCatalog();
 
-    private static Team T(int id) => new() { Id = id, Name = $"Team {id}", Stadium = "Stadium" };
+    private static CardCatalog LoadCatalog()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "Data", "Seed", "seed.json");
+        using var doc = JsonDocument.Parse(File.ReadAllText(path));
+        var cards = doc.RootElement.GetProperty("cards").EnumerateArray().Select(c => new CardDefinition
+        {
+            Code = c.GetProperty("code").GetString()!,
+            Name = c.GetProperty("name").GetString()!,
+            Kind = Enum.Parse<CardKind>(c.GetProperty("kind").GetString()!),
+            Rarity = c.TryGetProperty("rarity", out var r) ? Enum.Parse<CardRarity>(r.GetString()!) : CardRarity.None,
+            CopiesInDeck = c.TryGetProperty("copies", out var n) ? n.GetInt32() : 0,
+            Cost = c.TryGetProperty("cost", out var cost) ? cost.GetInt32() : 0,
+        });
+        return new CardCatalog(cards);
+    }
 
-    private static MatchState NewMatch(MatchEngine e, Side? human = null, bool knockout = false) =>
-        e.Create(new MatchSetup(T(1), T(2), human, knockout, "Test"), Deck);
+    private static Team T(int id, string city = "") => new() { Id = id, Name = $"Team {id}", ShortName = $"T{id}", City = city, Stadium = "Stadium" };
+
+    private static (MatchEngine Engine, MatchState State) NewMatch(int seed, Side? human = null, bool knockout = false,
+        int homeRating = 70, int awayRating = 70, TacticSpec? homeTactic = null, TacticSpec? awayTactic = null)
+    {
+        var engine = new MatchEngine(new Random(seed), Catalog);
+        var s = engine.Create(new MatchSetup(T(1), T(2), homeRating, awayRating, human, knockout, "Test"));
+        engine.Start(s, homeTactic ?? TacticRules.Default(), awayTactic ?? TacticRules.Default());
+        return (engine, s);
+    }
+
+    /// <summary>Puts a specific card in the given cell (keeps the rest of the grid).</summary>
+    private static void Put(MatchState s, int cell, string card, Side? owner = null) =>
+        s.Table[cell] = new TableCell { Card = card, Owner = owner };
 
     [Fact]
-    public void FirstHalfGrid_HasHalfTime_SecondHalfGrid_HasFullTime()
+    public void Grid_Has16Neutral_4PerTeam_AndHalfTime_SecondHalfHasFullTime()
     {
-        var s = NewMatch(new MatchEngine(new Random(1)));
+        var (_, s) = NewMatch(1);
         Assert.Equal(25, s.Table.Count);
-        Assert.All(s.Table, c => Assert.False(c.FaceUp));
+        Assert.Equal(16, s.Table.Count(c => c.Owner == null && c.Card != Cards.HalfTime));
+        Assert.Equal(4, s.Table.Count(c => c.Owner == Side.Home));
+        Assert.Equal(4, s.Table.Count(c => c.Owner == Side.Away));
         Assert.Single(s.Table, c => c.Card == Cards.HalfTime);
         Assert.DoesNotContain(s.Table, c => c.Card == Cards.FullTime);
-        Assert.Equal(25, s.SecondHalfTable.Count);
         Assert.Single(s.SecondHalfTable, c => c.Card == Cards.FullTime);
         Assert.DoesNotContain(s.SecondHalfTable, c => c.Card == Cards.HalfTime);
     }
 
     [Fact]
-    public void FullTime_NeverComesBeforeHalfTime()
+    public void Composition_AppliesConditionsAndSummedModifiers_WithinLimits()
     {
-        var engine = new MatchEngine(new Random(11));
-        for (var i = 0; i < 500; i++)
+        var home = new TacticSpec { Modifiers = ["MOD_GOAL_UP2"] };
+        var away = new TacticSpec { Modifiers = ["MOD_GOAL_DOWN1", "MOD_CORNER_UP1"] };
+        var c = TacticRules.Composition(Catalog, [Conditions.Home, Conditions.Rain], home, away);
+        Assert.Equal(16, c.Values.Sum());
+        Assert.Equal(2, c[Cards.Goal]);   // 1 + 2 - 1
+        Assert.Equal(2, c[Cards.Miss]);   // rain
+        Assert.Equal(1, c[Cards.Pass]);   // 4 - rain - goal - corner
+        Assert.Equal(2, c[Cards.Corner]);
+
+        var greedy = new TacticSpec { Modifiers = ["MOD_GOAL_UP2", "MOD_PENALTY_UP1"] };
+        var c2 = TacticRules.Composition(Catalog, [], greedy, greedy);
+        Assert.True(c2[Cards.Goal] <= 5);
+        Assert.True(c2[Cards.Pass] >= 1);
+    }
+
+    [Fact]
+    public void Hints_CountOnlyFaceDownDangerousNeutralCards()
+    {
+        var (_, s) = NewMatch(2);
+        for (var i = 0; i < 25; i++) Put(s, i, Cards.Pass);
+        Put(s, 0, Cards.Tackle);
+        Put(s, 6, Cards.Miss);
+        Put(s, 7, Cards.Tackle, Side.Away); // team card — not counted
+        Put(s, 8, Cards.Goal);              // goals are not counted
+        var (rows, cols) = MatchEngine.Hints(s);
+        Assert.Equal([1, 1, 0, 0, 0], rows);
+        Assert.Equal([1, 1, 0, 0, 0], cols);
+    }
+
+    [Fact]
+    public void ThreePasses_GiveBigChance_ButBurningResetsTheStreak()
+    {
+        var (engine, s) = NewMatch(3, Side.Home);
+        s.Turn = Side.Home;
+        Put(s, 0, Cards.Pass); Put(s, 1, Cards.Pass); Put(s, 2, Cards.Striker, Side.Away); Put(s, 3, Cards.Pass); Put(s, 4, Cards.Pass); Put(s, 5, Cards.Pass);
+        engine.FlipHuman(s, 0);
+        engine.FlipHuman(s, 1);
+        engine.FlipHuman(s, 2); // burn: keeps the ball, resets the streak
+        Assert.Equal(Side.Home, s.Turn);
+        Assert.Equal(0, s.Home.PassStreak);
+        engine.FlipHuman(s, 3);
+        engine.FlipHuman(s, 4);
+        engine.FlipHuman(s, 5);
+        Assert.Equal(MatchPhase.Decision, s.Phase);
+        Assert.Equal(DecisionKind.BigChance, s.Decision!.Kind);
+    }
+
+    [Fact]
+    public void OffsideTrap_FlippedByOpponent_LosesTheBall()
+    {
+        var (engine, s) = NewMatch(4, Side.Home);
+        s.Turn = Side.Home;
+        Put(s, 0, Cards.OffsideTrap, Side.Away);
+        engine.FlipHuman(s, 0);
+        Assert.Equal(Side.Away, s.Turn);
+    }
+
+    [Fact]
+    public void Captain_IgnoresNextTackle_AndWall_TurnsGoalIntoSave()
+    {
+        var (engine, s) = NewMatch(5, Side.Home);
+        s.Turn = Side.Home;
+        Put(s, 0, Cards.Captain, Side.Home); Put(s, 1, Cards.Tackle);
+        engine.FlipHuman(s, 0);
+        engine.FlipHuman(s, 1);
+        Assert.Equal(Side.Home, s.Turn);
+
+        s.Away.WallActive = true;
+        Put(s, 2, Cards.Goal);
+        engine.FlipHuman(s, 2);
+        Assert.Equal(0, s.Home.Goals);
+        Assert.False(s.Away.WallActive);
+        Assert.Equal(Side.Away, s.Turn);
+    }
+
+    [Fact]
+    public void Save_PassesTheTurn()
+    {
+        var (engine, s) = NewMatch(6, Side.Home);
+        s.Turn = Side.Home;
+        Put(s, 0, Cards.Save);
+        engine.FlipHuman(s, 0);
+        Assert.Equal(Side.Away, s.Turn);
+    }
+
+    [Fact]
+    public void HandCards_Scout_Burn_Calm_Work()
+    {
+        var tactic = new TacticSpec { Field = [Cards.Striker, Cards.LongShot, Cards.LongShot, Cards.LongShot], Hand = [Cards.Scout, Cards.Burn, Cards.Calm] };
+        var (engine, s) = NewMatch(7, Side.Home, homeTactic: tactic);
+        s.Turn = Side.Home;
+        Put(s, 0, Cards.Tackle); Put(s, 1, Cards.Striker, Side.Away);
+        engine.PlayHandHuman(s, Cards.Scout, 0, null);
+        Assert.Contains(0, s.Home.Peeks);
+        Assert.Throws<GameRuleException>(() => engine.PlayHandHuman(s, Cards.Burn, 1, null)); // one per flip
+        Put(s, 2, Cards.Pass);
+        engine.FlipHuman(s, 2);
+        engine.PlayHandHuman(s, Cards.Burn, 1, null);
+        Assert.True(s.Table[1].Burned);
+        Put(s, 3, Cards.Pass);
+        engine.FlipHuman(s, 3);
+        engine.PlayHandHuman(s, Cards.Calm, null, null);
+        engine.FlipHuman(s, 0); // the scouted Tackle — Calm keeps the ball
+        Assert.Equal(Side.Home, s.Turn);
+    }
+
+    [Fact]
+    public void SecondYellow_IsRed_DiscardsAHandCard_AndStopsBigChances()
+    {
+        var tactic = new TacticSpec { Field = [Cards.LongShot, Cards.LongShot, Cards.LongShot, Cards.LongShot], Hand = [Cards.Scout, Cards.Calm] };
+        var (engine, s) = NewMatch(8, Side.Home, homeTactic: tactic);
+        s.Turn = Side.Home;
+        Put(s, 0, Cards.YellowCard);
+        engine.FlipHuman(s, 0);
+        s.Turn = Side.Home;
+        Put(s, 1, Cards.YellowCard);
+        engine.FlipHuman(s, 1);
+        Assert.Equal(DecisionKind.Discard, s.Decision!.Kind);
+        engine.DecideHuman(s, 0, null, false);
+        Assert.Single(s.Home.Hand);
+        Assert.Equal(1, s.Home.Stats.RedCards);
+        s.Turn = Side.Home;
+        Put(s, 2, Cards.Pass); Put(s, 3, Cards.Pass); Put(s, 4, Cards.Pass);
+        engine.FlipHuman(s, 2); engine.FlipHuman(s, 3); engine.FlipHuman(s, 4);
+        Assert.Equal(MatchPhase.Play, s.Phase); // no Big Chance with ten men
+    }
+
+    [Fact]
+    public void HalfTime_ReshufflesAFreshGrid_AndOtherTeamStarts()
+    {
+        var (engine, s) = NewMatch(9, Side.Home);
+        s.Turn = s.FirstKickOff;
+        var flipper = s.Turn;
+        var idx = s.Table.FindIndex(c => c.Card == Cards.HalfTime);
+        if (flipper == Side.Home) engine.FlipHuman(s, idx);
+        else { s.Turn = Side.Home; engine.FlipHuman(s, idx); }
+        Assert.Equal(2, s.Half);
+        Assert.Equal(s.FirstKickOff.Other(), s.Turn);
+        Assert.All(s.Table, c => Assert.True(c.Available));
+    }
+
+    [Fact]
+    public void FullTime_NeverBeforeHalfTime_AndKnockoutsAlwaysHaveAWinner()
+    {
+        for (var i = 0; i < 400; i++)
         {
-            var s = NewMatch(engine);
+            var engine = new MatchEngine(new Random(100 + i), Catalog);
+            var s = engine.Create(new MatchSetup(T(1), T(2), 60 + i % 30, 90 - i % 30, null, i % 2 == 0, "Test"));
             engine.SimulateToEnd(s);
+            Assert.Equal(MatchPhase.Finished, s.Phase);
             var ht = s.Events.FindIndex(e => e.Card == Cards.HalfTime);
             var ft = s.Events.FindIndex(e => e.Card == Cards.FullTime);
             Assert.True(ht >= 0 && ft > ht);
+            if (s.IsKnockout) Assert.NotNull(s.WinnerTeamId());
         }
     }
 
     [Fact]
-    public void FlippedCard_StaysFaceUp_AndCannotBeFlippedAgain()
+    public void ComputerTactics_AreValid_ForAllRatings()
     {
-        var engine = new MatchEngine(new Random(10));
-        var s = NewMatch(engine, Side.Home);
-        s.Turn = Side.Home;
-        s.Table[0].Card = Cards.Pass;
-        engine.FlipHuman(s, 0);
-        Assert.True(s.Table[0].FaceUp);
-        Assert.Equal(Side.Home, s.Table[0].FlippedBy);
-        Assert.Throws<GameRuleException>(() => engine.FlipHuman(s, 0));
+        var rng = new Random(10);
+        for (var rating = 45; rating <= 95; rating += 5)
+        foreach (var home in new[] { true, false })
+        {
+            var t = TacticRules.BuildAi(Catalog, rating, 70, home, rng);
+            var errors = TacticRules.Validate(t, Catalog, Rules.TacticPoints(rating, home), Rules.HandSize(rating), null);
+            Assert.True(errors.Count == 0, $"rating {rating}: {string.Join(" ", errors)}");
+        }
     }
 
     [Fact]
-    public void SimulatedMatches_AlwaysEnd_WithReasonableScores()
+    public void HumanCanPlayAWholeMatch_WithAutoDecisions()
     {
-        var engine = new MatchEngine(new Random(2));
-        double goals = 0, flips = 0;
-        const int n = 3000;
+        var (engine, s) = NewMatch(11, Side.Away, knockout: true);
+        var guard = 0;
+        while (s.Phase != MatchPhase.Finished && guard++ < 500)
+        {
+            if (s.Phase == MatchPhase.Decision)
+            {
+                if (s.Decision!.Kind == DecisionKind.Discard && s.Decision.Attacker != Side.Away) engine.AiStep(s);
+                else engine.DecideHuman(s, null, null, true);
+            }
+            else if (s.Turn == Side.Away) engine.FlipHuman(s, s.Table.FindIndex(c => c.Available));
+            else engine.AiStep(s);
+        }
+        Assert.Equal(MatchPhase.Finished, s.Phase);
+        Assert.NotNull(s.WinnerTeamId());
+    }
+
+    /// <summary>Balance check: thousands of computer-vs-computer matches.</summary>
+    [Fact]
+    public void Balance_AroundFourGoals_StrongTeamWinsMoreOften()
+    {
+        double goals = 0, flips = 0, zeroZero = 0;
+        var sources = new Dictionary<string, int>();
+        const int n = 4000;
         for (var i = 0; i < n; i++)
         {
-            var s = NewMatch(engine);
+            var engine = new MatchEngine(new Random(1000 + i), Catalog);
+            var s = engine.Create(new MatchSetup(T(1), T(2), 70, 70, null, false, "Test"));
             engine.SimulateToEnd(s);
-            Assert.Equal(MatchPhase.Finished, s.Phase);
             goals += s.Home.Goals + s.Away.Goals;
             flips += s.Home.Stats.Flips + s.Away.Stats.Flips;
+            if (s.Home.Goals + s.Away.Goals == 0) zeroZero++;
+            foreach (var t in new[] { s.Home, s.Away })
+                foreach (var (k, v) in t.Stats.GoalSources) sources[k] = sources.GetValueOrDefault(k) + v;
         }
-        output.WriteLine($"avg goals {goals / n:F2}, avg flips {flips / n:F1}");
-        Assert.InRange(goals / n, 1.0, 4.5);
-        Assert.InRange(flips / n, 10, 50);
-    }
 
-    [Fact]
-    public void Pass_KeepsTurn_Tackle_SwitchesTurn()
-    {
-        var engine = new MatchEngine(new Random(3));
-        var s = NewMatch(engine, Side.Home);
-        s.Turn = Side.Home;
-        s.Table[0].Card = Cards.Pass;
-        engine.FlipHuman(s, 0);
-        Assert.Equal(Side.Home, s.Turn);
-
-        s.Table[1].Card = Cards.Tackle;
-        engine.FlipHuman(s, 1);
-        Assert.Equal(Side.Away, s.Turn);
-    }
-
-    [Fact]
-    public void FullTime_AsFirstCardOfSecondHalf_EndsTheMatch()
-    {
-        var engine = new MatchEngine(new Random(4));
-        var s = NewMatch(engine, Side.Home);
-        s.Turn = Side.Home;
-        s.Table[0].Card = Cards.HalfTime;
-        engine.FlipHuman(s, 0);
-        s.Turn = Side.Home;
-        s.Table[5].Card = Cards.FullTime;
-        engine.FlipHuman(s, 5);
-        Assert.Equal(MatchPhase.Finished, s.Phase);
-    }
-
-    [Fact]
-    public void HalfTime_DealsFreshFaceDownGrid_AndOtherPlayerStarts()
-    {
-        var engine = new MatchEngine(new Random(5));
-        var s = NewMatch(engine, Side.Home);
-        s.Turn = Side.Home;
-        s.Table[0].Card = Cards.Pass;
-        engine.FlipHuman(s, 0);
-        s.Table[2].Card = Cards.HalfTime;
-        engine.FlipHuman(s, 2);
-        Assert.Equal(2, s.Half);
-        Assert.Equal(Side.Away, s.Turn);
-        Assert.Equal(25, s.Table.Count);
-        Assert.All(s.Table, c => Assert.False(c.FaceUp));
-        Assert.Single(s.Table, c => c.Card == Cards.FullTime);
-    }
-
-    [Fact]
-    public void Goal_Scores_AndGivesKickOffToOpponent()
-    {
-        var engine = new MatchEngine(new Random(6));
-        var s = NewMatch(engine, Side.Away);
-        s.Turn = Side.Away;
-        s.Table[3].Card = Cards.Goal;
-        engine.FlipHuman(s, 3);
-        Assert.Equal(1, s.Away.Goals);
-        Assert.Equal(Side.Home, s.Turn);
-    }
-
-    [Fact]
-    public void Penalty_StartsMiniGame_ThenOtherPlayerFlips()
-    {
-        var engine = new MatchEngine(new Random(7));
-        var s = NewMatch(engine, Side.Home);
-        s.Turn = Side.Home;
-        s.Table[0].Card = Cards.Penalty;
-        engine.FlipHuman(s, 0);
-        Assert.Equal(MatchPhase.Penalty, s.Phase);
-        Assert.Throws<GameRuleException>(() => engine.FlipHuman(s, 1));
-        engine.PenaltyHuman(s, 0);
-        Assert.Equal(MatchPhase.Play, s.Phase);
-        Assert.Equal(Side.Away, s.Turn);
-    }
-
-    [Fact]
-    public void HumanCannotFlip_OnComputersTurn()
-    {
-        var engine = new MatchEngine(new Random(8));
-        var s = NewMatch(engine, Side.Home);
-        s.Turn = Side.Away;
-        Assert.Throws<GameRuleException>(() => engine.FlipHuman(s, 0));
-        engine.AiFlip(s); // works
-    }
-
-    [Fact]
-    public void KnockoutDraw_GoesToShootout_AndAlwaysHasWinner()
-    {
-        var engine = new MatchEngine(new Random(9));
-        for (var i = 0; i < 300; i++)
+        int strongWins = 0, weakWins = 0;
+        for (var i = 0; i < 2000; i++)
         {
-            var s = NewMatch(engine, knockout: true);
+            var engine = new MatchEngine(new Random(9000 + i), Catalog);
+            var strongHome = i % 2 == 0;
+            var s = engine.Create(new MatchSetup(T(1), T(2), strongHome ? 85 : 58, strongHome ? 58 : 85, null, false, "Test"));
             engine.SimulateToEnd(s);
-            Assert.NotNull(s.WinnerTeamId());
+            var strong = strongHome ? s.Home.Goals : s.Away.Goals;
+            var weak = strongHome ? s.Away.Goals : s.Home.Goals;
+            if (strong > weak) strongWins++;
+            if (weak > strong) weakWins++;
         }
 
-        var h = NewMatch(engine, Side.Home, knockout: true);
-        h.Turn = Side.Home;
-        h.Table[0].Card = Cards.FullTime;
-        engine.FlipHuman(h, 0);
-        Assert.Equal(MatchPhase.Shootout, h.Phase);
-        var guard = 0;
-        while (h.Phase == MatchPhase.Shootout && guard++ < 100) engine.PenaltyHuman(h, guard % 3);
-        Assert.Equal(MatchPhase.Finished, h.Phase);
-        Assert.NotNull(h.WinnerTeamId());
+        output.WriteLine($"avg goals {goals / n:F2}, avg flips {flips / n:F1}, 0:0 {zeroZero / n:P1}");
+        output.WriteLine("goal sources: " + string.Join(", ", sources.OrderByDescending(kv => kv.Value).Select(kv => $"{kv.Key} {(double)kv.Value / n:F2}")));
+        output.WriteLine($"strong (85) vs weak (58): strong wins {strongWins / 20.0:F1}%, weak wins {weakWins / 20.0:F1}%");
+        Assert.InRange(goals / n, 3.0, 5.0);
+        Assert.True(strongWins > weakWins);
     }
 }

@@ -6,19 +6,23 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FootballCards.Api.Game;
 
-/// <summary>Creates, loads and saves matches. Builds the view the player sees (face-down cards stay hidden).</summary>
+/// <summary>Creates, loads and saves matches and builds what the player sees (face-down cards stay secret).</summary>
 public class MatchService(AppDbContext db)
 {
     public static readonly JsonSerializerOptions StateJson = new() { Converters = { new JsonStringEnumConverter() } };
 
-    private readonly MatchEngine _engine = new(Random.Shared);
+    private CardCatalog? _catalog;
 
-    public async Task<List<CardDefinition>> DeckAsync() => await db.Cards.AsNoTracking().ToListAsync();
+    public async Task<CardCatalog> CatalogAsync() =>
+        _catalog ??= new CardCatalog(await db.Cards.AsNoTracking().ToListAsync());
 
-    public async Task<Match> CreateAsync(Team home, Team away, Side? humanSide, bool knockout, string competition,
-        int? fixtureId = null, int? careerId = null)
+    public async Task<MatchEngine> EngineAsync() => new(Random.Shared, await CatalogAsync());
+
+    public async Task<Match> CreateAsync(Team home, Team away, int homeRating, int awayRating, Side? humanSide, bool knockout,
+        string competition, int? fixtureId = null, int? careerId = null)
     {
-        var state = _engine.Create(new MatchSetup(home, away, humanSide, knockout, competition), await DeckAsync());
+        var engine = await EngineAsync();
+        var state = engine.Create(new MatchSetup(home, away, homeRating, awayRating, humanSide, knockout, competition));
         var match = new Match
         {
             HomeTeamId = home.Id, AwayTeamId = away.Id, FixtureId = fixtureId, CareerId = careerId,
@@ -29,11 +33,11 @@ public class MatchService(AppDbContext db)
         return match;
     }
 
-    /// <summary>Quick computer-vs-computer match (career fixtures you do not play).</summary>
-    public MatchState SimulateQuick(Team home, Team away, bool knockout, List<CardDefinition> deck)
+    /// <summary>Computer vs computer match (career fixtures you do not play) — same rules, tactics and AI.</summary>
+    public static MatchState SimulateQuick(MatchEngine engine, Team home, Team away, int homeRating, int awayRating, bool knockout)
     {
-        var state = _engine.Create(new MatchSetup(home, away, null, knockout, ""), deck);
-        _engine.SimulateToEnd(state);
+        var state = engine.Create(new MatchSetup(home, away, homeRating, awayRating, null, knockout, ""));
+        engine.SimulateToEnd(state);
         return state;
     }
 
@@ -46,72 +50,107 @@ public class MatchService(AppDbContext db)
         m.UpdatedAt = DateTime.UtcNow;
     }
 
-    public void Flip(MatchState s, int cell) => _engine.FlipHuman(s, cell);
-    public void AiFlip(MatchState s) => _engine.AiFlip(s);
-    public void Penalty(MatchState s, int direction) => _engine.PenaltyHuman(s, direction);
-    public void SimulateRest(MatchState s) => _engine.SimulateToEnd(s);
+    /// <summary>Budget and hand size of the human team for this match.</summary>
+    public static (int Budget, int HandSize) HumanLimits(MatchState s)
+    {
+        var human = s.HumanSide ?? Side.Home;
+        var t = s.Team(human);
+        return (Rules.TacticPoints(t.Rating, human == Side.Home), Rules.HandSize(t.Rating));
+    }
 
     // ------------------------------------------------------------- view model
 
-    public static object View(Match m, MatchState s)
+    public static object View(Match m, MatchState s, CardCatalog catalog, object? setup = null)
     {
-        var human = s.HumanSide;
-        string? humanRole = null;
-        if (human is { } h)
+        var human = s.HumanSide ?? Side.Home;
+        var me = s.Team(human);
+        var opp = s.Team(human.Other());
+        var finished = s.Phase == MatchPhase.Finished;
+        var (rows, cols) = MatchEngine.Hints(s);
+
+        string? role = s.Phase switch
         {
-            humanRole = s.Phase switch
+            MatchPhase.Play => s.Turn == human ? "flip" : "wait",
+            MatchPhase.Decision when s.Decision != null =>
+                s.Decision.Kind == DecisionKind.Discard ? (s.Decision.Attacker == human ? "discard" : "wait")
+                : s.Decision.Attacker == human ? "attack" : "defend",
+            _ => null
+        };
+
+        object? decision = null;
+        if (s.Phase == MatchPhase.Decision && s.Decision is { } d)
+        {
+            var (ao, dopts) = MatchEngine.Options(d.Kind);
+            string[] options = d.Kind == DecisionKind.Discard
+                ? s.Team(d.Attacker).Hand.Select(Cards.Name).ToArray()
+                : d.Attacker == human ? ao : dopts;
+            decision = new
             {
-                MatchPhase.Play => s.Turn == h ? "flip" : "wait",
-                MatchPhase.Penalty => s.PenaltyShooter == h ? "shooter" : "keeper",
-                MatchPhase.Shootout => s.NextShootoutShooter == h ? "shooter" : "keeper",
-                _ => null
+                kind = d.Kind.ToString(), source = d.Source, attacker = d.Attacker.ToString(),
+                attackerName = s.Team(d.Attacker).Name, role, options, needsTiming = MatchEngine.NeedsTiming(d.Kind)
             };
         }
 
         return new
         {
-            id = m.Id,
-            fixtureId = m.FixtureId,
-            careerId = m.CareerId,
-            competition = s.CompetitionName,
-            stadium = s.Stadium,
-            isKnockout = s.IsKnockout,
-            home = TeamView(s.Home),
-            away = TeamView(s.Away),
-            half = s.Half,
-            phase = s.Phase.ToString(),
-            turn = s.Turn.ToString(),
-            humanSide = human?.ToString(),
-            humanRole,
-            penaltyShooter = s.Phase == MatchPhase.Penalty ? s.PenaltyShooter?.ToString()
-                : s.Phase == MatchPhase.Shootout ? s.NextShootoutShooter.ToString() : null,
-            table = s.Table.Select((c, i) => new
+            id = m.Id, fixtureId = m.FixtureId, careerId = m.CareerId,
+            competition = s.CompetitionName, stadium = s.Stadium, isKnockout = s.IsKnockout,
+            phase = s.Phase.ToString(), half = s.Half, turn = s.Turn.ToString(),
+            humanSide = s.HumanSide?.ToString(), role,
+            home = TeamView(s.Home, s, human, finished),
+            away = TeamView(s.Away, s, human, finished),
+            conditions = s.Conditions.Select(c => new { code = c, label = Conditions.Labels.GetValueOrDefault(c, c) }),
+            composition = s.Composition.OrderByDescending(kv => kv.Value)
+                .Select(kv => new { card = kv.Key, name = Cards.Name(kv.Key), count = kv.Value }),
+            rowHints = rows, colHints = cols,
+            table = s.Table.Select((c, i) =>
             {
-                index = i,
-                faceUp = c.FaceUp,
-                // face-down cards stay secret until the match is over
-                card = c.FaceUp || s.Phase == MatchPhase.Finished ? c.Card : null,
-                name = c.FaceUp || s.Phase == MatchPhase.Finished ? Cards.Name(c.Card) : null,
-                flippedBy = c.FlippedBy?.ToString()
+                var show = c.FaceUp || finished;
+                var peeked = !show && me.Peeks.Contains(i);
+                return new
+                {
+                    index = i, faceUp = c.FaceUp, burned = c.Burned,
+                    owner = c.Owner?.ToString(), flippedBy = c.FlippedBy?.ToString(),
+                    card = show || peeked ? c.Card : null,
+                    name = show || peeked ? Cards.Name(c.Card) : null,
+                    peeked,
+                    burnedByFlip = c.FaceUp && c.Owner != null && c.Owner != c.FlippedBy
+                };
             }),
-            cardsLeft = s.Table.Count(c => !c.FaceUp),
+            cardsLeft = s.Table.Count(c => c.Available),
             lastFlip = s.LastFlip == null ? null : new
             {
-                cell = s.LastFlip.Cell, card = s.LastFlip.Card, name = Cards.Name(s.LastFlip.Card), side = s.LastFlip.Side.ToString()
+                cell = s.LastFlip.Cell, card = s.LastFlip.Card, name = Cards.Name(s.LastFlip.Card),
+                side = s.LastFlip.Side.ToString(), owner = s.LastFlip.Owner?.ToString(),
+                description = catalog.Get(s.LastFlip.Card)?.Description
             },
+            hand = me.Hand.Select(c => new { code = c, name = Cards.Name(c), description = catalog.Get(c)?.Description }),
+            freeScouts = me.FreeScouts,
+            handPlayed = me.HandPlayedThisTurn,
+            opponentHandCount = opp.Hand.Count,
+            decision,
             shootout = s.Shootout.Select(k => new { side = k.Side.ToString(), scored = k.Scored }),
-            homePenalties = s.HomePenalties,
-            awayPenalties = s.AwayPenalties,
-            events = s.Events.Select(e => new
-            {
-                e.Id, e.Half, e.Type, side = e.Side?.ToString(), e.Text, e.Card
-            }),
+            homePenalties = s.HomePenalties, awayPenalties = s.AwayPenalties,
+            events = s.Events.Select(e => new { e.Id, e.Half, e.Type, side = e.Side?.ToString(), e.Text, e.Card }),
+            setup
         };
     }
 
-    private static object TeamView(TeamMatchState t) => new
+    private static object TeamView(TeamMatchState t, MatchState s, Side human, bool finished)
     {
-        id = t.TeamId, name = t.Name, shortName = t.ShortName, primaryColor = t.PrimaryColor,
-        secondaryColor = t.SecondaryColor, goals = t.Goals, isHuman = t.IsHuman, stats = t.Stats
-    };
+        var isMe = s.Team(human) == t;
+        var started = s.Phase != MatchPhase.Setup;
+        return new
+        {
+            id = t.TeamId, name = t.Name, shortName = t.ShortName, primaryColor = t.PrimaryColor, secondaryColor = t.SecondaryColor,
+            goals = t.Goals, isHuman = t.IsHuman, rating = t.Rating, aiLevel = Rules.AiLevelNames[t.AiLevel],
+            passStreak = t.PassStreak, captain = t.CaptainShield, wall = t.WallActive, calm = t.CalmActive,
+            press = t.PressActive, counterFlips = t.CounterFlips,
+            // the opponent's field cards stay secret; modifiers are revealed when the match starts
+            fieldCards = started && (isMe || finished) ? t.Tactic.Field.Select(Cards.Name) : null,
+            fieldCount = started ? t.Tactic.Field.Count : 0,
+            modifiers = started ? t.Tactic.Modifiers.Select(m => m.Replace("MOD_", "")) : null,
+            stats = t.Stats
+        };
+    }
 }

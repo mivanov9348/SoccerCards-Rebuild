@@ -14,6 +14,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Fixture> Fixtures => Set<Fixture>();
     public DbSet<CareerMessage> CareerMessages => Set<CareerMessage>();
     public DbSet<Match> Matches => Set<Match>();
+    public DbSet<SeasonTeam> SeasonTeams => Set<SeasonTeam>();
+    public DbSet<CareerCard> CareerCards => Set<CareerCard>();
+    public DbSet<CareerClubUpgrade> ClubUpgrades => Set<CareerClubUpgrade>();
+    public DbSet<SavedTactic> SavedTactics => Set<SavedTactic>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -33,6 +37,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         b.Entity<Career>().HasMany(c => c.Messages).WithOne()
             .HasForeignKey(m => m.CareerId).OnDelete(DeleteBehavior.Cascade);
 
+        b.Entity<Career>().HasMany(c => c.Cards).WithOne()
+            .HasForeignKey(c => c.CareerId).OnDelete(DeleteBehavior.Cascade);
+        b.Entity<CareerCard>().HasIndex(c => new { c.CareerId, c.Code }).IsUnique();
+        b.Entity<CareerClubUpgrade>().HasOne<Career>().WithMany()
+            .HasForeignKey(u => u.CareerId).OnDelete(DeleteBehavior.Cascade);
+        b.Entity<SavedTactic>().HasOne<Career>().WithMany()
+            .HasForeignKey(t => t.CareerId).OnDelete(DeleteBehavior.Cascade);
+
+        b.Entity<CareerSeason>().HasMany(s => s.Teams).WithOne()
+            .HasForeignKey(t => t.CareerSeasonId).OnDelete(DeleteBehavior.Cascade);
+        b.Entity<SeasonTeam>().HasIndex(t => new { t.CareerSeasonId, t.LeagueId });
+
         b.Entity<CareerSeason>().HasMany(s => s.Fixtures).WithOne(f => f.CareerSeason!)
             .HasForeignKey(f => f.CareerSeasonId).OnDelete(DeleteBehavior.Cascade);
 
@@ -43,5 +59,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         b.Entity<Fixture>().HasOne(f => f.Competition).WithMany().HasForeignKey(f => f.CompetitionId)
             .OnDelete(DeleteBehavior.Restrict);
         b.Entity<Fixture>().HasIndex(f => new { f.CareerSeasonId, f.Week });
+        b.Entity<Fixture>().HasIndex(f => new { f.CareerSeasonId, f.CompetitionId });
     }
 }

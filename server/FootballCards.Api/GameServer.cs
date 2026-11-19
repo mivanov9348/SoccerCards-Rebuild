@@ -38,7 +38,7 @@ public static class GameServer
         // Database. SQLite by default (no installation). For SQL Server/PostgreSQL see README.md.
         var provider = builder.Configuration["Database:Provider"] ?? "Sqlite";
         var connection = options.ConnectionString
-                         ?? builder.Configuration["Database:ConnectionString"] ?? "Data Source=soccer-cards.db";
+                         ?? builder.Configuration["Database:ConnectionString"] ?? "Data Source=dugout-deck.db";
         builder.Services.AddDbContext<AppDbContext>(o =>
         {
             switch (provider)

@@ -1,14 +1,20 @@
 namespace FootballCards.Api.Data.Entities;
 
-/// <summary>Национално първенство (напр. Първа лига). Само лиги с IsPlayable могат да се играят в кариера.</summary>
+/// <summary>A national division (e.g. First League). Only playable leagues can be chosen for a career.</summary>
 public class League
 {
     public int Id { get; set; }
     public string Name { get; set; } = "";
     public string Country { get; set; } = "";
+    /// <summary>1 = top division, 2 = second division.</summary>
     public int Tier { get; set; } = 1;
-    /// <summary>Ако е true, лигата има пълен списък отбори и може да се избира за кариера.</summary>
     public bool IsPlayable { get; set; }
+    /// <summary>Teams relegated to the tier below (= teams promoted from it).</summary>
+    public int Relegation { get; set; } = 2;
+    /// <summary>European places for a top division (Champions Cup / Europa Cup / Conference Cup).</summary>
+    public int UclSpots { get; set; }
+    public int UelSpots { get; set; }
+    public int UeclSpots { get; set; }
     public List<Team> Teams { get; set; } = new();
 }
 
@@ -22,10 +28,11 @@ public class Team
     public string Stadium { get; set; } = "";
     public string PrimaryColor { get; set; } = "#336699";
     public string SecondaryColor { get; set; } = "#ffffff";
-    /// <summary>Рейтинги 1–99.</summary>
+    /// <summary>Ratings 1–99.</summary>
     public int Attack { get; set; } = 60;
     public int Midfield { get; set; } = 60;
     public int Defense { get; set; } = 60;
+    /// <summary>The team's starting league (in a career the league can change through promotion/relegation).</summary>
     public int? LeagueId { get; set; }
     public League? League { get; set; }
 
@@ -34,32 +41,48 @@ public class Team
 
 public enum CompetitionType { League = 0, Cup = 1, European = 2, Friendly = 3 }
 
-/// <summary>Турнир: шампионат, национална купа или европейски турнир.</summary>
+/// <summary>A league competition, a national cup or a European cup.</summary>
 public class Competition
 {
     public int Id { get; set; }
     public string Code { get; set; } = "";
     public string Name { get; set; } = "";
     public CompetitionType Type { get; set; }
-    /// <summary>За европейските турнири: 1 = най-силният.</summary>
+    /// <summary>For European cups: 1 = strongest.</summary>
     public int Tier { get; set; } = 1;
+    /// <summary>For league competitions.</summary>
     public int? LeagueId { get; set; }
     public League? League { get; set; }
+    /// <summary>For national cups.</summary>
+    public string? Country { get; set; }
 }
 
-/// <summary>A match card and how many copies of it are in the deck.</summary>
+public enum CardKind { Neutral = 0, Field = 1, Hand = 2, Modifier = 3 }
+public enum CardRarity { None = 0, Common = 1, Rare = 2, Epic = 3 }
+
+/// <summary>
+/// Every card of the game: neutral grid cards, team (field) cards, hand cards and neutral modifiers.
+/// What a card does is coded in the match engine; prices and costs live here so they are easy to tune.
+/// </summary>
 public class CardDefinition
 {
     public int Id { get; set; }
     public string Code { get; set; } = "";
     public string Name { get; set; } = "";
     public string Description { get; set; } = "";
+    public CardKind Kind { get; set; }
+    public CardRarity Rarity { get; set; }
+    /// <summary>Neutral cards: copies in the base grid of each half.</summary>
     public int CopiesInDeck { get; set; }
+    /// <summary>Tactic points the card costs in a tactic.</summary>
+    public int Cost { get; set; }
+    /// <summary>Store price (in-game money); 0 = not sold.</summary>
+    public long Price { get; set; }
 }
 
 public enum CareerStatus { Active = 0, Fired = 1 }
 
-/// <summary>Слот за запис (кариера).</summary>
+/// <summary>A save slot (career).</summary>
 public class Career
 {
     public int Id { get; set; }
@@ -67,13 +90,18 @@ public class Career
     public string ManagerName { get; set; } = "";
     public int TeamId { get; set; }
     public Team? Team { get; set; }
+    /// <summary>The league the manager's team plays in this season.</summary>
     public int LeagueId { get; set; }
     public int Reputation { get; set; } = 30;
+    public long Money { get; set; }
+    /// <summary>The last tactic used (JSON) — loaded automatically for the next match.</summary>
+    public string? LastTacticJson { get; set; }
     public CareerStatus Status { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public List<CareerSeason> Seasons { get; set; } = new();
     public List<CareerMessage> Messages { get; set; } = new();
+    public List<CareerCard> Cards { get; set; } = new();
 }
 
 public enum BoardExpectation { Survive = 0, MidTable = 1, Europe = 2, Title = 3 }
@@ -85,17 +113,27 @@ public class CareerSeason
     public Career? Career { get; set; }
     public int Year { get; set; }
     public int TeamId { get; set; }
+    public int LeagueId { get; set; }
     public BoardExpectation Expectation { get; set; }
-    /// <summary>Код на европейския турнир, в който участва отборът този сезон (или null).</summary>
+    /// <summary>European cup of the manager's team this season (or null).</summary>
     public string? EuropeanCode { get; set; }
     public int CurrentWeek { get; set; } = 1;
     public int TotalWeeks { get; set; }
     public bool Finished { get; set; }
-    /// <summary>JSON с обобщение на края на сезона (позиция, оценка, оферти).</summary>
     public string? SummaryJson { get; set; }
-    /// <summary>JSON: списък със седмици и какъв кръг/турнир се играе във всяка.</summary>
+    /// <summary>JSON: which competition/round is played in which week.</summary>
     public string ScheduleJson { get; set; } = "[]";
     public List<Fixture> Fixtures { get; set; } = new();
+    public List<SeasonTeam> Teams { get; set; } = new();
+}
+
+/// <summary>Which league a team plays in during one career season (changes with promotion/relegation).</summary>
+public class SeasonTeam
+{
+    public int Id { get; set; }
+    public int CareerSeasonId { get; set; }
+    public int TeamId { get; set; }
+    public int LeagueId { get; set; }
 }
 
 public class Fixture
@@ -141,9 +179,36 @@ public class CareerMessage
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
+/// <summary>A card in the manager's collection (stays with the manager when changing clubs).</summary>
+public class CareerCard
+{
+    public int Id { get; set; }
+    public int CareerId { get; set; }
+    public string Code { get; set; } = "";
+    public int Count { get; set; }
+}
+
+/// <summary>Club upgrades bought in the store (per career, per club).</summary>
+public class CareerClubUpgrade
+{
+    public int Id { get; set; }
+    public int CareerId { get; set; }
+    public int TeamId { get; set; }
+    public int Level { get; set; }
+}
+
+/// <summary>A saved tactic. CareerId null = friendly-match tactic.</summary>
+public class SavedTactic
+{
+    public int Id { get; set; }
+    public int? CareerId { get; set; }
+    public string Name { get; set; } = "";
+    public string Json { get; set; } = "{}";
+}
+
 public enum MatchStatus { InProgress = 0, Finished = 1 }
 
-/// <summary>Мач в ход (приятелски или от кариера). Пълното състояние се пази като JSON.</summary>
+/// <summary>A match being played (friendly or career). The full state is stored as JSON.</summary>
 public class Match
 {
     public int Id { get; set; }
