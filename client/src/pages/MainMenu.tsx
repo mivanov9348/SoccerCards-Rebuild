@@ -14,8 +14,8 @@ export default function MainMenu() {
           <span className="logo-card c2">⚡</span>
           <span className="logo-card c3">🛡</span>
         </div>
-        <h1>Soccer Cards</h1>
-        <p className="tagline">The football card game · Bulgarian First League and European cups</p>
+        <h1>Dugout Deck</h1>
+        <p className="tagline">The football card game · six countries, two divisions each, three European cups</p>
       </div>
 
       <nav className="menu">

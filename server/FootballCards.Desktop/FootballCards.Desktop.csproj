@@ -5,10 +5,10 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyName>SoccerCards</AssemblyName>
+    <AssemblyName>DugoutDeck</AssemblyName>
     <RootNamespace>FootballCards.Desktop</RootNamespace>
-    <Product>Soccer Cards</Product>
-    <Version>0.1.0</Version>
+    <Product>Dugout Deck</Product>
+    <Version>0.2.0</Version>
     <ApplicationIcon>app.ico</ApplicationIcon>
   </PropertyGroup>
 

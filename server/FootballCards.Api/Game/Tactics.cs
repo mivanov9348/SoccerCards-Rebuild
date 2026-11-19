@@ -176,7 +176,7 @@ public static class TacticRules
     /// <summary>A simple default tactic (used e.g. for friendly matches before the player saves their own).</summary>
     public static TacticSpec Default() => new()
     {
-        Field = [Cards.Striker, Cards.BigChanceCard, Cards.LongShot, Cards.Captain],
+        Field = [Cards.Striker, Cards.LongShot, Cards.LongShot, Cards.Captain], // 9 points: fits every club
         Hand = [Cards.Scout],
         Modifiers = []
     };

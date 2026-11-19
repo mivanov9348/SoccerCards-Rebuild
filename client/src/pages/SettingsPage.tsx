@@ -16,6 +16,10 @@ export default function SettingsPage() {
           </select>
           <small className="muted">How long the computer waits before flipping each card.</small>
         </label>
+        <label className="checkbox">
+          <input type="checkbox" checked={s.autoMiniGames} onChange={(e) => update({ autoMiniGames: e.target.checked })} />
+          Decide mini-games automatically (corners, free kicks, Big Chances, penalties)
+        </label>
         <label>
           Manager name
           <input value={s.managerName} onChange={(e) => update({ managerName: e.target.value })} />

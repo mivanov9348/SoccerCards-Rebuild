@@ -1,80 +1,181 @@
-# Soccer Cards — rules
+# Dugout Deck — rules
 
-Soccer Cards is a single-player football card game against the computer. Every match is played by flipping face-down cards. It is a game of luck; team ratings only matter for the board's targets in career mode.
+Dugout Deck is a single-player football card game against the computer. Matches are played by flipping face-down cards;
+before each match both teams build a tactic from their card collection. Luck leads, but reading the hints, a good tactic and
+well-timed hand cards win more often.
 
-All numbers below match the code in `server/FootballCards.Api/Game/Rules.cs` and the deck in `server/FootballCards.Api/Data/Seed/seed.json`.
+All numbers below are in `server/FootballCards.Api/Game/Rules.cs` and the card catalog in `server/FootballCards.Api/Data/Seed/seed.json`.
+They were tuned with 4,000 simulated matches (see the balance test): about **4.6 goals per match**, 0:0 in about 1% of matches,
+a strong team (85) beats a weak one (58) about 53% of the time and loses about 23%.
 
 ---
 
 ## 1. The grid
 
-- Each half is played on its own **5×5 grid of 25 face-down cards**: the same 24 match cards plus one special card —
-  **Half Time** in the first-half grid, **Full Time** in the second-half grid. So Full Time can never come before Half Time.
-- A random player (you or the computer) kicks off.
-- The player whose turn it is flips **one** face-down card. You choose which card to click; the computer picks one at random.
-- A flipped card **stays face up** (marked with the team that flipped it) until the half ends.
-- When Half Time is flipped, all cards go **face down again and are reshuffled** for the second half.
-- There is no clock — only the 1st and 2nd half. A half lasts between 1 and 25 flips (about 13 on average).
-- When the match ends, the second-half cards nobody flipped are shown faded.
+Each half has its own 5×5 grid of 25 face-down cards:
 
-## 2. The cards
+| Part | Count | Back |
+|---|---|---|
+| Neutral cards | 16 | grey |
+| Home team cards (from its tactic) | 4 | home club colours |
+| Away team cards | 4 | away club colours |
+| Special card | 1 | grey — **Half Time** in the 1st half, **Full Time** in the 2nd |
 
-| Card | Copies per half | What happens | Who flips next |
-|---|---|---|---|
-| Pass | 7 | You keep the ball | **same player** |
-| Corner | 2 | Corner kick | **same player** |
-| Free Kick | 1 | Free kick | **same player** |
-| Tackle | 5 | Ball lost | other player |
-| Offside | 1 | Offside | other player |
-| Save | 1 | The opposing keeper saves | other player |
-| Miss | 2 | Shot goes wide | other player |
-| Yellow Card | 1 | A player of the flipping team is booked | other player |
-| Red Card | 1 | A player of the flipping team is sent off | other player |
-| Goal! | 2 | The flipping team scores | other player (kick-off) |
-| Penalty | 1 | Penalty mini-game (see below) | other player |
-| Half Time | 1 (1st half only) | The first half ends, the grid is reshuffled | other player starts the 2nd half |
-| Full Time | 1 (2nd half only) | **The match ends** | — |
+Full Time can never come before Half Time. At half time every card goes face down again and is reshuffled; the team cards come
+back (a card burned in the first half returns in the second). There is no clock — a half lasts 1–25 flips (about 14).
 
-Yellow and red cards are recorded in the match statistics; they do not change the odds (yet).
+### Neutral base set (per half)
 
-## 3. Penalty mini-game
+| Card | Count | Type | Effect | Next to flip |
+|---|---|---|---|---|
+| Pass | 4 | keep | You keep the ball; counts towards the pass streak | same team |
+| Corner | 1 | keep | Corner mini-game | depends on outcome |
+| Free Kick | 1 | keep | Free-kick mini-game | depends on outcome |
+| Tackle | 3 | dangerous | Ball lost | other team |
+| Offside | 1 | dangerous | Ball lost | other team |
+| Save | 1 | dangerous | The opponent's keeper saves | other team |
+| Miss | 1 | dangerous | Wide | other team |
+| Yellow Card | 1 | dangerous | Booking (second yellow = red) | other team |
+| Red Card | 1 | dangerous | Sent off (see 5) | other team |
+| Goal! | 1 | goal | Goal for the team that flipped it | other team (kick-off) |
+| Penalty | 1 | goal | Penalty mini-game | other team |
 
-When a Penalty card is flipped, the flipping team takes a penalty:
+*Balance change vs. the design draft: 4 Pass / 1 Goal instead of 3 Pass / 2 Goal — with team cards in both halves the draft
+produced ~10 goals per match.*
 
-- The shooter picks **left, center or right**; the keeper picks where to dive. You make the pick for your side — as the shooter or as the keeper. The computer picks at random.
-- Different sides → goal in **88%** of cases (otherwise the shot goes wide).
-- Same side → the keeper saves in **75%** of cases (**70%** if both pick the center).
-- After the penalty the other player flips.
+### Hints
 
-## 4. Knockout matches
+Next to every row and under every column is the number of **dangerous neutral cards** (Tackle, Offside, Save, Miss, Yellow,
+Red) still face down there. They update after every flip. Goals, penalties, Half Time/Full Time and team cards are not counted —
+a coloured card of the opponent might be a goal for them… or a trap.
 
-Cup and European matches cannot end in a draw. If the score is level when Full Time is flipped, there is a **penalty shootout**:
+### Match conditions (shown before the match)
 
-- Home team shoots first, then the teams alternate; 5 kicks each, then sudden death.
-- Each kick is a penalty mini-game: you shoot for your team and dive for your keeper on every kick of the opponent.
-- The shootout ends as soon as one team cannot be caught.
+| Condition | Effect |
+|---|---|
+| Home | +1 tactic point for the home team |
+| Rain (20%) | 1 Pass → Miss |
+| Wind (20%) | 1 Pass → Corner |
+| Derby (same city) | 1 Tackle → Yellow Card |
+| Fine weather | no change |
 
-## 5. Career
+## 2. Turn order
 
-- Manage a club in the Bulgarian **First League** (16 teams, home and away — 30 rounds).
-- A season also includes the **Bulgarian Cup** (16 teams, knockout from the Round of 16) and, if you qualified, a **European cup** (16 teams, knockout).
-- A season has 34–38 weeks; each week is either a league round or a cup/European round.
-- **Board target**, based on the club's rating rank in the league:
-  - top 2 clubs: Win the title
-  - 3rd–5th: Finish in the top 4
-  - 6th–10th: Finish in the top half (8th or better)
-  - the rest: Avoid the drop (13th or better)
-- **European places**: 1st → Champions Cup; 2nd and the cup winners → Europa Cup; 3rd → Conference Cup. In the first season the places go to the highest-rated clubs.
-- **End-of-season review**: score = target position − actual position, +2 for winning the cup, +1 per European knockout win.
-  - ≥ 3: the board is delighted; ≥ 0: satisfied; −1 to −3: one more chance;
-  - ≤ −4, or last place: **sacked**.
-- **Job offers**: a good season (or a high reputation) brings offers from bigger clubs; a sacked manager gets offers from smaller clubs. Accept one, or stay where you are.
-- **Reputation** (0–100) rises with success.
-- All matches you do not play yourself are played in the background by the computer with exactly the same cards and rules (two grids, Half Time, Full Time, penalties), so the league table is fair.
+- A coin toss decides who flips first; the other team starts the second half.
+- The team on turn flips one face-down card: grey, its own coloured card or an opponent's coloured card.
+- You keep the turn while you get "keep" results. A dangerous card, a goal or a penalty passes the turn.
+- Before a flip you may play **one** hand card.
 
-## 6. Adding teams and leagues
+## 3. Goals and mini-games
 
-- In the game: **Team & league editor**.
-- Or in `server/FootballCards.Api/Data/Seed/seed.json` — on start-up the server adds missing teams and leagues (by name) without overwriting changes made in the editor.
-- A league marked as playable with at least 4 teams (an even number is best) can be chosen for a career. Teams without a league are used as European opponents.
-- The cards per half are defined in `seed.json` (the `cards` section) and synced to the database on every start-up. The engine always adds exactly one Half Time card to the first-half grid and one Full Time card to the second-half grid.
+| Source | How it works |
+|---|---|
+| Goal! | Direct goal |
+| Penalty | Shooter and keeper each pick left/centre/right, then stop a **timing bar**. Different sides → 88% goal; same side → keeper saves 75% (70% centre–centre). Green timing (±0.12): shooter +6% / keeper +10% save; red timing (beyond ±0.38): +15% risk of missing for the shooter, −15% save chance for the keeper. |
+| Corner | Attacker: near post / far post / short corner. Defender: guard near / guard far / press the short corner. Short corner keeps the ball (lost if the defender pressed it). Same post → cleared, ball lost. Different → 30% goal, otherwise save/miss. |
+| Free kick | Attacker: shoot / cross / short pass. Defender: wall / mark the box / press. Shot: 25% goal (10% into the wall). Cross: cleared if the box is marked, otherwise 30% goal. Short pass keeps the ball (50% lost if pressed). |
+| Big Chance | After **3 passes in a row** by one team (or the Big Chance team card): shot left/centre/right vs keeper — 35% goal if the keeper guesses wrong, 15% if right. |
+| Team cards | Striker, Big Chance, Long Shot (see 4) |
+
+The human always chooses — when attacking and when defending. "Decide automatically" (or the Settings option) picks for you; an
+automatic timing lands around the middle but is mostly random. The computer chooses at random; strong computers time penalties better.
+
+**Knockouts:** a draw at Full Time goes to a shootout — 5 kicks each, then sudden death, each kick being the penalty mini-game.
+
+## 4. Team cards and hand cards
+
+### Field cards (in the grid, with your colours)
+
+If you flip your own card you get its effect. If the opponent flips it, it **burns**: the effect is lost, and for them it works
+like a Pass but resets their pass streak — except the Offside Trap.
+
+| Card | Rarity | Points | If the owner flips it | If the opponent flips it |
+|---|---|---|---|---|
+| Striker | common | 4 | Clean through: 35% goal | burned |
+| Big Chance | common | 3 | Big Chance mini-game | burned |
+| Long Shot | common | 1 | 12% goal; if it misses you keep the ball | burned |
+| Playmaker | rare | 2 | A free Scout, keep the ball | burned |
+| Captain | rare | 2 | Your next Tackle is ignored | burned |
+| Wall | rare | 2 | The opponent's next goal this half becomes a Save | burned |
+| Offside Trap | epic | 3 | Works like a Pass | caught offside — they lose the ball |
+| Counter Attack | epic | 3 | Flip 2 more cards; dangerous ones don't count | burned |
+| Squad Player | — | 0 | Works like a Pass (free filler) | burned |
+
+*Balance changes vs. the draft: Striker is a 35% chance (not a sure goal) and costs 4; Big Chance costs 3; Long Shot 12%.*
+
+### Hand cards (played before a flip, one per flip)
+
+| Card | Points | Effect |
+|---|---|---|
+| Scout | 1 | Look under one face-down card (only you see it) |
+| Swap | 1 | Swap the places of two face-down cards |
+| Calm | 2 | If your next card is a Tackle, you keep the ball |
+| Press | 2 | The next time you lose the ball, flip one more card straight away |
+| Burn | 2 | Burn one of the opponent's face-down coloured cards without flipping it |
+
+## 5. Discipline
+
+- Yellow card: recorded. A **second yellow** for the same team in a match is a red.
+- Red card: the team gives up one hand card (the human chooses) and its pass streak no longer gives Big Chances.
+
+## 6. Tactics
+
+- A tactic = **4 field cards** + **1–3 hand cards** (by rating) + up to **2 neutral modifiers**.
+- Budget: **10 tactic points** + 0–3 by rating (64+ → 1, 72+ → 2, 80+ → 3) + 1 for the home team.
+- Hand cards: 1 (rating < 66), 2 (66+), 3 (78+).
+- Tactics can be saved; in a career the last tactic is used automatically ("Play (last tactic)").
+- The computer builds its tactic from its rating and the opponent (attacking / balanced / defensive). Rare cards from rating 66,
+  epic cards from 76. Background matches do the same.
+
+### Neutral modifiers — the secret choice
+
+Both teams secretly pick up to 2 modifiers; they are revealed together and **added up** (e.g. +2 Goal and −1 Goal = +1 Goal).
+Removals are applied first, then additions in a fixed order (Goal, Penalty, Corner, Tackle), so the result does not depend on who
+chose what.
+
+| Modifier | Points | Effect |
+|---|---|---|
+| +1 / +2 Goal | 2 / 4 | Pass cards become Goals |
+| −1 / −2 Goal | 2 / 4 | Goals become Pass cards |
+| +1 / +2 Corner | 1 / 2 | Pass cards become Corners |
+| −1 / −2 Corner | 1 / 2 | Corners become Pass cards |
+| +1 Tackle | 1 | A Pass becomes a Tackle |
+| +1 Penalty | 3 | A Pass becomes a Penalty |
+
+Limits: Pass ≥ 1, Goal 0–5, Corner 0–4, Tackle 0–6, Penalty 0–3, Miss 0–4, Yellow 0–3. Modifiers apply to both halves.
+
+## 7. Ratings and the computer
+
+The rating **never changes the odds of a card**. It gives tactic points, hand cards and the computer's skill:
+
+| Level | Rating | How it plays |
+|---|---|---|
+| Weak | < 66 | Flips at random half of the time; plays hand cards at random moments |
+| Average | 66–77 | Prefers safe cards by the hints but makes mistakes (20% random) |
+| Strong | 78+ | Almost always the best card; uses its own cards, burns the opponent's, plays hand cards well |
+
+## 8. Career
+
+- **Leagues:** England, Spain, Germany, Italy, France and Bulgaria, each with two divisions (real names during development).
+- **Calendar:** one weekly calendar for everything (the longest league has 46 rounds; leagues with fewer rounds have rest weeks)
+  plus 5 cup weeks and 5 European weeks — 56 weeks. After your match every other match of the week is played in the background
+  with the same rules. "Continue" skips weeks in which your team has no match.
+- **National cups:** 32 teams (top division + the best of the second), knockout from the Round of 32.
+- **European cups:** Champions Cup, Europa Cup, Conference Cup — 32 teams each, knockout from the Round of 32 (group stage later).
+  Places: top-five countries 1st–4th / 5th + cup winner / 6th; Bulgaria 1st / 2nd + cup winner / 3rd. If the cup winner has
+  already qualified, the place goes to the next team in the table. The remaining places are filled with the strongest clubs that
+  have no league. In the first season the places go by rating.
+- **Promotion/relegation:** Premier League, LaLiga and Serie A 3 down / 3 up; Bundesliga, Ligue 1 and Bulgaria 2 down / 2 up.
+- **Board target** by rating rank in the league: title (top 2) / top 4 (3rd–5th) / top half (6th–10th) / avoid the drop.
+  Review: target − actual position, +2 for the cup, +1 per European knockout win. ≤ −4 or last place = sacked.
+- **Reputation** 0–100. **Offers:** a good season brings offers from stronger clubs in any league; a sacked manager gets offers
+  from weaker clubs. The card collection stays with the manager.
+
+## 9. Money, rewards and the Store
+
+- **Income:** per match (win / draw / loss), cup and European rounds, season TV money (by league and rating) and a prize for the
+  final position. Top-five leagues pay ×2, second divisions ×0.4.
+- **Card rewards:** a win gives a card 30% of the time (European knockout wins always); meeting the board target gives a pack;
+  every trophy and a league title give a pack with an epic card.
+- **Store** (in-game money only, no pay-to-win): packs (3 cards, at least one rare), single cards, selling duplicates (⅓ of the
+  price), club upgrades (+2 rating per level, up to 10 levels — more points, more hand cards, smarter play, more income).

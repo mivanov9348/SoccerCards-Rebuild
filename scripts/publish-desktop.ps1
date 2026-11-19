@@ -1,6 +1,6 @@
 <#
-  Builds the desktop version of Soccer Cards for Windows.
-  Result: dist\SoccerCards-win-x64\SoccerCards.exe (folder) and dist\SoccerCards-win-x64.zip
+  Builds the desktop version of Dugout Deck for Windows.
+  Result: dist\DugoutDeck-win-x64\DugoutDeck.exe (folder) and dist\DugoutDeck-win-x64.zip
   The folder is what you upload to Steam / itch.io. It contains the .NET runtime, so players need nothing else
   (the WebView2 runtime is already part of Windows 10/11).
 
@@ -8,8 +8,8 @@
 #>
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-$out = Join-Path $root 'dist\SoccerCards-win-x64'
-$zip = Join-Path $root 'dist\SoccerCards-win-x64.zip'
+$out = Join-Path $root 'dist\DugoutDeck-win-x64'
+$zip = Join-Path $root 'dist\DugoutDeck-win-x64.zip'
 
 Write-Host '1/3 Building the React client...' -ForegroundColor Cyan
 Push-Location (Join-Path $root 'client')
@@ -29,4 +29,4 @@ if (Test-Path $zip) { Remove-Item $zip -Force }
 Compress-Archive -Path (Join-Path $out '*') -DestinationPath $zip
 
 $size = [Math]::Round((Get-Item $zip).Length / 1MB, 1)
-Write-Host "Done: $out\SoccerCards.exe  (zip: $size MB)" -ForegroundColor Green
+Write-Host "Done: $out\DugoutDeck.exe  (zip: $size MB)" -ForegroundColor Green

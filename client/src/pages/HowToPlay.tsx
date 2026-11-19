@@ -1,70 +1,97 @@
-import { api } from '../api'
+import { api, type CardInfo } from '../api'
 import { Screen, useLoad } from '../components/common'
 import { CardFace } from '../components/GameCard'
 
+function Gallery({ cards, kind }: { cards: CardInfo[]; kind: string }) {
+  return (
+    <div className="card-gallery">
+      {cards
+        .filter((c) => c.kind === kind)
+        .map((c) => (
+          <div key={c.code} className="gallery-item">
+            <CardFace code={c.code} name={c.name} description={c.description} size="small" />
+            <span className="muted small">
+              {kind === 'Neutral' ? (c.copiesInDeck > 0 ? `× ${c.copiesInDeck} per half` : 'special') : `${c.cost} pt · ${c.rarity}`}
+            </span>
+          </div>
+        ))}
+    </div>
+  )
+}
+
 export default function HowToPlay() {
   const { data: cards } = useLoad(() => api.cards(), [])
-  const total = (cards ?? []).reduce((sum, c) => sum + c.copiesInDeck, 0)
   return (
     <Screen title="How to play">
       <div className="panel prose">
         <h2>The match</h2>
         <p>
-          You play against the computer. <b>25 cards lie face down in a 5×5 grid</b>. The player whose turn it is flips one card —
-          you click the card you want, the computer picks one at random. A flipped card <b>stays face up</b> until the half ends.
-          The card decides what happens and <b>who flips next</b>. At half time all cards go face down again and are reshuffled
-          for the second half.
+          You play against the computer. Each half is a <b>5×5 grid of face-down cards</b>: 16 grey (neutral) cards, 4 cards with
+          your club colours, 4 with the opponent&apos;s colours and one special card — <b>Half Time</b> in the first half,{' '}
+          <b>Full Time</b> in the second. Full Time can never come before Half Time. At half time all cards go face down again and are
+          reshuffled. There is no clock.
         </p>
         <ul>
           <li>
-            <b>Pass, Corner, Free Kick</b> — you keep the ball: flip again.
+            The player on turn flips one card; it stays face up until the half ends. You keep flipping while you get{' '}
+            <b>Pass / Corner / Free Kick</b> results; a dangerous card (Tackle, Offside, Save, Miss, cards), a goal or a penalty gives the
+            turn to the opponent.
           </li>
           <li>
-            <b>Tackle, Offside, Save, Miss, Yellow Card, Red Card</b> — the other player flips next.
+            <b>Hints:</b> the numbers next to each row and under each column show how many dangerous grey cards are still face down
+            there. A 0 means every grey card in that row/column is safe. Goals, penalties, Half Time/Full Time and team cards are not
+            counted.
           </li>
           <li>
-            <b>Goal!</b> — you score, then the other player kicks off.
+            <b>Team cards:</b> flip your own coloured card and you get its effect. Flip the opponent&apos;s and it <b>burns</b> — it
+            works like a Pass for you (but resets your pass streak) and they lose it. Beware the Offside Trap!
           </li>
           <li>
-            <b>Penalty</b> — a mini-game: the shooter picks left, center or right and the keeper picks where to dive. Same side and
-            the keeper usually saves; different sides and it is almost always a goal. Then the other player flips.
+            <b>Three passes in a row</b> = a Big Chance shot. <b>Corner / Free kick</b>: you pick an option, the defender picks what to
+            guard. <b>Penalties</b>: pick a side, then stop the timing bar in the green zone. You also choose the defence when the computer
+            attacks (or switch on automatic mini-games in Settings).
           </li>
           <li>
-            <b>Half Time</b> — only in the first-half grid. The first half ends, the cards are reshuffled face down and the other
-            player starts the second half.
+            <b>Hand cards</b> are played before a flip, one per flip. Second yellow card = red; a red card costs you a hand card and your
+            passes no longer give Big Chances.
           </li>
-          <li>
-            <b>Full Time</b> — only in the second-half grid, so it never comes before Half Time. It can be the first card of the
-            second half or the very last one.
-          </li>
+          <li>Knockout matches that end level go to a penalty shootout (5 each, then sudden death).</li>
         </ul>
+        <h2>Before the match: your tactic</h2>
         <p>
-          In cup and European knockout matches a draw at full time goes to a <b>penalty shootout</b> (5 kicks each, then sudden death)
-          — you take every kick for your team and pick the dive for your keeper on every kick of theirs.
-        </p>
-        <p>
-          It is a game of pure luck — team ratings only matter for the board's expectations in career mode. All the other matches
-          in your career are played in the background with exactly the same cards and rules, so the table is fair.
+          You have <b>tactic points</b> (10 + 0–3 by club rating + 1 at home). Spend them on <b>4 field cards</b> (Squad Player is
+          free), <b>1–3 hand cards</b> (by rating) and up to <b>2 secret neutral modifiers</b> (e.g. +1 Goal turns a Pass into a Goal).
+          Both teams&apos; modifiers are revealed together and added up. Conditions (home, rain, wind, derby) change the grey cards too.
+          The rating never changes the odds of a card — it gives more points, more hand cards and a smarter computer.
         </p>
         <h2>Career</h2>
         <p>
-          Take over a club in the Bulgarian First League. The board sets a target based on how big the club is. A season has 30
-          league rounds, the Bulgarian Cup and — if you qualified — a European cup. At the end of the season the board judges you:
-          do well and bigger clubs will offer you a job; do badly and you may be sacked. Champions play in the Champions Cup, the
-          runners-up and the cup winners in the Europa Cup, third place in the Conference Cup.
+          Manage a club in England, Spain, Germany, Italy, France or Bulgaria — each with two divisions, promotion and relegation, a
+          national cup and three European cups of 32 teams. Every other match is played in the background with exactly the same
+          rules. Win money and cards, buy packs, single cards and club upgrades in the Store, meet the board&apos;s target and get job
+          offers from bigger clubs. Your card collection stays with you when you move.
         </p>
       </div>
-      <div className="panel">
-        <h2>The cards (per half: {total - 2} cards + Half Time or Full Time)</h2>
-        <div className="card-gallery">
-          {cards?.map((c) => (
-            <div key={c.code} className="gallery-item">
-              <CardFace code={c.code} name={c.name} description={c.description} size="small" />
-              <span className="muted small">× {c.copiesInDeck}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      {cards && (
+        <>
+          <div className="panel">
+            <h2>Grey (neutral) cards</h2>
+            <Gallery cards={cards} kind="Neutral" />
+          </div>
+          <div className="panel">
+            <h2>Field cards (your colours in the grid)</h2>
+            <Gallery cards={cards} kind="Field" />
+          </div>
+          <div className="panel">
+            <h2>Hand cards</h2>
+            <Gallery cards={cards} kind="Hand" />
+          </div>
+          <div className="panel">
+            <h2>Neutral modifiers (secret)</h2>
+            <Gallery cards={cards} kind="Modifier" />
+          </div>
+        </>
+      )}
     </Screen>
   )
 }

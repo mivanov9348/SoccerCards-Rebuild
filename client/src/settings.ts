@@ -4,10 +4,12 @@ export interface Settings {
   /** Delay (ms) before each computer card flip, so you can follow the computer's turn. */
   aiDelay: number
   managerName: string
+  /** Mini-games (corners, free kicks, Big Chances, penalties) are decided automatically. */
+  autoMiniGames: boolean
 }
 
-const KEY = 'soccer-cards-settings'
-const defaults: Settings = { aiDelay: 900, managerName: '' }
+const KEY = 'dugout-deck-settings'
+const defaults: Settings = { aiDelay: 900, managerName: '', autoMiniGames: false }
 
 export function loadSettings(): Settings {
   try {

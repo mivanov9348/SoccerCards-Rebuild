@@ -97,8 +97,8 @@ public class MatchService(AppDbContext db)
             competition = s.CompetitionName, stadium = s.Stadium, isKnockout = s.IsKnockout,
             phase = s.Phase.ToString(), half = s.Half, turn = s.Turn.ToString(),
             humanSide = s.HumanSide?.ToString(), role,
-            home = TeamView(s.Home, s, human, finished),
-            away = TeamView(s.Away, s, human, finished),
+            home = TeamView(s.Home, s, human, finished, catalog),
+            away = TeamView(s.Away, s, human, finished, catalog),
             conditions = s.Conditions.Select(c => new { code = c, label = Conditions.Labels.GetValueOrDefault(c, c) }),
             composition = s.Composition.OrderByDescending(kv => kv.Value)
                 .Select(kv => new { card = kv.Key, name = Cards.Name(kv.Key), count = kv.Value }),
@@ -136,7 +136,7 @@ public class MatchService(AppDbContext db)
         };
     }
 
-    private static object TeamView(TeamMatchState t, MatchState s, Side human, bool finished)
+    private static object TeamView(TeamMatchState t, MatchState s, Side human, bool finished, CardCatalog catalog)
     {
         var isMe = s.Team(human) == t;
         var started = s.Phase != MatchPhase.Setup;
@@ -149,7 +149,7 @@ public class MatchService(AppDbContext db)
             // the opponent's field cards stay secret; modifiers are revealed when the match starts
             fieldCards = started && (isMe || finished) ? t.Tactic.Field.Select(Cards.Name) : null,
             fieldCount = started ? t.Tactic.Field.Count : 0,
-            modifiers = started ? t.Tactic.Modifiers.Select(m => m.Replace("MOD_", "")) : null,
+            modifiers = started ? t.Tactic.Modifiers.Select(m => catalog.Get(m)?.Name ?? m) : null,
             stats = t.Stats
         };
     }

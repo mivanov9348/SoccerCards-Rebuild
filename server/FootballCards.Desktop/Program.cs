@@ -6,7 +6,7 @@ using Photino.NET;
 namespace FootballCards.Desktop;
 
 /// <summary>
-/// Desktop version of Soccer Cards: runs the game server inside the app on a private local port
+/// Desktop version of Dugout Deck: runs the game server inside the app on a private local port
 /// and shows the game in a native window (WebView2 on Windows). No browser, no console.
 /// </summary>
 public static class Program
@@ -14,8 +14,8 @@ public static class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        // Saves live in %LOCALAPPDATA%\SoccerCards (one database per Windows user).
-        var dataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SoccerCards");
+        // Saves live in %LOCALAPPDATA%\DugoutDeck (one database per Windows user).
+        var dataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DugoutDeck");
         Directory.CreateDirectory(dataDir);
 
         try
@@ -25,14 +25,14 @@ public static class Program
             {
                 ContentRoot = AppContext.BaseDirectory,
                 ClientPath = Path.Combine(AppContext.BaseDirectory, "wwwroot"),
-                ConnectionString = $"Data Source={Path.Combine(dataDir, "soccer-cards.db")}",
+                ConnectionString = $"Data Source={Path.Combine(dataDir, "dugout-deck.db")}",
                 Urls = url
             });
             GameServer.InitializeDatabaseAsync(app).GetAwaiter().GetResult();
             app.StartAsync().GetAwaiter().GetResult();
 
             var window = new PhotinoWindow()
-                .SetTitle("Soccer Cards")
+                .SetTitle("Dugout Deck")
                 .SetUseOsDefaultSize(false)
                 .SetSize(1366, 860)
                 .Center()

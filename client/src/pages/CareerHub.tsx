@@ -1,35 +1,37 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { api, seasonLabel, type CareerView, type Fixture } from '../api'
+import { api, money, seasonLabel, type CareerView, type Fixture } from '../api'
 import { Badge, ErrorBox, FixtureRow, Screen, StandingsTable, useLoad } from '../components/common'
+import { iconFor } from '../components/GameCard'
 
-type Tab = 'overview' | 'table' | 'fixtures' | 'cup' | 'europe' | 'news'
+type Tab = 'overview' | 'tables' | 'fixtures' | 'cups' | 'collection' | 'store' | 'news'
 
 const ordinal = (n: number) => {
   const s = n % 100 >= 11 && n % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'
   return `${n}${s}`
 }
 
-function NextMatch({ c, busy, onPlay, onSimulate }: { c: CareerView; busy: boolean; onPlay: () => void; onSimulate: () => void }) {
+function NextMatch({ c, busy, onPlay, onSimulate, onContinue }: {
+  c: CareerView
+  busy: boolean
+  onPlay: (useLast: boolean) => void
+  onSimulate: () => void
+  onContinue: () => void
+}) {
   const f = c.thisWeekFixture
   if (c.season.finished) return null
-
   if (!f) {
     return (
       <div className="panel next-match">
         <h2>Week {c.season.currentWeek}</h2>
-        <p>
-          This week's games are in the <b>{c.season.weekCompetition ?? 'another competition'}</b>, but your team is not playing.
-        </p>
-        <button className="btn btn-primary" disabled={busy} onClick={onSimulate}>
-          Continue to next week ▶
+        <p>Your team has no match this week{c.nextFixture ? ` — next: ${c.nextFixture.competition}, week ${c.nextFixture.week}` : ''}.</p>
+        <button className="btn btn-primary" disabled={busy} onClick={onContinue}>
+          Continue to your next match ▶
         </button>
       </div>
     )
   }
-
   const home = f.home.id === c.team.id
-  const opp = home ? f.away : f.home
   return (
     <div className="panel next-match">
       <h2>
@@ -47,15 +49,26 @@ function NextMatch({ c, busy, onPlay, onSimulate }: { c: CareerView; busy: boole
         </div>
       </div>
       <p className="muted center">
-        {home ? 'Home' : 'Away'} · opponent: {opp.name}
+        {home ? 'Home (+1 tactic point)' : 'Away'}
         {f.isKnockout && ' · knockout (penalties if level)'}
       </p>
-      <div className="row-buttons">
-        <button className="btn btn-primary" disabled={busy} onClick={onPlay}>
-          {c.activeMatchId ? 'Resume match ▶' : 'Play match ▶'}
-        </button>
-        <button className="btn" disabled={busy} onClick={onSimulate}>
-          {c.activeMatchId ? 'Simulate the rest' : 'Simulate'}
+      <div className="row-buttons center">
+        {c.activeMatchId ? (
+          <button className="btn btn-primary" onClick={() => onPlay(false)}>
+            Resume match ▶
+          </button>
+        ) : (
+          <>
+            <button className="btn btn-primary" disabled={busy} onClick={() => onPlay(true)} title="Kick off straight away with your last tactic">
+              Play (last tactic) ▶
+            </button>
+            <button className="btn" disabled={busy} onClick={() => onPlay(false)}>
+              Change tactic
+            </button>
+          </>
+        )}
+        <button className="btn btn-ghost" disabled={busy} onClick={onSimulate}>
+          Simulate
         </button>
       </div>
     </div>
@@ -80,7 +93,7 @@ function SeasonEnd({ c, busy, onNext }: { c: CareerView; busy: boolean; onNext: 
           <b>{s.champion}</b>
         </div>
         <div>
-          <span className="muted">Bulgarian Cup</span>
+          <span className="muted">{c.cupName ?? 'Cup'}</span>
           <b>{s.cupWinner ?? '—'}</b>
         </div>
         {s.europeResult && (
@@ -94,6 +107,10 @@ function SeasonEnd({ c, busy, onNext }: { c: CareerView; busy: boolean; onNext: 
           <b>{s.expectation}</b>
         </div>
         <div>
+          <span className="muted">Season income</span>
+          <b>{money(s.moneyEarned)}</b>
+        </div>
+        <div>
           <span className="muted">Reputation</span>
           <b>
             {c.reputation} ({s.reputationChange >= 0 ? '+' : ''}
@@ -102,14 +119,21 @@ function SeasonEnd({ c, busy, onNext }: { c: CareerView; busy: boolean; onNext: 
         </div>
       </div>
       <p className="verdict">{s.verdict}</p>
-
+      {s.cardsWon.length > 0 && <p>🎁 Reward cards: {s.cardsWon.join(', ')}</p>}
+      {s.promoted.length > 0 && (
+        <p className="muted small">
+          ⬆ Promoted: {s.promoted.join(', ')} · ⬇ Relegated: {s.relegated.join(', ')}
+        </p>
+      )}
       {s.offers.length > 0 && (
         <>
           <h3>Job offers</h3>
           <div className="offers">
             {s.offers.map((o) => (
               <div key={o.teamId} className="offer">
-                <span>{o.name}</span>
+                <span>
+                  {o.name} <span className="muted">({o.league}, rating {o.rating})</span>
+                </span>
                 <button className="btn btn-primary" disabled={busy} onClick={() => onNext(o.teamId)}>
                   Accept
                 </button>
@@ -149,6 +173,131 @@ function KnockoutView({ fixtures, teamId, empty }: { fixtures: Fixture[]; teamId
   )
 }
 
+function TablesTab({ careerId, c }: { careerId: number; c: CareerView }) {
+  const { data: leagues } = useLoad(() => api.careerLeagues(careerId), [careerId])
+  const [leagueId, setLeagueId] = useState(c.league.id)
+  const { data: rows } = useLoad(() => api.careerStandings(careerId, leagueId), [careerId, leagueId, c.season.currentWeek])
+  return (
+    <div className="panel">
+      <label className="inline">
+        League
+        <select value={leagueId} onChange={(e) => setLeagueId(Number(e.target.value))}>
+          {leagues?.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.country} — {l.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      {rows && <StandingsTable rows={rows} highlight={c.team.id} />}
+    </div>
+  )
+}
+
+function CollectionTab({ careerId, reload }: { careerId: number; reload: () => void }) {
+  const { data: cards, reload: reloadCards } = useLoad(() => api.collection(careerId), [careerId])
+  const [error, setError] = useState<string | null>(null)
+  const sell = async (code: string) => {
+    try {
+      await api.sellCard(careerId, code)
+      await reloadCards()
+      reload()
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+  return (
+    <div className="panel">
+      <p className="muted">Your collection stays with you when you change clubs. Duplicates can be sold.</p>
+      <ErrorBox error={error} />
+      <div className="collection">
+        {cards?.map((card) => (
+          <div key={card.code} className={`coll-card rarity-${card.rarity.toLowerCase()} ${card.owned === 0 ? 'missing' : ''}`}>
+            <span className="tb-icon">{iconFor(card.code)}</span>
+            <b>{card.name}</b>
+            <span className="muted small">
+              {card.kind === 'Field' ? 'Field card' : 'Hand card'} · {card.rarity} · {card.cost} pt
+            </span>
+            <span className="small">{card.description}</span>
+            <span className="coll-count">× {card.owned}</span>
+            {card.owned >= 2 && (
+              <button className="btn btn-small" onClick={() => sell(card.code)}>
+                Sell 1 for {money(card.sellPrice)}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function StoreTab({ careerId, c, reload }: { careerId: number; c: CareerView; reload: () => void }) {
+  const { data: store, reload: reloadStore } = useLoad(() => api.store(careerId), [careerId])
+  const { data: cards, reload: reloadCards } = useLoad(() => api.collection(careerId), [careerId])
+  const [error, setError] = useState<string | null>(null)
+  const [opened, setOpened] = useState<string[] | null>(null)
+  const act = async (fn: () => Promise<unknown>) => {
+    setError(null)
+    try {
+      await fn()
+      await Promise.all([reloadStore(), reloadCards()])
+      reload()
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+  if (!store) return <div className="panel muted">Loading…</div>
+  return (
+    <div>
+      <ErrorBox error={error} />
+      <div className="two-col">
+        <div className="panel">
+          <h2>Card pack — {money(store.packPrice)}</h2>
+          <p className="muted">3 random cards, at least one rare.</p>
+          <button className="btn btn-primary" disabled={store.money < store.packPrice} onClick={() => act(async () => setOpened((await api.buyPack(careerId)).cards))}>
+            Buy a pack
+          </button>
+          {opened && <p className="pack-result">🎁 You got: {opened.join(', ')}</p>}
+        </div>
+        <div className="panel">
+          <h2>Club upgrade — level {store.upgradeLevel}/10</h2>
+          <p className="muted">
+            +2 rating for {c.team.name} (now {c.team.rating}): more tactic points, more hand cards, a smarter computer when you simulate,
+            and more income.
+          </p>
+          {store.upgradeCost != null ? (
+            <button className="btn btn-primary" disabled={store.money < store.upgradeCost} onClick={() => act(() => api.upgradeClub(careerId))}>
+              Upgrade for {money(store.upgradeCost)}
+            </button>
+          ) : (
+            <p>Fully upgraded.</p>
+          )}
+        </div>
+      </div>
+      <div className="panel">
+        <h2>Single cards</h2>
+        <p className="muted">More expensive, but you pick exactly what you want. Only in-game money — no real money.</p>
+        <div className="collection">
+          {cards?.map((card) => (
+            <div key={card.code} className={`coll-card rarity-${card.rarity.toLowerCase()}`}>
+              <span className="tb-icon">{iconFor(card.code)}</span>
+              <b>{card.name}</b>
+              <span className="muted small">
+                {card.rarity} · owned {card.owned}
+              </span>
+              <span className="small">{card.description}</span>
+              <button className="btn btn-small" disabled={store.money < card.price} onClick={() => act(() => api.buyCard(careerId, card.code))}>
+                Buy {money(card.price)}
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function CareerHub() {
   const { id } = useParams()
   const careerId = Number(id)
@@ -172,10 +321,10 @@ export default function CareerHub() {
     }
   }
 
-  const play = async () => {
+  const play = async (useLast: boolean) => {
     setBusy(true)
     try {
-      const { matchId } = await api.playCareer(careerId)
+      const { matchId } = await api.playCareer(careerId, useLast)
       navigate(`/match/${matchId}`)
     } catch (e) {
       setError((e as Error).message)
@@ -194,9 +343,10 @@ export default function CareerHub() {
     )
   if (!c) return <div className="screen loading">Loading…</div>
 
-  const league = all.filter((f) => f.competitionCode === 'BG1')
-  const cup = all.filter((f) => f.competitionCode === 'BGCUP')
-  const europe = all.filter((f) => ['UCL', 'UEL', 'UECL'].includes(f.competitionCode))
+  const league = all.filter((f) => f.competitionType === 'League')
+  const cup = all.filter((f) => f.competitionType === 'Cup')
+  const europe = all.filter((f) => f.competitionType === 'European')
+  const euroCodes = [...new Set(europe.map((f) => f.competitionCode))]
 
   return (
     <Screen title={c.saveName} actions={<span className="muted small">Auto-saved · {c.managerName}</span>}>
@@ -205,7 +355,11 @@ export default function CareerHub() {
         <div className="career-title">
           <h2>{c.team.name}</h2>
           <span className="muted">
-            Manager: {c.managerName} · {c.team.city}, {c.team.stadium}
+            {c.league.name} ({c.league.country}) · Manager: {c.managerName} · {c.team.stadium}
+          </span>
+          <span className="muted small">
+            Rating {c.team.rating}
+            {c.team.upgradeLevel > 0 && ` (upgrade level ${c.team.upgradeLevel})`} · {c.team.tacticPoints} tactic points · {c.team.handSize} hand card(s)
           </span>
           {c.status === 'Fired' && <span className="error-text">Sacked</span>}
         </div>
@@ -225,6 +379,10 @@ export default function CareerHub() {
             <b>{c.position ?? '—'}</b>
           </div>
           <div>
+            <span className="muted">Money</span>
+            <b>{money(c.money)}</b>
+          </div>
+          <div>
             <span className="muted">Reputation</span>
             <b>{c.reputation}</b>
           </div>
@@ -235,10 +393,11 @@ export default function CareerHub() {
         {(
           [
             ['overview', 'Overview'],
-            ['table', 'Table'],
+            ['tables', 'Tables'],
             ['fixtures', 'Fixtures'],
-            ['cup', 'Bulgarian Cup'],
-            ['europe', c.season.european ?? 'Europe'],
+            ['cups', `${c.cupName ?? 'Cup'} & Europe`],
+            ['collection', `Collection (${c.collectionCount})`],
+            ['store', 'Store'],
             ['news', 'News'],
           ] as [Tab, string][]
         ).map(([k, label]) => (
@@ -253,7 +412,13 @@ export default function CareerHub() {
         <div className="two-col">
           <div>
             <SeasonEnd c={c} busy={busy} onNext={(teamId) => run(() => api.nextSeason(careerId, teamId))} />
-            <NextMatch c={c} busy={busy} onPlay={play} onSimulate={() => run(() => api.simulateCareer(careerId))} />
+            <NextMatch
+              c={c}
+              busy={busy}
+              onPlay={play}
+              onSimulate={() => run(() => api.simulateCareer(careerId))}
+              onContinue={() => run(() => api.continueCareer(careerId))}
+            />
             <div className="panel">
               <h2>Season targets</h2>
               <p>
@@ -280,7 +445,7 @@ export default function CareerHub() {
           </div>
           <div>
             <div className="panel">
-              <h2>First League</h2>
+              <h2>{c.league.name}</h2>
               <StandingsTable rows={c.table} highlight={c.team.id} />
             </div>
             <div className="panel">
@@ -296,15 +461,7 @@ export default function CareerHub() {
         </div>
       )}
 
-      {tab === 'table' && (
-        <div className="panel">
-          <StandingsTable rows={c.table} highlight={c.team.id} />
-          <p className="muted small legend">
-            <span className="lg champion" /> Champions Cup <span className="lg europe" /> Europa Cup / Conference Cup{' '}
-            <span className="lg bottom" /> Last place
-          </p>
-        </div>
-      )}
+      {tab === 'tables' && <TablesTab careerId={careerId} c={c} />}
 
       {tab === 'fixtures' && (
         <div className="two-col">
@@ -320,7 +477,7 @@ export default function CareerHub() {
             ))}
           </div>
           <div className="panel">
-            <h2>All rounds</h2>
+            <h2>{c.league.name} — all rounds</h2>
             {[...new Set(league.map((f) => f.round))].map((r) => (
               <details key={r} open={league.some((f) => f.round === r && f.week === c.season.currentWeek)}>
                 <summary>Round {r}</summary>
@@ -335,21 +492,23 @@ export default function CareerHub() {
         </div>
       )}
 
-      {tab === 'cup' && (
-        <div className="panel">
-          <KnockoutView fixtures={cup} teamId={c.team.id} empty="The cup has not started yet." />
-        </div>
+      {tab === 'cups' && (
+        <>
+          <div className="panel">
+            <h2>{c.cupName ?? 'National cup'}</h2>
+            <KnockoutView fixtures={cup} teamId={c.team.id} empty="The cup has not started yet." />
+          </div>
+          {euroCodes.map((code) => (
+            <div className="panel" key={code}>
+              <h2>{europe.find((f) => f.competitionCode === code)?.competition}</h2>
+              <KnockoutView fixtures={europe.filter((f) => f.competitionCode === code)} teamId={c.team.id} empty="" />
+            </div>
+          ))}
+        </>
       )}
 
-      {tab === 'europe' && (
-        <div className="panel">
-          <KnockoutView
-            fixtures={europe}
-            teamId={c.team.id}
-            empty="Your team is not in a European cup this season. Finish in the top 3 or win the cup!"
-          />
-        </div>
-      )}
+      {tab === 'collection' && <CollectionTab careerId={careerId} reload={reload} />}
+      {tab === 'store' && <StoreTab careerId={careerId} c={c} reload={reload} />}
 
       {tab === 'news' && (
         <div className="panel">
