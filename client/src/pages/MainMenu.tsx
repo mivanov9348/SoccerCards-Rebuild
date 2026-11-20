@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom'
 import { api, seasonLabel } from '../api'
 import { useLoad } from '../components/common'
+import { useSettings } from '../settings'
 
 export default function MainMenu() {
   const { data: careers, error } = useLoad(() => api.careers(), [])
   const latest = careers?.[0]
+  const [settings] = useSettings()
 
   return (
     <div className="main-menu">
@@ -15,7 +17,7 @@ export default function MainMenu() {
           <span className="logo-card c3">🛡</span>
         </div>
         <h1>Dugout Deck</h1>
-        <p className="tagline">The football card game · six countries, two divisions each, three European cups</p>
+        <p className="tagline">The football card game · 25 countries, 35 leagues, national cups and three European cups</p>
       </div>
 
       <nav className="menu">
@@ -27,6 +29,10 @@ export default function MainMenu() {
             </small>
           </Link>
         )}
+        <Link className={`menu-item ${settings.tutorialDone ? '' : 'primary tutorial-call'}`} to="/tutorial">
+          {settings.tutorialDone ? 'Tutorial' : '🎓 New here? Play the tutorial'}
+          <small>A short guided match — all the rules in 3 minutes</small>
+        </Link>
         <Link className="menu-item" to="/friendly">
           Friendly match
           <small>Pick two teams and play the computer</small>

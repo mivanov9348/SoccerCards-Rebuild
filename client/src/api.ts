@@ -395,7 +395,7 @@ export const api = {
     request<void>('POST', `/careers/${id}/next-season`, { acceptTeamId: acceptTeamId ?? null }),
   collection: (id: number) => request<CollectionCard[]>('GET', `/careers/${id}/collection`),
   store: (id: number) => request<StoreInfo>('GET', `/careers/${id}/store`),
-  buyPack: (id: number) => request<{ cards: string[] }>('POST', `/careers/${id}/store/pack`),
+  buyPack: (id: number) => request<{ cards: { code: string; name: string; rarity: string; description: string | null }[] }>('POST', `/careers/${id}/store/pack`),
   buyCard: (id: number, code: string) => request<void>('POST', `/careers/${id}/store/buy`, { code }),
   sellCard: (id: number, code: string) => request<void>('POST', `/careers/${id}/store/sell`, { code }),
   upgradeClub: (id: number) => request<{ level: number }>('POST', `/careers/${id}/store/upgrade`),

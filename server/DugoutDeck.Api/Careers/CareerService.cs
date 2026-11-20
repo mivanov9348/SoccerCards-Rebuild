@@ -66,7 +66,13 @@ public class CareerService(AppDbContext db, MatchService matches)
     public static string Ordinal(int n) => n + (n % 100 is 11 or 12 or 13 ? "th" : (n % 10) switch { 1 => "st", 2 => "nd", 3 => "rd", _ => "th" });
 
     /// <summary>Money multiplier: top-five countries pay more, second divisions less.</summary>
-    private static double LeagueFactor(League l) => (l.Tier == 1 ? 1.0 : 0.4) * (l.Country == "Bulgaria" ? 1.0 : 2.0);
+    private static double LeagueFactor(League l) => (l.Tier == 1 ? 1.0 : 0.4) * l.Country switch
+    {
+        "England" or "Spain" or "Germany" or "Italy" or "France" => 2.0,
+        "Netherlands" or "Portugal" or "Turkey" or "Belgium" => 1.5,
+        "Scotland" or "Greece" or "Austria" or "Switzerland" or "Denmark" or "Czechia" or "Norway" or "Sweden" => 1.2,
+        _ => 1.0
+    };
 
     // ================================================================== ratings, collection
 
@@ -101,14 +107,17 @@ public class CareerService(AppDbContext db, MatchService matches)
         return options[Random.Shared.Next(options.Count)];
     }
 
-    private async Task<List<string>> OpenPackAsync(int careerId, CardRarity guaranteed = CardRarity.Rare)
+    private async Task<List<string>> OpenPackAsync(int careerId, CardRarity guaranteed = CardRarity.Rare) =>
+        (await OpenPackCardsAsync(careerId, guaranteed)).Select(c => c.Name).ToList();
+
+    private async Task<List<CardDefinition>> OpenPackCardsAsync(int careerId, CardRarity guaranteed = CardRarity.Rare)
     {
-        var names = new List<string>();
+        var names = new List<CardDefinition>();
         for (var i = 0; i < 3; i++)
         {
             var c = await RandomCardAsync(i == 2 ? guaranteed : null);
             await AddCardAsync(careerId, c.Code);
-            names.Add(c.Name);
+            names.Add(c);
         }
         return names;
     }
@@ -154,7 +163,7 @@ public class CareerService(AppDbContext db, MatchService matches)
             europe["UEL"].AddRange(ranked.Skip(l.UclSpots).Take(l.UelSpots + 1));
             europe["UECL"].AddRange(ranked.Skip(l.UclSpots + l.UelSpots + 1).Take(l.UeclSpots));
         }
-        await FillEuropeAsync(europe, ratings);
+        await FillEuropeAsync(europe, ratings, TopDivisionTeams(membership, leagues));
 
         var season = await CreateSeasonAsync(career, StartYear, membership, europe, ratings);
         AddMessage(career, season, "Welcome!",
@@ -165,11 +174,30 @@ public class CareerService(AppDbContext db, MatchService matches)
         return career;
     }
 
-    /// <summary>Fills each European cup to 32 teams with the strongest clubs that have no league.</summary>
-    private async Task FillEuropeAsync(Dictionary<string, List<int>> europe, Dictionary<int, int> ratings)
+    private static List<int> TopDivisionTeams(Dictionary<int, int> membership, List<League> leagues)
     {
+        var top = leagues.Where(l => l.Tier == 1).Select(l => l.Id).ToHashSet();
+        return membership.Where(m => top.Contains(m.Value)).Select(m => m.Key).ToList();
+    }
+
+    /// <summary>
+    /// Makes every European cup exactly 32 teams. With many leagues a cup can get more qualifiers than places: the weakest
+    /// of them drop to the next cup (Champions → Europa → Conference). Free places are filled with the strongest clubs that
+    /// have no league, then with the strongest top-division clubs that did not qualify.
+    /// </summary>
+    private async Task FillEuropeAsync(Dictionary<string, List<int>> europe, Dictionary<int, int> ratings, List<int> topDivision)
+    {
+        for (var i = 0; i < EuropeCodes.Length; i++)
+        {
+            var code = EuropeCodes[i];
+            var list = europe[code].Distinct().OrderByDescending(id => ratings[id]).ToList();
+            europe[code] = list.Take(32).ToList();
+            if (i + 1 < EuropeCodes.Length) europe[EuropeCodes[i + 1]].AddRange(list.Skip(32));
+        }
+
         var pool = (await db.Teams.Where(t => t.LeagueId == null).Select(t => t.Id).ToListAsync())
-            .OrderByDescending(id => ratings[id]).ToList();
+            .OrderByDescending(id => ratings[id])
+            .Concat(topDivision.OrderByDescending(id => ratings[id])).ToList();
         var used = europe.Values.SelectMany(v => v).ToHashSet();
         foreach (var code in EuropeCodes)
         {
@@ -179,7 +207,6 @@ public class CareerService(AppDbContext db, MatchService matches)
                 if (list.Count >= 32) break;
                 if (used.Add(id)) list.Add(id);
             }
-            if (list.Count > 32) europe[code] = list.Take(32).ToList();
         }
     }
 
@@ -190,6 +217,12 @@ public class CareerService(AppDbContext db, MatchService matches)
     {
         var rng = Random.Shared;
         var leagues = await db.Leagues.Where(l => l.IsPlayable).ToListAsync();
+        // leagues added to the game after this career started join from the next season
+        membership = new Dictionary<int, int>(membership);
+        var activeLeagues = membership.Values.ToHashSet();
+        foreach (var t in await db.Teams.Where(t => t.LeagueId != null).Select(t => new { t.Id, LeagueId = t.LeagueId!.Value }).ToListAsync())
+            if (!activeLeagues.Contains(t.LeagueId) && leagues.Any(l => l.Id == t.LeagueId) && !membership.ContainsKey(t.Id))
+                membership[t.Id] = t.LeagueId;
         var comps = await db.Competitions.ToListAsync();
         var leagueComp = comps.Where(c => c.Type == CompetitionType.League && c.LeagueId != null).ToDictionary(c => c.LeagueId!.Value);
         var cupComp = comps.Where(c => c.Type == CompetitionType.Cup && c.Country != null).ToDictionary(c => c.Country!);
@@ -281,8 +314,16 @@ public class CareerService(AppDbContext db, MatchService matches)
             });
     }
 
-    /// <summary>Double round robin ("circle" method).</summary>
+    /// <summary>Double round robin ("circle" method); small leagues (12 teams or fewer) play each other three times.</summary>
     public static List<List<(int Home, int Away)>> RoundRobin(List<int> teams)
+    {
+        var rounds = DoubleRoundRobin(teams);
+        if (teams.Count <= 12 && teams.Count >= 2)
+            rounds.AddRange(rounds.Take(rounds.Count / 2).Select(r => r.ToList()));
+        return rounds;
+    }
+
+    private static List<List<(int Home, int Away)>> DoubleRoundRobin(List<int> teams)
     {
         var list = new List<int>(teams);
         if (list.Count < 2) return new();
@@ -612,7 +653,7 @@ public class CareerService(AppDbContext db, MatchService matches)
             else Take("UEL", 1);
             Take("UECL", top.UeclSpots);
         }
-        await FillEuropeAsync(europe, ratings);
+        await FillEuropeAsync(europe, ratings, TopDivisionTeams(nextMembership, leagues));
 
         // job offers (from every league)
         var myRating = ratings[season.TeamId];
@@ -686,11 +727,11 @@ public class CareerService(AppDbContext db, MatchService matches)
 
     public static long UpgradeCost(int level) => 3_000_000L * (level + 1);
 
-    public async Task<List<string>> BuyPackAsync(Career career)
+    public async Task<List<CardDefinition>> BuyPackAsync(Career career)
     {
         if (career.Money < PackPrice) throw new GameRuleException("Not enough money for a pack.");
         career.Money -= PackPrice;
-        var cards = await OpenPackAsync(career.Id);
+        var cards = await OpenPackCardsAsync(career.Id);
         await db.SaveChangesAsync();
         return cards;
     }

@@ -162,16 +162,21 @@ The computer never knows where your team cards are — it can only steal them by
 
 ## 8. Career
 
-- **Leagues:** England, Spain, Germany, Italy, France and Bulgaria, each with two divisions (real names during development).
+- **Leagues:** 35 leagues from 25 countries (real names during development). Two divisions with promotion/relegation and a national
+  cup: England, Spain, Germany, Italy, France, Netherlands, Portugal, Turkey, Scotland, Bulgaria. Top division only: Belgium,
+  Greece, Austria, Switzerland, Denmark, Czechia, Croatia, Serbia, Romania, Poland, Ukraine, Cyprus, Hungary, Norway, Sweden.
+  Leagues of 12 teams or fewer play each other three times.
 - **Calendar:** one weekly calendar for everything (the longest league has 46 rounds; leagues with fewer rounds have rest weeks)
   plus 5 cup weeks and 5 European weeks — 56 weeks. After your match every other match of the week is played in the background
   with the same rules. "Continue" skips weeks in which your team has no match.
-- **National cups:** 32 teams (top division + the best of the second), knockout from the Round of 32.
+- **National cups:** 32 teams (top division + the best of the second), knockout from the Round of 32 (a country with fewer teams starts later).
 - **European cups:** Champions Cup, Europa Cup, Conference Cup — 32 teams each, knockout from the Round of 32 (group stage later).
   Places: top-five countries 1st–4th / 5th + cup winner / 6th; Bulgaria 1st / 2nd + cup winner / 3rd. If the cup winner has
   already qualified, the place goes to the next team in the table. The remaining places are filled with the strongest clubs that
-  have no league. In the first season the places go by rating.
-- **Promotion/relegation:** Premier League, LaLiga and Serie A 3 down / 3 up; Bundesliga, Ligue 1 and Bulgaria 2 down / 2 up.
+  have no league, then with the strongest top-division clubs that did not qualify. If a cup has more than 32 qualifiers, the
+  weakest drop to the next cup (Champions → Europa → Conference). In the first season the places go by rating.
+- **Promotion/relegation:** Premier League, LaLiga, Serie A and Super Lig 3; Bundesliga, Ligue 1, Bulgaria, Eredivisie and Primeira Liga 2;
+  Scotland 1.
 - **Board target** by rating rank in the league: title (top 2) / top 4 (3rd–5th) / top half (6th–10th) / avoid the drop.
   Review: target − actual position, +2 for the cup, +1 per European knockout win. ≤ −4 or last place = sacked.
 - **Reputation** 0–100. **Offers:** a good season brings offers from stronger clubs in any league; a sacked manager gets offers
@@ -180,8 +185,19 @@ The computer never knows where your team cards are — it can only steal them by
 ## 9. Money, rewards and the Store
 
 - **Income:** per match (win / draw / loss), cup and European rounds, season TV money (by league and rating) and a prize for the
-  final position. Top-five leagues pay ×2, second divisions ×0.4.
+  final position. Top-five leagues pay ×2; Netherlands, Portugal, Turkey, Belgium ×1.5; Scotland, Greece, Austria, Switzerland,
+  Denmark, Czechia, Norway, Sweden ×1.2; the rest ×1. Second divisions ×0.4.
 - **Card rewards:** a win gives a card 30% of the time (European knockout wins always); meeting the board target gives a pack;
   every trophy and a league title give a pack with an epic card.
 - **Store** (in-game money only, no pay-to-win): packs (3 cards, at least one rare), single cards, selling duplicates (⅓ of the
   price), club upgrades (+2 rating per level, up to 10 levels — more points, more hand cards, smarter play, more income).
+
+## 10. Presentation
+
+- **Tutorial:** a scripted 14-step match (main menu → Tutorial) that shows every rule once.
+- **Animations:** 3D card flips, red shake for dangerous cards, purple glow for steals, gold for goals and penalties, a GOAL! / HALF
+  TIME / FULL TIME banner (confetti for your own goals; the computer waits while it is shown), the second-half grid is dealt card by
+  card, row/column highlight with the danger count on hover, speed buttons in the match, animated pack opening. Settings →
+  *Reduce animations* turns off confetti and shaking.
+- **Sound:** every effect and the menu music are generated in code (`client/src/sound.ts`, Web Audio API) — no recordings, nothing
+  copyrighted. Crowd ambience during matches, music in the menus, volume sliders in Settings, **M** mutes everywhere.

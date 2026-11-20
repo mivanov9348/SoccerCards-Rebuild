@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
-import { Badge, ErrorBox, Screen, useLoad } from '../components/common'
+import { Badge, byCountry, ErrorBox, Screen, useLoad } from '../components/common'
 import { useSettings } from '../settings'
 
 // Same rule as the server: the board target depends on the club's rank by rating.
@@ -56,10 +56,14 @@ export default function CareerNew() {
           <label>
             League
             <select value={activeLeague ?? ''} onChange={(e) => setLeagueId(Number(e.target.value))}>
-              {playable.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.name} ({l.country})
-                </option>
+              {byCountry(playable, (l) => l.country).map(([country, ls]) => (
+                <optgroup key={country} label={country}>
+                  {ls.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </label>

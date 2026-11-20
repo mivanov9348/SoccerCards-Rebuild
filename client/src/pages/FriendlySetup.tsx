@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, type Side, type Team } from '../api'
-import { Badge, ErrorBox, Screen, useLoad } from '../components/common'
+import { Badge, byCountry, ErrorBox, Screen, useLoad } from '../components/common'
 
 function TeamPicker({ label, teams, value, onChange }: { label: string; teams: Team[]; value: number | null; onChange: (id: number) => void }) {
   const groups = [...new Set(teams.map((t) => t.leagueName ?? 'Other European clubs'))]
+  const countryOf = (g: string) => (g === 'Other European clubs' ? 'Other' : (teams.find((t) => t.leagueName === g)?.country ?? 'Other'))
   const [filter, setFilter] = useState<string>('First League')
   const active = groups.includes(filter) ? filter : groups[0]
   const shown = teams.filter((t) => (t.leagueName ?? 'Other European clubs') === active)
@@ -13,10 +14,14 @@ function TeamPicker({ label, teams, value, onChange }: { label: string; teams: T
     <div className="panel picker">
       <h2>{label}</h2>
       <select value={active} onChange={(e) => setFilter(e.target.value)}>
-        {groups.map((g) => (
-          <option key={g} value={g}>
-            {g}
-          </option>
+        {byCountry(groups, countryOf).map(([country, gs]) => (
+          <optgroup key={country} label={country}>
+            {gs.map((g) => (
+              <option key={g} value={g}>
+                {g}
+              </option>
+            ))}
+          </optgroup>
         ))}
       </select>
       <div className="team-list">

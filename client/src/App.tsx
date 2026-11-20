@@ -9,10 +9,13 @@ import Tables from './pages/Tables'
 import Editor from './pages/Editor'
 import SettingsPage from './pages/SettingsPage'
 import HowToPlay from './pages/HowToPlay'
+import SoundManager from './components/SoundManager'
+import Tutorial from './pages/Tutorial'
 
 export default function App() {
   return (
     <BrowserRouter>
+      <SoundManager />
       <Routes>
         <Route path="/" element={<MainMenu />} />
         <Route path="/friendly" element={<FriendlySetup />} />
@@ -24,6 +27,7 @@ export default function App() {
         <Route path="/editor" element={<Editor />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/how-to-play" element={<HowToPlay />} />
+        <Route path="/tutorial" element={<Tutorial />} />
         <Route path="*" element={<MainMenu />} />
       </Routes>
     </BrowserRouter>

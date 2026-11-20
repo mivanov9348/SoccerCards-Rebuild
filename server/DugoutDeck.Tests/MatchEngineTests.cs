@@ -352,4 +352,14 @@ public class MatchEngineTests(ITestOutputHelper output)
             output.WriteLine($"{(trap ? "with Offside Trap" : "with Long Shot   ")}: wins {wins / 20.0:F1}%, losses {losses / 20.0:F1}%, traps sprung per match {sprung / 2000.0:F2}");
         }
     }
+    [Fact]
+    public void RoundRobin_SmallLeaguesPlayThreeTimes_OthersTwice()
+    {
+        var twelve = DugoutDeck.Api.Careers.CareerService.RoundRobin(Enumerable.Range(1, 12).ToList());
+        Assert.Equal(33, twelve.Count);
+        var games = twelve.SelectMany(r => r).ToList();
+        Assert.Equal(198, games.Count);
+        Assert.All(games.GroupBy(g => (Math.Min(g.Home, g.Away), Math.Max(g.Home, g.Away))), g => Assert.Equal(3, g.Count()));
+        Assert.Equal(30, DugoutDeck.Api.Careers.CareerService.RoundRobin(Enumerable.Range(1, 16).ToList()).Count);
+    }
 }

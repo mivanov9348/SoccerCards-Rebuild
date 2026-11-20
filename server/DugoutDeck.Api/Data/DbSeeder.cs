@@ -48,7 +48,18 @@ public static class DbSeeder
                 added++;
             }
             foreach (var row in l.Teams)
-                if (AddTeam(db, existingTeams, row, l.Country, league.Id)) added++;
+            {
+                if (AddTeam(db, existingTeams, row, l.Country, league.Id)) { added++; continue; }
+                // a club from the European pool that now has a league (e.g. Ajax when the Eredivisie was added)
+                var name = row[0].GetString();
+                var pooled = await db.Teams.FirstOrDefaultAsync(t => t.Name == name && t.LeagueId == null);
+                if (pooled != null)
+                {
+                    pooled.LeagueId = league.Id;
+                    pooled.Country = l.Country;
+                    added++;
+                }
+            }
         }
 
         foreach (var row in seed.EuropeanClubs)

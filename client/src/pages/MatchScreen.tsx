@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { api, type Decision, type MatchTeam, type MatchView, type Tactic } from '../api'
+import { api, type Decision, type MatchTeam, type MatchView, type Side, type Tactic } from '../api'
 import { Badge, ErrorBox, useLoad } from '../components/common'
 import { CardBack, CardFace, iconFor } from '../components/GameCard'
+import { play, playEvent } from '../sound'
 import { TacticBuilder } from '../components/TacticBuilder'
 import { useSettings } from '../settings'
 
@@ -138,6 +139,46 @@ function DecisionPanel({ m, d, busy, onDecide }: { m: MatchView; d: Decision; bu
   )
 }
 
+interface Overlay {
+  kind: 'goal' | 'against' | 'whistle'
+  title: string
+  sub: string
+  colors: string[]
+  key: number
+}
+
+const DANGEROUS = ['TACKLE', 'OFFSIDE', 'SAVE', 'MISS', 'YELLOW_CARD', 'RED_CARD']
+
+/** Big "GOAL!" / "HALF TIME" banner over the grid, with confetti for your own goals. */
+function MatchOverlay({ o, calm }: { o: Overlay; calm: boolean }) {
+  const pieces = o.kind === 'goal' && !calm ? Array.from({ length: 46 }, (_, i) => i) : []
+  return (
+    <div className={`match-overlay ov-${o.kind}`} key={o.key} aria-live="polite">
+      {pieces.map((i) => (
+        <i
+          key={i}
+          className="confetti"
+          style={{
+            left: `${(i * 37) % 100}%`,
+            background: o.colors[i % 2] ?? '#f2c14e',
+            animationDelay: `${(i % 9) * 0.07}s`,
+            animationDuration: `${1.4 + (i % 5) * 0.18}s`,
+          }}
+        />
+      ))}
+      <div className="ov-title">{o.title}</div>
+      <div className="ov-sub">{o.sub}</div>
+    </div>
+  )
+}
+
+const SPEEDS: [number, string][] = [
+  [1600, '🐢'],
+  [900, '1×'],
+  [400, '2×'],
+  [100, '⚡'],
+]
+
 function StatsTable({ m }: { m: MatchView }) {
   const rows: [string, number, number][] = [
     ['Cards flipped', m.home.stats.flips, m.away.stats.flips],
@@ -214,7 +255,7 @@ function PreMatchReveal({ m, onGo }: { m: MatchView; onGo: () => void }) {
 export default function MatchScreen() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const [settings] = useSettings()
+  const [settings, updateSettings] = useSettings()
   const { data: m, error: loadError, setData } = useLoad(() => api.match(Number(id)), [id])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -222,22 +263,49 @@ export default function MatchScreen() {
   const [revealSeen, setRevealSeen] = useState(false)
   const aiInFlight = useRef(false)
   const seenEventId = useRef<number | null>(null)
+  const seenScore = useRef<[number, number] | null>(null)
   const [toast, setToast] = useState<{ text: string; good: boolean } | null>(null)
+  const [overlay, setOverlay] = useState<Overlay | null>(null)
+  const [hover, setHover] = useState<number | null>(null)
 
-  // "You stole…" / "The opponent stole…" messages for steals since the last update
+  // New events since the last update: sounds, the goal / half-time overlays and the steal messages
   useEffect(() => {
     if (!m) return
     const lastId = m.events.length ? m.events[m.events.length - 1].id : 0
     const prev = seenEventId.current
+    const prevScore = seenScore.current
     seenEventId.current = lastId
-    if (prev == null) return
-    const steal = [...m.events].reverse().find((e) => e.id > prev && e.type === 'steal')
-    if (!steal) return
+    seenScore.current = [m.home.goals, m.away.goals]
+    if (prev == null || prevScore == null) return
+    const fresh = m.events.filter((e) => e.id > prev)
+    if (fresh.length === 0) return
     const human = m.humanSide ?? 'Home'
-    const name = m.table.find((c) => c.card === steal.card && c.stolen)?.name ?? 'card'
-    setToast(steal.side === human ? { text: `🕵 You stole the opponent's ${name}!`, good: true } : { text: `😱 The opponent stole your ${name}!`, good: false })
-    const t = setTimeout(() => setToast(null), 3500)
-    return () => clearTimeout(t)
+    const timers: number[] = []
+
+    // a goal = the score went up (penalty-shootout kicks don't count)
+    const goalSide: Side | null = m.home.goals > prevScore[0] ? 'Home' : m.away.goals > prevScore[1] ? 'Away' : null
+    const goal = goalSide ? { side: goalSide, id: lastId } : null
+    if (m.lastFlip && fresh.some((e) => e.card === m.lastFlip?.card)) play('flip')
+    fresh
+      .filter((e) => !(goal && e.type === 'goal'))
+      .slice(-3)
+      .forEach((e, i) => timers.push(window.setTimeout(() => playEvent(e.type, e.card, e.side === human), 140 + i * 260)))
+    if (goal) timers.push(window.setTimeout(() => play(goal.side === human ? 'goal' : 'goalAgainst'), 150))
+    const half = fresh.find((e) => e.type === 'whistle' && e.card === 'HALF_TIME')
+    const full = fresh.find((e) => e.type === 'whistle' && e.card === 'FULL_TIME')
+    const scorer = goal ? (goal.side === 'Home' ? m.home : m.away) : null
+    if (goal && scorer) setOverlay({ kind: goal.side === human ? 'goal' : 'against', title: 'GOAL!', sub: scorer.name, colors: [scorer.primaryColor, scorer.secondaryColor], key: goal.id })
+    else if (half) setOverlay({ kind: 'whistle', title: 'HALF TIME', sub: `${m.home.goals} : ${m.away.goals} — new grid, ${m.turn === 'Home' ? m.home.name : m.away.name} start`, colors: [], key: half.id })
+    else if (full) setOverlay({ kind: 'whistle', title: 'FULL TIME', sub: `${m.home.name} ${m.home.goals} : ${m.away.goals} ${m.away.name}`, colors: [], key: full.id })
+    if (goal || half || full) timers.push(window.setTimeout(() => setOverlay(null), goal ? 2300 : 1900))
+
+    const steal = [...fresh].reverse().find((e) => e.type === 'steal')
+    if (steal) {
+      const name = m.table.find((c) => c.card === steal.card && c.stolen)?.name ?? 'card'
+      setToast(steal.side === human ? { text: `🕵 You stole the opponent's ${name}!`, good: true } : { text: `😱 The opponent stole your ${name}!`, good: false })
+      timers.push(window.setTimeout(() => setToast(null), 3500))
+    }
+    return () => timers.forEach((t) => window.clearTimeout(t))
   }, [m])
 
   const run = async (fn: () => Promise<MatchView>) => {
@@ -257,7 +325,8 @@ export default function MatchScreen() {
   const showReveal = freshStart && !revealSeen
 
   // The computer acts after a short pause (its flips, and decisions only it has to make).
-  const computerToAct = m != null && !showReveal && m.role === 'wait' && (m.phase === 'Play' || m.phase === 'Decision')
+  // (it waits while a GOAL! / HALF TIME banner is on screen)
+  const computerToAct = m != null && !showReveal && !overlay && m.role === 'wait' && (m.phase === 'Play' || m.phase === 'Decision')
   useEffect(() => {
     if (!m || !computerToAct || aiInFlight.current) return
     const timer = setTimeout(async () => {
@@ -344,7 +413,7 @@ export default function MatchScreen() {
       <div className="scoreboard">
         <ScoreTeam t={m.home} align="left" turn={m.phase === 'Play' && m.turn === 'Home'} />
         <div className="score-center">
-          <div className="score">
+          <div className="score score-pop" key={`${m.home.goals}-${m.away.goals}`}>
             {m.home.goals} : {m.away.goals}
           </div>
           {m.homePenalties != null && (
@@ -386,9 +455,10 @@ export default function MatchScreen() {
               <DecisionPanel m={m} d={m.decision} busy={busy} onDecide={(c, t, auto) => run(() => api.decide(m.id, c, t, auto))} />
             )}
 
-            <div className="table-area">
+            <div className={`table-area ${overlay ? 'has-overlay' : ''}`}>
+              {overlay && <MatchOverlay o={overlay} calm={settings.reduceMotion} />}
               <div className="grid-wrap">
-                <div className="flip-grid">
+                <div className={`flip-grid half-${m.half} ${settings.reduceMotion ? '' : 'deal-in'}`} key={`half-${m.half}`} onMouseLeave={() => setHover(null)}>
                   {m.table.map((c) => {
                     const owner = teamOf(c.owner)
                     if (c.faceUp && c.card) {
@@ -396,7 +466,7 @@ export default function MatchScreen() {
                       return (
                         <div
                           key={c.index}
-                          className={`grid-face ${last?.cell === c.index ? 'just-flipped' : ''}`}
+                          className={`grid-face ${last?.cell === c.index ? `just-flipped ${settings.reduceMotion ? '' : 'anim'} ${DANGEROUS.includes(c.card) || (c.stolen && c.card === 'OFFSIDE_TRAP') ? 'danger' : ''} ${c.stolen && c.card !== 'OFFSIDE_TRAP' ? 'stolen-flash' : ''} ${c.card === 'GOAL' || c.card === 'PENALTY' ? 'golden' : ''}` : ''}`}
                           style={{ borderColor: by.primaryColor }}
                           title={`${c.name} — flipped by ${by.name}${c.stolen ? ` (${owner?.name}'s card — ${c.card === 'OFFSIDE_TRAP' ? 'offside trap!' : 'stolen'})` : ''}`}
                         >
@@ -420,9 +490,12 @@ export default function MatchScreen() {
                           <CardFace code={c.card} name={c.name ?? ''} size="mini" />
                         </div>
                       )
+                    const aligned = hover != null && hover !== c.index && (Math.floor(hover / 5) === Math.floor(c.index / 5) || hover % 5 === c.index % 5)
                     return (
                       <CardBack
                         key={c.index}
+                        aligned={aligned}
+                        onHover={() => setHover(c.index)}
                         mark={c.mine ? { color: me.primaryColor, color2: me.secondaryColor, dim: m.ownCardUsed } : null}
                         peeked={c.peeked && c.card ? { code: c.card, name: c.name ?? '', opponent: c.owner != null && c.owner !== human } : null}
                         selected={targeting?.first === c.index}
@@ -435,20 +508,25 @@ export default function MatchScreen() {
                 </div>
                 <div className="row-hints">
                   {m.rowHints.map((h, i) => (
-                    <span key={i} className={h === 0 ? 'safe' : ''} title="Dangerous grey cards still face down in this row">
+                    <span key={i} className={`${h === 0 ? 'safe' : ''} ${hover != null && Math.floor(hover / 5) === i ? 'hot' : ''}`} title="Dangerous grey cards still face down in this row">
                       {h}
                     </span>
                   ))}
                 </div>
                 <div className="col-hints">
                   {m.colHints.map((h, i) => (
-                    <span key={i} className={h === 0 ? 'safe' : ''} title="Dangerous grey cards still face down in this column">
+                    <span key={i} className={`${h === 0 ? 'safe' : ''} ${hover != null && hover % 5 === i ? 'hot' : ''}`} title="Dangerous grey cards still face down in this column">
                       {h}
                     </span>
                   ))}
                 </div>
               </div>
               <div className="reveal">
+                {hover != null && myTurn && !m.table[hover]?.faceUp && (
+                  <span className="risk-note">
+                    Row {Math.floor(hover / 5) + 1}: {m.rowHints[Math.floor(hover / 5)]} dangerous · Column {(hover % 5) + 1}: {m.colHints[hover % 5]} dangerous
+                  </span>
+                )}
                 <span className="muted small">Last card</span>
                 {last ? (
                   <>
@@ -517,6 +595,13 @@ export default function MatchScreen() {
 
             {!finished && (
               <div className="row-buttons secondary">
+                <span className="speed-control" title="Computer speed">
+                  {SPEEDS.map(([v, label]) => (
+                    <button key={v} className={`btn btn-ghost small ${settings.aiDelay === v ? 'active' : ''}`} onClick={() => updateSettings({ aiDelay: v })}>
+                      {label}
+                    </button>
+                  ))}
+                </span>
                 <button className="btn btn-ghost" disabled={busy} onClick={simulate}>
                   ⏩ Simulate to the end
                 </button>

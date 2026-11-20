@@ -200,7 +200,8 @@ public static class CareerEndpoints
         api.MapPost("/{id:int}/store/pack", async (int id, CareerService careers) =>
         {
             var career = await careers.LoadAsync(id) ?? throw new GameRuleException("Career not found.");
-            return Results.Ok(new { cards = await careers.BuyPackAsync(career) });
+            var cards = await careers.BuyPackAsync(career);
+            return Results.Ok(new { cards = cards.Select(c => new { c.Code, c.Name, rarity = c.Rarity.ToString(), c.Description }) });
         });
 
         api.MapPost("/{id:int}/store/buy", async (int id, CardRequest req, CareerService careers) =>

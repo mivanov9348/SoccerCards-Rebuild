@@ -69,8 +69,10 @@ export default function HowToPlay() {
         </p>
         <h2>Career</h2>
         <p>
-          Manage a club in England, Spain, Germany, Italy, France or Bulgaria — each with two divisions, promotion and relegation, a
-          national cup and three European cups of 32 teams. Every other match is played in the background with exactly the same
+          Manage a club in one of 35 leagues from 25 countries: England, Spain, Germany, Italy, France, the Netherlands, Portugal,
+          Turkey, Scotland and Bulgaria with two divisions each (promotion and relegation, a national cup), plus the top divisions of
+          Belgium, Greece, Austria, Switzerland, Denmark, Czechia, Croatia, Serbia, Romania, Poland, Ukraine, Cyprus, Hungary, Norway and
+          Sweden. Leagues of 12 teams or fewer play each other three times. Three European cups of 32 teams. Every other match is played in the background with exactly the same
           rules. Win money and cards, buy packs, single cards and club upgrades in the Store, meet the board&apos;s target and get job
           offers from bigger clubs. Your card collection stays with you when you move.
         </p>

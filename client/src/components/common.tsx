@@ -157,3 +157,19 @@ export function RatingBar({ label, value }: { label: string; value: number }) {
     </div>
   )
 }
+
+const COUNTRY_ORDER = ['Bulgaria', 'England', 'Spain', 'Germany', 'Italy', 'France']
+
+/** Groups items by country for <optgroup> lists: Bulgaria and the top five first, then the rest alphabetically. */
+export function byCountry<T>(items: T[], country: (t: T) => string): [string, T[]][] {
+  const map = new Map<string, T[]>()
+  for (const it of items) {
+    const c = country(it) || 'Other'
+    map.set(c, [...(map.get(c) ?? []), it])
+  }
+  const rank = (c: string) => {
+    const i = COUNTRY_ORDER.indexOf(c)
+    return i < 0 ? 100 : i
+  }
+  return [...map.entries()].sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b))
+}

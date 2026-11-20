@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api, money, seasonLabel, type CareerView, type Fixture } from '../api'
-import { Badge, ErrorBox, FixtureRow, Screen, StandingsTable, useLoad } from '../components/common'
-import { iconFor } from '../components/GameCard'
+import { Badge, byCountry, ErrorBox, FixtureRow, Screen, StandingsTable, useLoad } from '../components/common'
+import { iconFor, PackOpening, type PackCard } from '../components/GameCard'
+import { play } from '../sound'
 
 type Tab = 'overview' | 'tables' | 'fixtures' | 'cups' | 'collection' | 'store' | 'news'
 
@@ -182,10 +183,14 @@ function TablesTab({ careerId, c }: { careerId: number; c: CareerView }) {
       <label className="inline">
         League
         <select value={leagueId} onChange={(e) => setLeagueId(Number(e.target.value))}>
-          {leagues?.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.country} — {l.name}
-            </option>
+          {byCountry(leagues ?? [], (l) => l.country).map(([country, ls]) => (
+            <optgroup key={country} label={country}>
+              {ls.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
       </label>
@@ -236,7 +241,7 @@ function StoreTab({ careerId, c, reload }: { careerId: number; c: CareerView; re
   const { data: store, reload: reloadStore } = useLoad(() => api.store(careerId), [careerId])
   const { data: cards, reload: reloadCards } = useLoad(() => api.collection(careerId), [careerId])
   const [error, setError] = useState<string | null>(null)
-  const [opened, setOpened] = useState<string[] | null>(null)
+  const [opened, setOpened] = useState<PackCard[] | null>(null)
   const act = async (fn: () => Promise<unknown>) => {
     setError(null)
     try {
@@ -258,7 +263,9 @@ function StoreTab({ careerId, c, reload }: { careerId: number; c: CareerView; re
           <button className="btn btn-primary" disabled={store.money < store.packPrice} onClick={() => act(async () => setOpened((await api.buyPack(careerId)).cards))}>
             Buy a pack
           </button>
-          {opened && <p className="pack-result">🎁 You got: {opened.join(', ')}</p>}
+          {opened && (
+            <PackOpening cards={opened} onReveal={(card) => play(card.rarity === 'Epic' ? 'packEpic' : 'pack')} onClose={() => setOpened(null)} />
+          )}
         </div>
         <div className="panel">
           <h2>Club upgrade — level {store.upgradeLevel}/10</h2>

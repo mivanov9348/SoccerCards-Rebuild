@@ -1,3 +1,4 @@
+import { useState } from 'react'
 /** Look of every card face: icon and color theme. */
 export const cardStyles: Record<string, { icon: string; theme: string }> = {
   PASS: { icon: '➜', theme: 'green' },
@@ -60,7 +61,11 @@ export function CardBack({
   peeked,
   selected,
   title,
+  aligned,
+  onHover,
 }: {
+  aligned?: boolean
+  onHover?: () => void
   onClick?: () => void
   disabled?: boolean
   /** my own card: club colours for the corner flag; dim = already played an own card this turn */
@@ -71,7 +76,8 @@ export function CardBack({
 }) {
   return (
     <button
-      className={`card-back-big grey-back ${selected ? 'selected' : ''} ${peeked ? 'peeked' : ''} ${mark?.dim ? 'own-used' : ''}`}
+      className={`card-back-big grey-back ${selected ? 'selected' : ''} ${peeked ? 'peeked' : ''} ${mark?.dim ? 'own-used' : ''} ${aligned ? 'aligned' : ''}`}
+      onMouseEnter={onHover}
       disabled={disabled}
       onClick={onClick}
       title={title}
@@ -89,5 +95,50 @@ export function CardBack({
         <span className="back-ball">⚽</span>
       )}
     </button>
+  )
+}
+
+export interface PackCard {
+  code: string
+  name: string
+  rarity: string
+  description?: string | null
+}
+
+/** Pack opening: three face-down cards that flip one by one (click, or all at once). */
+export function PackOpening({ cards, onClose, onReveal }: { cards: PackCard[]; onClose: () => void; onReveal?: (c: PackCard) => void }) {
+  const [open, setOpen] = useState<boolean[]>(cards.map(() => false))
+  const reveal = (i: number) => {
+    if (open[i]) return
+    setOpen((o) => o.map((v, j) => v || j === i))
+    onReveal?.(cards[i])
+  }
+  const all = open.every(Boolean)
+  return (
+    <div className="pack-modal" role="dialog" aria-label="Pack opening">
+      <h2>🎁 Your pack</h2>
+      <div className="pack-cards">
+        {cards.map((c, i) => (
+          <button key={i} className={`pack-slot rarity-${c.rarity} ${open[i] ? 'open' : ''}`} onClick={() => reveal(i)}>
+            <div className="pack-inner">
+              <div className="pack-back">⚽</div>
+              <div className="pack-front">
+                <CardFace code={c.code} name={c.name} description={c.description} size="normal" />
+              </div>
+            </div>
+            <div className="pack-rarity">{open[i] ? c.rarity : 'click to flip'}</div>
+          </button>
+        ))}
+      </div>
+      {all ? (
+        <button className="btn btn-primary" onClick={onClose}>
+          Great!
+        </button>
+      ) : (
+        <button className="btn" onClick={() => cards.forEach((_, i) => setTimeout(() => reveal(i), i * 350))}>
+          Flip all
+        </button>
+      )}
+    </div>
   )
 }
