@@ -1,4 +1,4 @@
-namespace FootballCards.Api.Game;
+namespace DugoutDeck.Api.Game;
 
 /// <summary>Card codes. Their effects are coded in <see cref="MatchEngine"/>; costs/prices are in the database.</summary>
 public static class Cards
@@ -82,6 +82,8 @@ public static class Rules
     public const int MaxModifiers = 2;
     public const int BaseTacticPoints = 10;
     public const int PassesForBigChance = 3;
+    /// <summary>Rain, wind and derby conditions are switched off for now (only the home bonus stays).</summary>
+    public static readonly bool WeatherAndDerby = false;
 
     // mini games (percent)
     public const int CornerGoal = 30;

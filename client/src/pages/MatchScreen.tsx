@@ -147,6 +147,7 @@ function StatsTable({ m }: { m: MatchView }) {
     ['Free kicks', m.home.stats.freeKicks, m.away.stats.freeKicks],
     ['Penalties', m.home.stats.penalties, m.away.stats.penalties],
     ['Saves', m.home.stats.saves, m.away.stats.saves],
+    ['Cards stolen', m.home.stats.cardsStolen, m.away.stats.cardsStolen],
     ['Cards burned', m.home.stats.cardsBurned, m.away.stats.cardsBurned],
     ['Yellow cards', m.home.stats.yellowCards, m.away.stats.yellowCards],
     ['Red cards', m.home.stats.redCards, m.away.stats.redCards],
@@ -192,7 +193,9 @@ function PreMatchReveal({ m, onGo }: { m: MatchView; onGo: () => void }) {
           </p>
           <h3>Team cards</h3>
           <p className="muted">
-            Each team has {m.home.fieldCount} cards with its colours in the grid. Yours: {(m.humanSide === 'Away' ? m.away : m.home).fieldCards?.join(', ')}
+            Each team has {m.home.fieldCount} cards hidden in the grid — all backs are grey. Only you see where yours are (small corner
+            flag). Whoever flips a team card gets its effect, so play yours before the opponent steals them — one per turn. Yours:{' '}
+            {(m.humanSide === 'Away' ? m.away : m.home).fieldCards?.join(', ')}
           </p>
           <ul className="conditions">
             {m.conditions.map((c) => (
@@ -218,6 +221,24 @@ export default function MatchScreen() {
   const [targeting, setTargeting] = useState<Targeting>(null)
   const [revealSeen, setRevealSeen] = useState(false)
   const aiInFlight = useRef(false)
+  const seenEventId = useRef<number | null>(null)
+  const [toast, setToast] = useState<{ text: string; good: boolean } | null>(null)
+
+  // "You stole…" / "The opponent stole…" messages for steals since the last update
+  useEffect(() => {
+    if (!m) return
+    const lastId = m.events.length ? m.events[m.events.length - 1].id : 0
+    const prev = seenEventId.current
+    seenEventId.current = lastId
+    if (prev == null) return
+    const steal = [...m.events].reverse().find((e) => e.id > prev && e.type === 'steal')
+    if (!steal) return
+    const human = m.humanSide ?? 'Home'
+    const name = m.table.find((c) => c.card === steal.card && c.stolen)?.name ?? 'card'
+    setToast(steal.side === human ? { text: `🕵 You stole the opponent's ${name}!`, good: true } : { text: `😱 The opponent stole your ${name}!`, good: false })
+    const t = setTimeout(() => setToast(null), 3500)
+    return () => clearTimeout(t)
+  }, [m])
 
   const run = async (fn: () => Promise<MatchView>) => {
     setBusy(true)
@@ -295,7 +316,6 @@ export default function MatchScreen() {
 
   const clickCell = (index: number) => {
     if (!myTurn || busy) return
-    const cell = m.table[index]
     if (!targeting) return void run(() => api.flip(m.id, index))
     if (targeting.card === 'SWAP') {
       if (targeting.first == null) return setTargeting({ ...targeting, first: index })
@@ -303,7 +323,6 @@ export default function MatchScreen() {
       setTargeting(null)
       return void run(() => api.playHand(m.id, 'SWAP', first, index))
     }
-    if (targeting.card === 'BURN' && cell.owner !== (human === 'Home' ? 'Away' : 'Home')) return setError('Pick a card with the opponent’s colours.')
     const card = targeting.card
     setTargeting(null)
     void run(() => api.playHand(m.id, card, index))
@@ -311,7 +330,7 @@ export default function MatchScreen() {
 
   const playHand = (code: string) => {
     setError(null)
-    if (code === 'SCOUT' || code === 'BURN' || code === 'SWAP') setTargeting({ card: code })
+    if (code === 'SCOUT' || code === 'SWAP') setTargeting({ card: code })
     else void run(() => api.playHand(m.id, code))
   }
 
@@ -352,13 +371,20 @@ export default function MatchScreen() {
                 : targeting
                   ? targeting.card === 'SWAP'
                     ? targeting.first == null ? '⇄ Swap: pick the first face-down card' : '⇄ Swap: pick the second card'
-                    : targeting.card === 'BURN' ? '🔥 Burn: pick one of the opponent’s coloured cards' : '👁 Scout: pick a card to look under'
+                    : '👁 Scout: pick a card to look under'
                   : m.phase === 'Decision'
                     ? m.role === 'wait' ? '⏳ The computer is deciding…' : '⚠ Your decision!'
                     : myTurn
                       ? '👉 Your turn — flip a card (or play a hand card first)'
                       : `⏳ ${m.turn === 'Home' ? m.home.name : m.away.name} (computer) is thinking…`}
             </div>
+
+            {toast && <div className={`steal-toast ${toast.good ? 'good' : 'bad'}`}>{toast.text}</div>}
+            {myTurn && m.ownCardUsed && <div className="own-used-note">You have played one of your own cards this turn — the others wait until your next turn.</div>}
+
+            {m.phase === 'Decision' && m.decision && m.role !== 'wait' && !settings.autoMiniGames && (
+              <DecisionPanel m={m} d={m.decision} busy={busy} onDecide={(c, t, auto) => run(() => api.decide(m.id, c, t, auto))} />
+            )}
 
             <div className="table-area">
               <div className="grid-wrap">
@@ -370,13 +396,13 @@ export default function MatchScreen() {
                       return (
                         <div
                           key={c.index}
-                          className={`grid-face ${last?.cell === c.index ? 'just-flipped' : ''} ${c.burnedByFlip ? 'burned' : ''}`}
+                          className={`grid-face ${last?.cell === c.index ? 'just-flipped' : ''}`}
                           style={{ borderColor: by.primaryColor }}
-                          title={`${c.name} — flipped by ${by.name}${c.burnedByFlip ? ' (burned)' : ''}`}
+                          title={`${c.name} — flipped by ${by.name}${c.stolen ? ` (${owner?.name}'s card — ${c.card === 'OFFSIDE_TRAP' ? 'offside trap!' : 'stolen'})` : ''}`}
                         >
                           <CardFace code={c.card} name={c.name ?? ''} size="mini" />
                           <span className="grid-owner" style={{ background: by.primaryColor }}>
-                            {c.burnedByFlip ? '🔥' : ''}
+                            {c.stolen ? (c.card === 'OFFSIDE_TRAP' ? '🪤' : '🕵') : ''}
                             {by.shortName}
                           </span>
                         </div>
@@ -384,7 +410,7 @@ export default function MatchScreen() {
                     }
                     if (c.burned)
                       return (
-                        <div key={c.index} className="grid-face burned-slot" title="Burned">
+                        <div key={c.index} className="grid-face burned-slot" title={c.mine ? `Your ${c.name} — burned` : 'A burned opponent card'}>
                           {finished && c.card ? <CardFace code={c.card} name={c.name ?? ''} size="mini" /> : <span>🔥</span>}
                         </div>
                       )
@@ -397,12 +423,11 @@ export default function MatchScreen() {
                     return (
                       <CardBack
                         key={c.index}
-                        color={owner?.primaryColor}
-                        color2={owner?.secondaryColor}
-                        peeked={c.peeked && c.card ? { code: c.card, name: c.name ?? '' } : null}
+                        mark={c.mine ? { color: me.primaryColor, color2: me.secondaryColor, dim: m.ownCardUsed } : null}
+                        peeked={c.peeked && c.card ? { code: c.card, name: c.name ?? '', opponent: c.owner != null && c.owner !== human } : null}
                         selected={targeting?.first === c.index}
                         disabled={!myTurn || busy}
-                        title={owner ? `${owner.name} card` : 'Neutral card'}
+                        title={c.mine ? `Your ${c.name}${m.ownCardUsed ? ' — wait for your next turn' : ''}` : 'Face-down card'}
                         onClick={() => clickCell(c.index)}
                       />
                     )
@@ -430,7 +455,7 @@ export default function MatchScreen() {
                     <CardFace key={`${m.events.length}`} code={last.card} name={last.name} description={last.description} size="big" />
                     <span className="reveal-by">
                       flipped by {teamOf(last.side)?.isHuman ? 'you' : teamOf(last.side)?.name}
-                      {last.owner && last.owner !== last.side ? ' — burned!' : ''}
+                      {last.owner && last.owner !== last.side ? (last.card === 'OFFSIDE_TRAP' ? ' — offside trap!' : ' — stolen!') : ''}
                     </span>
                   </>
                 ) : (
@@ -450,7 +475,7 @@ export default function MatchScreen() {
                     </button>
                   )}
                   {m.hand.map((h, i) => (
-                    <button key={h.code + i} className="hand-card" disabled={!myTurn || busy || m.handPlayed} onClick={() => playHand(h.code)} title={h.description ?? ''}>
+                    <button key={h.code + i} className="hand-card" disabled={!myTurn || busy || m.handPlayed || (h.code === 'BURN' && m.opponentCardsLeft === 0)} onClick={() => playHand(h.code)} title={h.description ?? ''}>
                       {iconFor(h.code)} {h.name}
                     </button>
                   ))}
@@ -466,10 +491,6 @@ export default function MatchScreen() {
             )}
 
             <ErrorBox error={error} />
-
-            {m.phase === 'Decision' && m.decision && m.role !== 'wait' && !settings.autoMiniGames && (
-              <DecisionPanel m={m} d={m.decision} busy={busy} onDecide={(c, t, auto) => run(() => api.decide(m.id, c, t, auto))} />
-            )}
 
             {finished && (
               <div className={`result-box ${won ? 'won' : lost ? 'lost' : ''}`}>

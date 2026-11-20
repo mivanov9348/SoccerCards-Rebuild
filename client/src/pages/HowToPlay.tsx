@@ -26,9 +26,10 @@ export default function HowToPlay() {
       <div className="panel prose">
         <h2>The match</h2>
         <p>
-          You play against the computer. Each half is a <b>5×5 grid of face-down cards</b>: 16 grey (neutral) cards, 4 cards with
-          your club colours, 4 with the opponent&apos;s colours and one special card — <b>Half Time</b> in the first half,{' '}
-          <b>Full Time</b> in the second. Full Time can never come before Half Time. At half time all cards go face down again and are
+          You play against the computer. Each half is a <b>5×5 grid of face-down cards</b>, all with the same grey back: 16 neutral
+          cards, your 4 team cards, the opponent&apos;s 4 team cards and one special card — <b>Half Time</b> in the first half,{' '}
+          <b>Full Time</b> in the second. Only you see where your own cards are (a small flag in your colours in the corner); you never
+          know where the opponent&apos;s are — and the computer doesn&apos;t know where yours are. Full Time can never come before Half Time. At half time all cards go face down again and are
           reshuffled. There is no clock.
         </p>
         <ul>
@@ -39,12 +40,14 @@ export default function HowToPlay() {
           </li>
           <li>
             <b>Hints:</b> the numbers next to each row and under each column show how many dangerous grey cards are still face down
-            there. A 0 means every grey card in that row/column is safe. Goals, penalties, Half Time/Full Time and team cards are not
-            counted.
+            there. Goals, penalties, Half Time/Full Time and team cards are not counted — so a 0 is <b>not</b> completely safe: an
+            opponent&apos;s Offside Trap (or Half Time) can still hide there.
           </li>
           <li>
-            <b>Team cards:</b> flip your own coloured card and you get its effect. Flip the opponent&apos;s and it <b>burns</b> — it
-            works like a Pass for you (but resets your pass streak) and they lose it. Beware the Offside Trap!
+            <b>Team cards — whoever flips it gets it:</b> flip your own card and you get its effect. Flip one of the opponent&apos;s and
+            you <b>steal</b> it — its effect is yours (a stolen Striker shoots for you). The exception is the <b>Offside Trap</b>: it can&apos;t
+            be stolen — whoever flips the opponent&apos;s trap loses the ball. You may flip only <b>one of your own cards per turn</b>, so
+            choose when to play each one — the longer it waits, the bigger the risk that it gets stolen.
           </li>
           <li>
             <b>Three passes in a row</b> = a Big Chance shot. <b>Corner / Free kick</b>: you pick an option, the defender picks what to
@@ -61,7 +64,7 @@ export default function HowToPlay() {
         <p>
           You have <b>tactic points</b> (10 + 0–3 by club rating + 1 at home). Spend them on <b>4 field cards</b> (Squad Player is
           free), <b>1–3 hand cards</b> (by rating) and up to <b>2 secret neutral modifiers</b> (e.g. +1 Goal turns a Pass into a Goal).
-          Both teams&apos; modifiers are revealed together and added up. Conditions (home, rain, wind, derby) change the grey cards too.
+          Both teams&apos; modifiers are revealed together and added up. The home team gets +1 tactic point.
           The rating never changes the odds of a card — it gives more points, more hand cards and a smarter computer.
         </p>
         <h2>Career</h2>
@@ -79,7 +82,7 @@ export default function HowToPlay() {
             <Gallery cards={cards} kind="Neutral" />
           </div>
           <div className="panel">
-            <h2>Field cards (your colours in the grid)</h2>
+            <h2>Field cards (hidden in the grid — whoever flips one gets it)</h2>
             <Gallery cards={cards} kind="Field" />
           </div>
           <div className="panel">

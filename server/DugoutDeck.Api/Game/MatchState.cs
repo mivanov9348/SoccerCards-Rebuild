@@ -1,4 +1,4 @@
-namespace FootballCards.Api.Game;
+namespace DugoutDeck.Api.Game;
 
 public enum Side { Home = 0, Away = 1 }
 
@@ -33,6 +33,7 @@ public class TeamStats
     public int Penalties { get; set; }
     public int BigChances { get; set; }
     public int CardsBurned { get; set; }
+    public int CardsStolen { get; set; }
     public Dictionary<string, int> GoalSources { get; set; } = new();
 }
 
@@ -61,6 +62,8 @@ public class TeamMatchState
     public int CounterFlips { get; set; }
     public int FreeScouts { get; set; }
     public bool HandPlayedThisTurn { get; set; }
+    /// <summary>A team may flip only one of its own team cards per turn (a turn = until it loses the ball).</summary>
+    public bool OwnCardUsedThisTurn { get; set; }
     /// <summary>Cells this team has looked under (current half).</summary>
     public List<int> Peeks { get; set; } = new();
 
@@ -71,7 +74,7 @@ public class TeamMatchState
 public class TableCell
 {
     public string Card { get; set; } = "";
-    /// <summary>null = neutral (grey back); otherwise the team whose coloured back the card has.</summary>
+    /// <summary>null = neutral; otherwise the team whose tactic the card comes from. All backs are grey — only the owner knows.</summary>
     public Side? Owner { get; set; }
     /// <summary>Who flipped it (null = still face down).</summary>
     public Side? FlippedBy { get; set; }
@@ -116,7 +119,7 @@ public class ShootoutKick
 /// <summary>The full match state, stored as JSON in the Matches table.</summary>
 public class MatchState
 {
-    public const int CurrentVersion = 4;
+    public const int CurrentVersion = 5;
     public int Version { get; set; } = CurrentVersion;
 
     public TeamMatchState Home { get; set; } = new();

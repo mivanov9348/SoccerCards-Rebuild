@@ -1,18 +1,34 @@
-namespace FootballCards.Api.Game;
+namespace DugoutDeck.Api.Game;
 
 /// <summary>
-/// The computer player. It reads the row/column hints, its own scouting and the colours of the cards.
+/// The computer player. All backs are grey, so it only knows: where its own team cards are, the cards it has scouted,
+/// the face-up cards and the row/column hints. It does NOT know where the opponent's team cards are.
 /// Its skill depends on the team rating: weak teams often flip at random, strong teams almost always pick the best card.
 /// </summary>
 public class MatchAi(Random rng)
 {
     private static readonly double[] RandomFlipChance = [0.5, 0.2, 0.04];
 
-    /// <summary>Value of a known card for the team that flips it.</summary>
-    private static double KnownValue(TableCell c, Side side)
+    /// <summary>Value of flipping one of its own team cards now. The Offside Trap is worth more left in the grid.</summary>
+    private static double OwnValue(TeamMatchState team, string card) => card switch
     {
-        if (c.Owner == side) return 0.6;
-        if (c.Owner == side.Other()) return c.Card == Cards.OffsideTrap ? -0.6 : 0.45;
+        Cards.Striker => 0.75,
+        Cards.BigChanceCard => 0.7,
+        Cards.CounterAttack => 0.6,
+        Cards.LongShot => 0.55,
+        Cards.Playmaker => 0.5,
+        Cards.Captain => team.CaptainShield ? 0.3 : 0.5,
+        Cards.Wall => 0.45,
+        Cards.SquadPlayer => 0.36,
+        Cards.OffsideTrap => 0.05,
+        _ => 0.36
+    };
+
+    /// <summary>Value of a card the computer has seen (scouted) for the team that flips it.</summary>
+    private static double KnownValue(TeamMatchState team, TableCell c, Side side)
+    {
+        if (c.Owner == side) return OwnValue(team, c.Card);
+        if (c.Owner == side.Other()) return c.Card == Cards.OffsideTrap ? -0.6 : 0.6; // a steal
         return c.Card switch
         {
             Cards.Goal => 1.0,
@@ -24,22 +40,26 @@ public class MatchAi(Random rng)
         };
     }
 
-    /// <summary>Estimated chance that a grey card is dangerous, from the row and column hints.</summary>
-    private static double Danger(MatchState s, int index, int[] rows, int[] cols)
+    /// <summary>A cell the computer cannot tell apart from the others: grey back, not its own, not scouted.</summary>
+    private static bool Unknown(MatchState s, Side side, int i) =>
+        s.Table[i].Available && s.Table[i].Owner != side && !s.Team(side).Peeks.Contains(i);
+
+    /// <summary>Estimated chance that an unknown card is dangerous, from the row and column hints.</summary>
+    private static double Danger(MatchState s, Side side, int index, int[] rows, int[] cols)
     {
         var n = Rules.GridSize;
         int r = index / n, c = index % n;
-        int rowGrey = 0, colGrey = 0;
+        int rowUnknown = 0, colUnknown = 0;
         for (var i = 0; i < s.Table.Count; i++)
         {
-            var cell = s.Table[i];
-            if (!cell.Available || cell.Owner != null) continue;
-            if (i / n == r) rowGrey++;
-            if (i % n == c) colGrey++;
+            if (!Unknown(s, side, i)) continue;
+            if (i / n == r) rowUnknown++;
+            if (i % n == c) colUnknown++;
         }
-        var pr = rowGrey == 0 ? 0 : (double)rows[r] / rowGrey;
-        var pc = colGrey == 0 ? 0 : (double)cols[c] / colGrey;
-        if (rows[r] == 0 || cols[c] == 0) return 0; // a zero hint means this card is safe
+        // a zero hint: no dangerous neutral card there — but an opponent's Offside Trap could still hide in it
+        if (rows[r] == 0 || cols[c] == 0) return 0.03;
+        var pr = rowUnknown == 0 ? 0 : (double)rows[r] / rowUnknown;
+        var pc = colUnknown == 0 ? 0 : (double)cols[c] / colUnknown;
         return (pr + pc) / 2;
     }
 
@@ -51,12 +71,15 @@ public class MatchAi(Random rng)
         for (var i = 0; i < s.Table.Count; i++)
         {
             var cell = s.Table[i];
-            if (!cell.Available) continue;
-            if (team.Peeks.Contains(i)) { list.Add((i, KnownValue(cell, side), Cards.Dangerous.Contains(cell.Card) && cell.Owner == null ? 1 : 0)); continue; }
-            if (cell.Owner == side) { list.Add((i, 0.6, 0)); continue; }
-            // burning an opponent card is safe (works like a Pass) and denies them a chance — small Offside Trap risk
-            if (cell.Owner != null) { list.Add((i, 0.42, 0)); continue; }
-            var p = Danger(s, i, rows, cols);
+            if (!cell.Available || !MatchEngine.CanFlipOwn(s, side, i)) continue;
+            if (cell.Owner == side) { list.Add((i, OwnValue(team, cell.Card), 0)); continue; }
+            if (team.Peeks.Contains(i))
+            {
+                var bad = (cell.Owner == null && Cards.Dangerous.Contains(cell.Card)) || (cell.Owner != null && cell.Card == Cards.OffsideTrap);
+                list.Add((i, KnownValue(team, cell, side), bad ? 1 : 0));
+                continue;
+            }
+            var p = Danger(s, side, i, rows, cols);
             list.Add((i, 0.35 * (1 - p) - 0.6 * p, p));
         }
         return list;
@@ -79,11 +102,12 @@ public class MatchAi(Random rng)
         var options = Evaluate(s, side);
         if (options.Count == 0) return (null, null, null);
         var best = options.OrderByDescending(o => o.Value).First();
-        var unknownGrey = options.Where(o => !team.Peeks.Contains(o.Index) && s.Table[o.Index].Owner == null).ToList();
+        var unknown = options.Where(o => Unknown(s, side, o.Index)).ToList();
+        var oppLeft = s.Table.Count(c => c.Available && c.Owner == side.Other()); // public: 4 per team minus the flipped/burned ones
 
         // a free scout from the Playmaker is always used
-        if (team.FreeScouts > 0 && unknownGrey.Count > 0)
-            return (Cards.Scout, unknownGrey.OrderByDescending(o => o.Value).First().Index, null);
+        if (team.FreeScouts > 0 && unknown.Count > 0)
+            return (Cards.Scout, unknown.OrderByDescending(o => o.Value).First().Index, null);
 
         if (team.HandPlayedThisTurn || team.Hand.Count == 0) return (null, null, null);
         var level = team.AiLevel;
@@ -93,40 +117,36 @@ public class MatchAi(Random rng)
         {
             if (rng.Next(100) >= 20) return (null, null, null);
             var card = team.Hand[rng.Next(team.Hand.Count)];
-            return Target(s, side, card, unknownGrey);
+            return Target(s, side, card, unknown, oppLeft);
         }
 
         var careful = level == 2 ? 1.0 : 0.6;
         if (rng.NextDouble() > careful) return (null, null, null);
 
-        if (team.Hand.Contains(Cards.Burn))
-        {
-            var oppCards = options.Where(o => s.Table[o.Index].Owner == side.Other()).ToList();
-            if (oppCards.Count >= 2) return (Cards.Burn, oppCards[rng.Next(oppCards.Count)].Index, null);
-        }
+        // the blind Burn is best early, while the opponent still has most of its cards in the grid
+        if (team.Hand.Contains(Cards.Burn) && oppLeft >= 3) return (Cards.Burn, null, null);
         if (best.Value >= 0.3) return (null, null, null); // a good card is available anyway
-        if (team.Hand.Contains(Cards.Scout) && unknownGrey.Count > 0)
-            return (Cards.Scout, unknownGrey.OrderByDescending(o => o.Value).First().Index, null);
+        if (team.Hand.Contains(Cards.Scout) && unknown.Count > 0)
+            return (Cards.Scout, unknown.OrderByDescending(o => o.Value).First().Index, null);
         if (team.Hand.Contains(Cards.Calm) && best.Danger > 0.3) return (Cards.Calm, null, null);
         if (team.Hand.Contains(Cards.Press) && best.Danger > 0.4) return (Cards.Press, null, null);
         return (null, null, null);
     }
 
-    private (string?, int?, int?) Target(MatchState s, Side side, string card, List<(int Index, double Value, double Danger)> grey)
+    private (string?, int?, int?) Target(MatchState s, Side side, string card, List<(int Index, double Value, double Danger)> unknown, int oppLeft)
     {
         var avail = Enumerable.Range(0, s.Table.Count).Where(i => s.Table[i].Available).ToList();
         switch (card)
         {
             case Cards.Scout:
-                return grey.Count > 0 ? (card, grey[rng.Next(grey.Count)].Index, null) : (null, null, null);
+                return unknown.Count > 0 ? (card, unknown[rng.Next(unknown.Count)].Index, null) : (null, null, null);
             case Cards.Swap:
                 if (avail.Count < 2) return (null, null, null);
                 var a = avail[rng.Next(avail.Count)];
                 var b = avail.Where(i => i != a).ElementAt(rng.Next(avail.Count - 1));
                 return (card, a, b);
             case Cards.Burn:
-                var opp = avail.Where(i => s.Table[i].Owner == side.Other()).ToList();
-                return opp.Count > 0 ? (card, opp[rng.Next(opp.Count)], null) : (null, null, null);
+                return oppLeft > 0 ? (card, null, null) : (null, null, null);
             default:
                 return (card, null, null);
         }

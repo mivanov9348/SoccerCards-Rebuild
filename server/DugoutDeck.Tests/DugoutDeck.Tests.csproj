@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\FootballCards.Api\FootballCards.Api.csproj" />
+    <ProjectReference Include="..\DugoutDeck.Api\DugoutDeck.Api.csproj" />
   </ItemGroup>
 
 </Project>

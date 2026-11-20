@@ -1,5 +1,0 @@
-<Solution>
-  <Project Path="FootballCards.Api/FootballCards.Api.csproj" />
-  <Project Path="FootballCards.Desktop/FootballCards.Desktop.csproj" />
-  <Project Path="FootballCards.Tests/FootballCards.Tests.csproj" />
-</Solution>

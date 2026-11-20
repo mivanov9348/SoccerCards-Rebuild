@@ -62,6 +62,7 @@ export interface TeamStats {
   penalties: number
   bigChances: number
   cardsBurned: number
+  cardsStolen: number
   goalSources: Record<string, number>
 }
 
@@ -105,7 +106,10 @@ export interface GridCell {
   card: string | null
   name: string | null
   peeked: boolean
-  burnedByFlip: boolean
+  /** one of my own team cards (only my own are ever marked — the computer's positions are not sent) */
+  mine: boolean
+  /** a team card flipped by the other team */
+  stolen: boolean
 }
 
 export interface Decision {
@@ -161,6 +165,9 @@ export interface MatchView {
   hand: { code: string; name: string; description: string | null }[]
   freeScouts: number
   handPlayed: boolean
+  /** I already flipped one of my own team cards this turn */
+  ownCardUsed: boolean
+  opponentCardsLeft: number
   opponentHandCount: number
   decision: Decision | null
   shootout: { side: Side; scored: boolean }[]

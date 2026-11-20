@@ -1,10 +1,10 @@
 using System.Text.RegularExpressions;
-using FootballCards.Api.Data;
-using FootballCards.Api.Data.Entities;
-using FootballCards.Api.Game;
+using DugoutDeck.Api.Data;
+using DugoutDeck.Api.Data.Entities;
+using DugoutDeck.Api.Game;
 using Microsoft.EntityFrameworkCore;
 
-namespace FootballCards.Api.Endpoints;
+namespace DugoutDeck.Api.Endpoints;
 
 public record LeagueInput(string Name, string Country, int Tier, bool IsPlayable);
 

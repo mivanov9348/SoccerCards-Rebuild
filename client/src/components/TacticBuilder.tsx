@@ -161,7 +161,7 @@ export function TacticBuilder({ m, onStart }: { m: MatchView; onStart: (t: Tacti
       </div>
 
       <div className="panel">
-        {section('Field', 'Field cards', '— go into the grid with your club colours; if the opponent flips one, it burns')}
+        {section('Field', 'Field cards', '— hidden in the grid (only you know where); if the opponent flips one, they steal it — except the Offside Trap')}
         {section('Hand', 'Hand cards', '— played before a flip, one per flip')}
         {section('Modifier', 'Neutral modifiers', '— secretly change the grey cards; both teams’ choices are added up')}
       </div>

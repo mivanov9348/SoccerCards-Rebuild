@@ -1,9 +1,9 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using FootballCards.Api.Data.Entities;
+using DugoutDeck.Api.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace FootballCards.Api.Data;
+namespace DugoutDeck.Api.Data;
 
 /// <summary>
 /// Loads Data/Seed/seed.json into the database. Leagues, teams and competitions are only added when missing

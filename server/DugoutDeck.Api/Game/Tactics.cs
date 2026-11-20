@@ -1,6 +1,6 @@
-using FootballCards.Api.Data.Entities;
+using DugoutDeck.Api.Data.Entities;
 
-namespace FootballCards.Api.Game;
+namespace DugoutDeck.Api.Game;
 
 /// <summary>Card definitions by code (loaded from the database).</summary>
 public class CardCatalog(IEnumerable<CardDefinition> cards)
@@ -96,6 +96,7 @@ public static class TacticRules
     public static List<string> RollConditions(string homeCity, string awayCity, Random rng)
     {
         var list = new List<string> { Conditions.Home };
+        if (!Rules.WeatherAndDerby) return list;
         var w = rng.Next(100);
         list.Add(w < 20 ? Conditions.Rain : w < 40 ? Conditions.Wind : Conditions.Fine);
         if (!string.IsNullOrWhiteSpace(homeCity) && homeCity == awayCity) list.Add(Conditions.Derby);

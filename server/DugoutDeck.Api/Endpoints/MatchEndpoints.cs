@@ -1,11 +1,11 @@
 using System.Text.Json;
-using FootballCards.Api.Careers;
-using FootballCards.Api.Data;
-using FootballCards.Api.Data.Entities;
-using FootballCards.Api.Game;
+using DugoutDeck.Api.Careers;
+using DugoutDeck.Api.Data;
+using DugoutDeck.Api.Data.Entities;
+using DugoutDeck.Api.Game;
 using Microsoft.EntityFrameworkCore;
 
-namespace FootballCards.Api.Endpoints;
+namespace DugoutDeck.Api.Endpoints;
 
 public record CreateFriendlyRequest(int HomeTeamId, int AwayTeamId, Side HumanSide);
 public record StartRequest(TacticSpec Tactic, string? SaveAs);

@@ -1,9 +1,9 @@
 using System.Net;
 using System.Net.Sockets;
-using FootballCards.Api;
+using DugoutDeck.Api;
 using Photino.NET;
 
-namespace FootballCards.Desktop;
+namespace DugoutDeck.Desktop;
 
 /// <summary>
 /// Desktop version of Dugout Deck: runs the game server inside the app on a private local port

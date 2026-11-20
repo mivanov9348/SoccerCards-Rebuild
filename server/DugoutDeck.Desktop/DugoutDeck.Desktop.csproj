@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>DugoutDeck</AssemblyName>
-    <RootNamespace>FootballCards.Desktop</RootNamespace>
+    <RootNamespace>DugoutDeck.Desktop</RootNamespace>
     <Product>Dugout Deck</Product>
     <Version>0.2.0</Version>
     <ApplicationIcon>app.ico</ApplicationIcon>
@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\FootballCards.Api\FootballCards.Api.csproj" />
+    <ProjectReference Include="..\DugoutDeck.Api\DugoutDeck.Api.csproj" />
   </ItemGroup>
 
   <ItemGroup>

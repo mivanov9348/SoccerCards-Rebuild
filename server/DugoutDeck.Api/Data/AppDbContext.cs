@@ -1,7 +1,7 @@
-using FootballCards.Api.Data.Entities;
+using DugoutDeck.Api.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace FootballCards.Api.Data;
+namespace DugoutDeck.Api.Data;
 
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {

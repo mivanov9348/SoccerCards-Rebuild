@@ -1,9 +1,9 @@
 using System.Text.Json;
-using FootballCards.Api.Data.Entities;
-using FootballCards.Api.Game;
+using DugoutDeck.Api.Data.Entities;
+using DugoutDeck.Api.Game;
 using Xunit.Abstractions;
 
-namespace FootballCards.Tests;
+namespace DugoutDeck.Tests;
 
 public class MatchEngineTests(ITestOutputHelper output)
 {
@@ -53,6 +53,7 @@ public class MatchEngineTests(ITestOutputHelper output)
         Assert.DoesNotContain(s.Table, c => c.Card == Cards.FullTime);
         Assert.Single(s.SecondHalfTable, c => c.Card == Cards.FullTime);
         Assert.DoesNotContain(s.SecondHalfTable, c => c.Card == Cards.HalfTime);
+        Assert.Equal([Conditions.Home], s.Conditions); // weather and derby are switched off for now
     }
 
     [Fact]
@@ -88,21 +89,62 @@ public class MatchEngineTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void ThreePasses_GiveBigChance_ButBurningResetsTheStreak()
+    public void ThreePasses_GiveBigChance()
     {
         var (engine, s) = NewMatch(3, Side.Home);
         s.Turn = Side.Home;
-        Put(s, 0, Cards.Pass); Put(s, 1, Cards.Pass); Put(s, 2, Cards.Striker, Side.Away); Put(s, 3, Cards.Pass); Put(s, 4, Cards.Pass); Put(s, 5, Cards.Pass);
+        Put(s, 0, Cards.Pass); Put(s, 1, Cards.Pass); Put(s, 2, Cards.Pass);
         engine.FlipHuman(s, 0);
         engine.FlipHuman(s, 1);
-        engine.FlipHuman(s, 2); // burn: keeps the ball, resets the streak
-        Assert.Equal(Side.Home, s.Turn);
-        Assert.Equal(0, s.Home.PassStreak);
-        engine.FlipHuman(s, 3);
-        engine.FlipHuman(s, 4);
-        engine.FlipHuman(s, 5);
+        Assert.Equal(2, s.Home.PassStreak);
+        engine.FlipHuman(s, 2);
         Assert.Equal(MatchPhase.Decision, s.Phase);
         Assert.Equal(DecisionKind.BigChance, s.Decision!.Kind);
+    }
+
+    [Fact]
+    public void OpponentCard_IsStolen_TheEffectGoesToTheFlipper()
+    {
+        var (engine, s) = NewMatch(30, Side.Home);
+        s.Turn = Side.Home;
+        Put(s, 0, Cards.Captain, Side.Away); Put(s, 1, Cards.Tackle); Put(s, 2, Cards.BigChanceCard, Side.Away);
+        engine.FlipHuman(s, 0); // stolen Captain protects the thief
+        Assert.True(s.Home.CaptainShield);
+        Assert.Equal(1, s.Home.Stats.CardsStolen);
+        engine.FlipHuman(s, 1);
+        Assert.Equal(Side.Home, s.Turn);
+        engine.FlipHuman(s, 2); // stolen Big Chance: the thief shoots
+        Assert.Equal(DecisionKind.BigChance, s.Decision!.Kind);
+        Assert.Equal(Side.Home, s.Decision.Attacker);
+    }
+
+    [Fact]
+    public void OnlyOneOwnCardPerTurn_UntilTheBallIsLost()
+    {
+        var (engine, s) = NewMatch(31, Side.Home);
+        s.Turn = Side.Home;
+        Put(s, 0, Cards.LongShot, Side.Home); Put(s, 1, Cards.Captain, Side.Home); Put(s, 2, Cards.Tackle); Put(s, 3, Cards.Tackle);
+        s.Home.CaptainShield = false;
+        engine.FlipHuman(s, 0);
+        if (s.Turn != Side.Home) return; // the long shot went in — kick-off for the opponent
+        Assert.True(s.Home.OwnCardUsedThisTurn);
+        Assert.Throws<GameRuleException>(() => engine.FlipHuman(s, 1));
+        engine.FlipHuman(s, 2); // Tackle: the ball is lost, the turn ends
+        Assert.Equal(Side.Away, s.Turn);
+        Assert.False(s.Home.OwnCardUsedThisTurn);
+    }
+
+    [Fact]
+    public void View_NeverSendsTheComputersCardPositions()
+    {
+        var (engine, s) = NewMatch(32, Side.Home);
+        var view = JsonSerializer.Serialize(MatchService.View(new Match { Id = 1 }, s, Catalog));
+        using var doc = JsonDocument.Parse(view);
+        var cells = doc.RootElement.GetProperty("table").EnumerateArray().ToList();
+        Assert.Equal(4, cells.Count(c => c.GetProperty("owner").GetString() == "Home"));
+        Assert.DoesNotContain(cells, c => c.GetProperty("owner").GetString() == "Away");
+        Assert.Equal(4, cells.Count(c => c.GetProperty("mine").GetBoolean()));
+        Assert.Equal(4, cells.Count(c => c.GetProperty("card").ValueKind == JsonValueKind.String)); // only the own cards
     }
 
     [Fact]
@@ -149,14 +191,17 @@ public class MatchEngineTests(ITestOutputHelper output)
         var tactic = new TacticSpec { Field = [Cards.Striker, Cards.LongShot, Cards.LongShot, Cards.LongShot], Hand = [Cards.Scout, Cards.Burn, Cards.Calm] };
         var (engine, s) = NewMatch(7, Side.Home, homeTactic: tactic);
         s.Turn = Side.Home;
-        Put(s, 0, Cards.Tackle); Put(s, 1, Cards.Striker, Side.Away);
+        Put(s, 0, Cards.Tackle);
         engine.PlayHandHuman(s, Cards.Scout, 0, null);
         Assert.Contains(0, s.Home.Peeks);
-        Assert.Throws<GameRuleException>(() => engine.PlayHandHuman(s, Cards.Burn, 1, null)); // one per flip
+        Assert.Throws<GameRuleException>(() => engine.PlayHandHuman(s, Cards.Burn, null, null)); // one per flip
         Put(s, 2, Cards.Pass);
         engine.FlipHuman(s, 2);
-        engine.PlayHandHuman(s, Cards.Burn, 1, null);
-        Assert.True(s.Table[1].Burned);
+        var awayBefore = s.Table.Count(c => c.Available && c.Owner == Side.Away);
+        engine.PlayHandHuman(s, Cards.Burn, null, null); // blind: a random card of the opponent
+        Assert.Equal(1, s.Table.Count(c => c.Burned));
+        Assert.Equal(Side.Away, s.Table.Single(c => c.Burned).Owner);
+        Assert.Equal(awayBefore - 1, s.Table.Count(c => c.Available && c.Owner == Side.Away));
         Put(s, 3, Cards.Pass);
         engine.FlipHuman(s, 3);
         engine.PlayHandHuman(s, Cards.Calm, null, null);
@@ -240,7 +285,8 @@ public class MatchEngineTests(ITestOutputHelper output)
                 if (s.Decision!.Kind == DecisionKind.Discard && s.Decision.Attacker != Side.Away) engine.AiStep(s);
                 else engine.DecideHuman(s, null, null, true);
             }
-            else if (s.Turn == Side.Away) engine.FlipHuman(s, s.Table.FindIndex(c => c.Available));
+            else if (s.Turn == Side.Away)
+                engine.FlipHuman(s, Enumerable.Range(0, s.Table.Count).First(i => s.Table[i].Available && MatchEngine.CanFlipOwn(s, Side.Away, i)));
             else engine.AiStep(s);
         }
         Assert.Equal(MatchPhase.Finished, s.Phase);
@@ -251,7 +297,7 @@ public class MatchEngineTests(ITestOutputHelper output)
     [Fact]
     public void Balance_AroundFourGoals_StrongTeamWinsMoreOften()
     {
-        double goals = 0, flips = 0, zeroZero = 0;
+        double goals = 0, flips = 0, zeroZero = 0, stolen = 0, trapsSprung = 0;
         var sources = new Dictionary<string, int>();
         const int n = 4000;
         for (var i = 0; i < n; i++)
@@ -262,6 +308,8 @@ public class MatchEngineTests(ITestOutputHelper output)
             goals += s.Home.Goals + s.Away.Goals;
             flips += s.Home.Stats.Flips + s.Away.Stats.Flips;
             if (s.Home.Goals + s.Away.Goals == 0) zeroZero++;
+            stolen += s.Home.Stats.CardsStolen + s.Away.Stats.CardsStolen;
+            trapsSprung += s.Events.Count(e => e.Type == "lost" && e.Card == Cards.OffsideTrap);
             foreach (var t in new[] { s.Home, s.Away })
                 foreach (var (k, v) in t.Stats.GoalSources) sources[k] = sources.GetValueOrDefault(k) + v;
         }
@@ -281,8 +329,27 @@ public class MatchEngineTests(ITestOutputHelper output)
 
         output.WriteLine($"avg goals {goals / n:F2}, avg flips {flips / n:F1}, 0:0 {zeroZero / n:P1}");
         output.WriteLine("goal sources: " + string.Join(", ", sources.OrderByDescending(kv => kv.Value).Select(kv => $"{kv.Key} {(double)kv.Value / n:F2}")));
+        output.WriteLine($"steals per match {stolen / n:F2}, offside traps sprung per match {trapsSprung / n:F2}");
         output.WriteLine($"strong (85) vs weak (58): strong wins {strongWins / 20.0:F1}%, weak wins {weakWins / 20.0:F1}%");
         Assert.InRange(goals / n, 3.0, 5.0);
         Assert.True(strongWins > weakWins);
+
+        // how strong is the Offside Trap? the same team with a Long Shot vs with an Offside Trap in its place
+        foreach (var trap in new[] { false, true })
+        {
+            int wins = 0, losses = 0, sprung = 0;
+            for (var i = 0; i < 2000; i++)
+            {
+                var tactic = new TacticSpec { Field = [Cards.Striker, Cards.LongShot, trap ? Cards.OffsideTrap : Cards.LongShot, Cards.Captain], Hand = [Cards.Scout] };
+                var engine = new MatchEngine(new Random(20000 + i), Catalog);
+                var s = engine.Create(new MatchSetup(T(1), T(2), 75, 75, null, false, "Test"));
+                engine.Start(s, tactic, TacticRules.Default());
+                engine.SimulateToEnd(s);
+                if (s.Home.Goals > s.Away.Goals) wins++;
+                if (s.Home.Goals < s.Away.Goals) losses++;
+                sprung += s.Events.Count(e => e.Type == "lost" && e.Card == Cards.OffsideTrap);
+            }
+            output.WriteLine($"{(trap ? "with Offside Trap" : "with Long Shot   ")}: wins {wins / 20.0:F1}%, losses {losses / 20.0:F1}%, traps sprung per match {sprung / 2000.0:F2}");
+        }
     }
 }

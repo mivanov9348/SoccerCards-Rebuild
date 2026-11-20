@@ -1,4 +1,4 @@
-namespace FootballCards.Api.Game;
+namespace DugoutDeck.Api.Game;
 
 /// <summary>Match commentary. {T} = the team the line is about, {O} = the opponent, {score} = the score.</summary>
 public static class Commentary
@@ -22,7 +22,6 @@ public static class Commentary
         ["FREE_KICK"] = ["Free kick to {T} in a dangerous position."],
         ["PENALTY"] = ["PENALTY to {T}! The referee points to the spot!"],
         ["big_chance"] = ["Three passes in a row — BIG CHANCE for {T}!", "{T} carve the defence open — big chance!"],
-        ["burned"] = ["{T} flip a {O} card — it's burned!", "{T} burn one of {O}'s cards."],
         ["trap"] = ["Offside trap! {T} walk straight into it and lose the ball."],
         ["wall"] = ["The {O} wall holds — the goal is denied!"],
         ["press_extra"] = ["{T} press immediately and win another flip!"],

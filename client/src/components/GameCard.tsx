@@ -52,38 +52,38 @@ export function CardFace({ code, name, description, size = 'normal' }: FaceProps
   )
 }
 
-/** A face-down card on the table: grey back for neutral cards, club colours for team cards. */
+/** A face-down card on the table. All backs are grey; my own team cards get a small corner flag in my colours. */
 export function CardBack({
   onClick,
   disabled,
-  color,
-  color2,
+  mark,
   peeked,
   selected,
   title,
 }: {
   onClick?: () => void
   disabled?: boolean
-  color?: string
-  color2?: string
-  peeked?: { code: string; name: string } | null
+  /** my own card: club colours for the corner flag; dim = already played an own card this turn */
+  mark?: { color: string; color2: string; dim: boolean } | null
+  peeked?: { code: string; name: string; opponent?: boolean } | null
   selected?: boolean
   title?: string
 }) {
-  const style = color ? { background: `repeating-linear-gradient(45deg, ${color} 0 7px, ${color2 ?? color} 7px 10px)` } : undefined
   return (
     <button
-      className={`card-back-big ${color ? 'team-back' : 'grey-back'} ${selected ? 'selected' : ''} ${peeked ? 'peeked' : ''}`}
-      style={style}
+      className={`card-back-big grey-back ${selected ? 'selected' : ''} ${peeked ? 'peeked' : ''} ${mark?.dim ? 'own-used' : ''}`}
       disabled={disabled}
       onClick={onClick}
       title={title}
       aria-label={title ?? 'Face-down card'}
     >
+      {mark && (
+        <i className="own-mark" style={{ background: `linear-gradient(225deg, ${mark.color} 0 30%, ${mark.color2} 30% 42%, ${mark.color} 42% 50%, transparent 50%)` }} />
+      )}
       {peeked ? (
         <span className="peek-label">
           👁 {iconFor(peeked.code)}
-          <small>{peeked.name}</small>
+          <small>{peeked.opponent ? 'Opp: ' : ''}{peeked.name}</small>
         </span>
       ) : (
         <span className="back-ball">⚽</span>

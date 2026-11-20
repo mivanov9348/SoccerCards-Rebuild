@@ -1,4 +1,4 @@
-namespace FootballCards.Api.Data.Entities;
+namespace DugoutDeck.Api.Data.Entities;
 
 /// <summary>A national division (e.g. First League). Only playable leagues can be chosen for a career.</summary>
 public class League

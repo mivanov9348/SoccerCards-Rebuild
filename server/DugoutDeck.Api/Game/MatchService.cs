@@ -1,10 +1,10 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using FootballCards.Api.Data;
-using FootballCards.Api.Data.Entities;
+using DugoutDeck.Api.Data;
+using DugoutDeck.Api.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace FootballCards.Api.Game;
+namespace DugoutDeck.Api.Game;
 
 /// <summary>Creates, loads and saves matches and builds what the player sees (face-down cards stay secret).</summary>
 public class MatchService(AppDbContext db)
@@ -105,16 +105,20 @@ public class MatchService(AppDbContext db)
             rowHints = rows, colHints = cols,
             table = s.Table.Select((c, i) =>
             {
+                // all backs are grey: the player sees only where their own team cards are (never the computer's —
+                // those positions are not even sent, so they cannot be found in the browser's developer tools)
+                var mine = c.Owner == human;
                 var show = c.FaceUp || finished;
-                var peeked = !show && me.Peeks.Contains(i);
+                var peeked = !show && !c.Burned && me.Peeks.Contains(i);
+                var know = show || peeked || mine;
                 return new
                 {
                     index = i, faceUp = c.FaceUp, burned = c.Burned,
-                    owner = c.Owner?.ToString(), flippedBy = c.FlippedBy?.ToString(),
-                    card = show || peeked ? c.Card : null,
-                    name = show || peeked ? Cards.Name(c.Card) : null,
-                    peeked,
-                    burnedByFlip = c.FaceUp && c.Owner != null && c.Owner != c.FlippedBy
+                    owner = know ? c.Owner?.ToString() : null, flippedBy = c.FlippedBy?.ToString(),
+                    card = know ? c.Card : null,
+                    name = know ? Cards.Name(c.Card) : null,
+                    peeked, mine,
+                    stolen = c.FaceUp && c.Owner != null && c.Owner != c.FlippedBy
                 };
             }),
             cardsLeft = s.Table.Count(c => c.Available),
@@ -127,6 +131,8 @@ public class MatchService(AppDbContext db)
             hand = me.Hand.Select(c => new { code = c, name = Cards.Name(c), description = catalog.Get(c)?.Description }),
             freeScouts = me.FreeScouts,
             handPlayed = me.HandPlayedThisTurn,
+            ownCardUsed = me.OwnCardUsedThisTurn && me.CounterFlips == 0,
+            opponentCardsLeft = s.Table.Count(c => c.Available && c.Owner == human.Other()),
             opponentHandCount = opp.Hand.Count,
             decision,
             shootout = s.Shootout.Select(k => new { side = k.Side.ToString(), scored = k.Scored }),

@@ -1,10 +1,10 @@
 using System.Text.Json;
-using FootballCards.Api.Data;
-using FootballCards.Api.Data.Entities;
-using FootballCards.Api.Game;
+using DugoutDeck.Api.Data;
+using DugoutDeck.Api.Data.Entities;
+using DugoutDeck.Api.Game;
 using Microsoft.EntityFrameworkCore;
 
-namespace FootballCards.Api.Careers;
+namespace DugoutDeck.Api.Careers;
 
 public record ScheduleSlot(int Week, string Kind, int Round, string Stage);
 

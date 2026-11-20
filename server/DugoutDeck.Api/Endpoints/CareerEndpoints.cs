@@ -1,10 +1,10 @@
-using FootballCards.Api.Careers;
-using FootballCards.Api.Data;
-using FootballCards.Api.Data.Entities;
-using FootballCards.Api.Game;
+using DugoutDeck.Api.Careers;
+using DugoutDeck.Api.Data;
+using DugoutDeck.Api.Data.Entities;
+using DugoutDeck.Api.Game;
 using Microsoft.EntityFrameworkCore;
 
-namespace FootballCards.Api.Endpoints;
+namespace DugoutDeck.Api.Endpoints;
 
 public record CreateCareerRequest(string SaveName, string ManagerName, int TeamId);
 public record RenameCareerRequest(string SaveName);

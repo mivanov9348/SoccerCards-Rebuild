@@ -4,22 +4,26 @@ Dugout Deck is a single-player football card game against the computer. Matches 
 before each match both teams build a tactic from their card collection. Luck leads, but reading the hints, a good tactic and
 well-timed hand cards win more often.
 
-All numbers below are in `server/FootballCards.Api/Game/Rules.cs` and the card catalog in `server/FootballCards.Api/Data/Seed/seed.json`.
-They were tuned with 4,000 simulated matches (see the balance test): about **4.6 goals per match**, 0:0 in about 1% of matches,
-a strong team (85) beats a weak one (58) about 53% of the time and loses about 23%.
+All numbers below are in `server/DugoutDeck.Api/Game/Rules.cs` and the card catalog in `server/DugoutDeck.Api/Data/Seed/seed.json`.
+They were tuned with 4,000 simulated matches (see the balance test): about **4.9 goals per match**, 0:0 in under 1% of matches,
+a strong team (85) beats a weak one (58) about 55% of the time and loses about 23%. About 1.7 team cards are stolen per match.
 
 ---
 
 ## 1. The grid
 
-Each half has its own 5×5 grid of 25 face-down cards:
+Each half has its own 5×5 grid of 25 face-down cards. **All backs are the same grey.**
 
-| Part | Count | Back |
-|---|---|---|
-| Neutral cards | 16 | grey |
-| Home team cards (from its tactic) | 4 | home club colours |
-| Away team cards | 4 | away club colours |
-| Special card | 1 | grey — **Half Time** in the 1st half, **Full Time** in the 2nd |
+| Part | Count |
+|---|---|
+| Neutral cards | 16 |
+| Home team cards (from its tactic) | 4 |
+| Away team cards | 4 |
+| Special card | 1 — **Half Time** in the 1st half, **Full Time** in the 2nd |
+
+**Hidden ownership:** the player sees where their own 4 team cards are (a small flag in the club colours in the corner of the
+card, only on their screen). Nobody sees where the opponent's cards are — the computer only knows its own cards, and the server
+never sends the positions of the computer's cards to the browser. At half time the cards are reshuffled and the flags move.
 
 Full Time can never come before Half Time. At half time every card goes face down again and is reshuffled; the team cards come
 back (a card burned in the first half returns in the second). There is no clock — a half lasts 1–25 flips (about 14).
@@ -47,22 +51,21 @@ produced ~10 goals per match.*
 
 Next to every row and under every column is the number of **dangerous neutral cards** (Tackle, Offside, Save, Miss, Yellow,
 Red) still face down there. They update after every flip. Goals, penalties, Half Time/Full Time and team cards are not counted —
-a coloured card of the opponent might be a goal for them… or a trap.
+so **a 0 does not mean "safe"**: an opponent's Offside Trap (or Half Time) can still hide in that row or column.
 
 ### Match conditions (shown before the match)
 
-| Condition | Effect |
-|---|---|
-| Home | +1 tactic point for the home team |
-| Rain (20%) | 1 Pass → Miss |
-| Wind (20%) | 1 Pass → Corner |
-| Derby (same city) | 1 Tackle → Yellow Card |
-| Fine weather | no change |
+For now the only condition is **Home: +1 tactic point** for the home team, so the neutral set is always the same (apart from the
+tactic modifiers). Rain, wind and derby are switched off and will come back later as a separate module
+(`Rules.WeatherAndDerby` in the code).
 
 ## 2. Turn order
 
 - A coin toss decides who flips first; the other team starts the second half.
-- The team on turn flips one face-down card: grey, its own coloured card or an opponent's coloured card.
+- The team on turn flips one face-down card.
+- **One own card per turn:** while on turn (until it loses the ball), a team may flip at most one of its own team cards. Flipping
+  the opponent's cards is not limited (you don't know where they are). Exceptions: during a Counter Attack, and when only your own
+  cards are left face down. In the game, your flags fade once you have played an own card this turn.
 - You keep the turn while you get "keep" results. A dangerous card, a goal or a penalty passes the turn.
 - Before a flip you may play **one** hand card.
 
@@ -86,20 +89,21 @@ automatic timing lands around the middle but is mostly random. The computer choo
 
 ### Field cards (in the grid, with your colours)
 
-If you flip your own card you get its effect. If the opponent flips it, it **burns**: the effect is lost, and for them it works
-like a Pass but resets their pass streak — except the Offside Trap.
+**Whoever flips a team card gets its effect.** Your own card works for you. If the opponent flips it, they **steal** it — the
+effect is theirs. The only exception is the Offside Trap, which cannot be stolen. Because of "one own card per turn" you have to
+choose when to play each card — the longer it waits, the bigger the risk that it gets stolen.
 
-| Card | Rarity | Points | If the owner flips it | If the opponent flips it |
+| Card | Rarity | Points | If the owner flips it | If the opponent flips it (steal) |
 |---|---|---|---|---|
-| Striker | common | 4 | Clean through: 35% goal | burned |
-| Big Chance | common | 3 | Big Chance mini-game | burned |
-| Long Shot | common | 1 | 12% goal; if it misses you keep the ball | burned |
-| Playmaker | rare | 2 | A free Scout, keep the ball | burned |
-| Captain | rare | 2 | Your next Tackle is ignored | burned |
-| Wall | rare | 2 | The opponent's next goal this half becomes a Save | burned |
-| Offside Trap | epic | 3 | Works like a Pass | caught offside — they lose the ball |
-| Counter Attack | epic | 3 | Flip 2 more cards; dangerous ones don't count | burned |
-| Squad Player | — | 0 | Works like a Pass (free filler) | burned |
+| Striker | common | 4 | Clean through: 35% goal | the same, for the thief |
+| Big Chance | common | 3 | Big Chance mini-game | the same, for the thief |
+| Long Shot | common | 1 | 12% goal; if it misses you keep the ball | the same, for the thief |
+| Playmaker | rare | 2 | A free Scout, keep the ball | the same, for the thief |
+| Captain | rare | 2 | Your next Tackle is ignored | protects the thief |
+| Wall | rare | 2 | The opponent's next goal this half becomes a Save | protects the thief |
+| Offside Trap | epic | 3 | Works like a Pass | **cannot be stolen** — caught offside, they lose the ball |
+| Counter Attack | epic | 3 | Flip 2 more cards; dangerous ones don't count | the same, for the thief |
+| Squad Player | — | 0 | Works like a Pass (free filler) | a Pass for the thief |
 
 *Balance changes vs. the draft: Striker is a 35% chance (not a sure goal) and costs 4; Big Chance costs 3; Long Shot 12%.*
 
@@ -107,11 +111,11 @@ like a Pass but resets their pass streak — except the Offside Trap.
 
 | Card | Points | Effect |
 |---|---|---|
-| Scout | 1 | Look under one face-down card (only you see it) |
+| Scout | 1 | Look under one face-down card (only you see it — including whose team card it is) |
 | Swap | 1 | Swap the places of two face-down cards |
 | Calm | 2 | If your next card is a Tackle, you keep the ball |
 | Press | 2 | The next time you lose the ball, flip one more card straight away |
-| Burn | 2 | Burn one of the opponent's face-down coloured cards without flipping it |
+| Burn | 2 | **Blind:** burns a random face-down team card of the opponent. A 🔥 is left in its place; you don't see which card it was (cost to be reviewed after balancing) |
 
 ## 5. Discipline
 
@@ -152,7 +156,9 @@ The rating **never changes the odds of a card**. It gives tactic points, hand ca
 |---|---|---|
 | Weak | < 66 | Flips at random half of the time; plays hand cards at random moments |
 | Average | 66–77 | Prefers safe cards by the hints but makes mistakes (20% random) |
-| Strong | 78+ | Almost always the best card; uses its own cards, burns the opponent's, plays hand cards well |
+| Strong | 78+ | Almost always the best card by the hints; plays its own cards at the right moment (one per turn, keeps its Offside Trap in the grid), uses the blind Burn early |
+
+The computer never knows where your team cards are — it can only steal them by chance, like you. Background matches use the same rules.
 
 ## 8. Career
 

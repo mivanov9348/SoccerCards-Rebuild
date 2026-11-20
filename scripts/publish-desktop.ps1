@@ -21,7 +21,7 @@ Pop-Location
 
 Write-Host '2/3 Publishing the desktop app...' -ForegroundColor Cyan
 if (Test-Path $out) { Remove-Item $out -Recurse -Force }
-dotnet publish (Join-Path $root 'server\FootballCards.Desktop') -c Release -r win-x64 --self-contained true -p:DebugType=None -o $out
+dotnet publish (Join-Path $root 'server\DugoutDeck.Desktop') -c Release -r win-x64 --self-contained true -p:DebugType=None -o $out
 if ($LASTEXITCODE -ne 0) { throw 'dotnet publish failed' }
 
 Write-Host '3/3 Creating the zip...' -ForegroundColor Cyan

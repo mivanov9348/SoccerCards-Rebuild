@@ -1,14 +1,15 @@
-using FootballCards.Api.Data.Entities;
+using DugoutDeck.Api.Data.Entities;
 
-namespace FootballCards.Api.Game;
+namespace DugoutDeck.Api.Game;
 
 public record MatchSetup(Team Home, Team Away, int HomeRating, int AwayRating, Side? HumanSide, bool IsKnockout, string CompetitionName);
 
 public class GameRuleException(string message) : Exception(message);
 
 /// <summary>
-/// The Dugout Deck match engine. Each half is a 5×5 grid: neutral cards (grey back), 4 cards of each team
-/// (coloured back) and Half Time / Full Time. The player on turn flips one card; the card decides what happens.
+/// The Dugout Deck match engine. Each half is a 5×5 grid: neutral cards, 4 cards of each team and Half Time /
+/// Full Time — all with the same grey back (only the owner knows where its team cards are). The player on turn
+/// flips one card; the card decides what happens. Whoever flips a team card gets its effect (stealing).
 /// See docs/rules.md for all rules.
 /// </summary>
 public class MatchEngine(Random rng, CardCatalog catalog)
@@ -77,6 +78,7 @@ public class MatchEngine(Random rng, CardCatalog catalog)
         if (s.Phase != MatchPhase.Play) throw new GameRuleException("You cannot flip a card right now.");
         if (s.Turn != human) throw new GameRuleException("It is not your turn.");
         if (cell < 0 || cell >= s.Table.Count || !s.Table[cell].Available) throw new GameRuleException("That card cannot be flipped.");
+        if (!CanFlipOwn(s, human, cell)) throw new GameRuleException("You have already played one of your own cards this turn.");
         Flip(s, cell);
     }
 
@@ -148,6 +150,25 @@ public class MatchEngine(Random rng, CardCatalog catalog)
         Flip(s, _ai.ChooseCell(s, side));
     }
 
+    /// <summary>One own team card per turn — unless only own cards are left face down (or a Counter Attack is running).</summary>
+    public static bool CanFlipOwn(MatchState s, Side side, int cell)
+    {
+        var team = s.Team(side);
+        if (s.Table[cell].Owner != side || !team.OwnCardUsedThisTurn || team.CounterFlips > 0) return true;
+        return s.Table.All(c => !c.Available || c.Owner == side);
+    }
+
+    /// <summary>Gives the turn to a side; a new turn clears the "one own card per turn" marks.</summary>
+    private static void SetTurn(MatchState s, Side side)
+    {
+        if (s.Turn != side)
+        {
+            s.Home.OwnCardUsedThisTurn = false;
+            s.Away.OwnCardUsedThisTurn = false;
+        }
+        s.Turn = side;
+    }
+
     private static Side RequireHuman(MatchState s) =>
         s.HumanSide ?? throw new GameRuleException("There is no human player in this match.");
 
@@ -194,9 +215,12 @@ public class MatchEngine(Random rng, CardCatalog catalog)
             }
             case Cards.Burn:
             {
-                var c = Target(cell, "burn");
-                if (!c.Available || c.Owner != side.Other()) throw new GameRuleException("Pick a face-down card of the opponent (coloured back).");
-                c.Burned = true;
+                // blind: a random face-down card of the opponent — the player does not choose and does not see which
+                var targets = Enumerable.Range(0, s.Table.Count).Where(i => s.Table[i].Available && s.Table[i].Owner == side.Other()).ToList();
+                if (targets.Count == 0) throw new GameRuleException("The opponent has no face-down cards left to burn.");
+                var idx = targets[rng.Next(targets.Count)];
+                s.Table[idx].Burned = true;
+                foreach (var t in new[] { s.Home, s.Away }) t.Peeks.Remove(idx);
                 team.Stats.CardsBurned++;
                 AddEvent(s, "hand", side, $"{team.Name} burn one of {opp.Name}'s cards!", card);
                 break;
@@ -237,27 +261,26 @@ public class MatchEngine(Random rng, CardCatalog catalog)
         var counter = team.CounterFlips > 0;
         if (counter) team.CounterFlips--;
 
-        // --- a card of the opponent: burned (or the Offside Trap springs)
+        // --- a card of the opponent: stolen — the effect is for the one who flipped it (the Offside Trap springs)
         if (cell.Owner == side.Other())
         {
             if (cell.Card == Cards.OffsideTrap)
             {
                 AddEvent(s, "lost", side, Text(s, "trap", side), cell.Card);
                 LoseBall(s, side);
+                return;
             }
-            else
-            {
-                team.PassStreak = 0;
-                team.Stats.CardsBurned++;
-                AddEvent(s, "burn", side, Text(s, "burned", side), cell.Card);
-            }
+            team.Stats.CardsStolen++;
+            AddEvent(s, "steal", side, $"{team.Name} steal {s.Team(side.Other()).Name}'s {Cards.Name(cell.Card)}!", cell.Card);
+            TeamCard(s, side, cell.Card);
             return;
         }
 
-        // --- an own team card
+        // --- an own team card (one per turn; free during a Counter Attack)
         if (cell.Owner == side)
         {
-            OwnCard(s, side, cell.Card);
+            if (!counter) team.OwnCardUsedThisTurn = true;
+            TeamCard(s, side, cell.Card);
             return;
         }
 
@@ -290,7 +313,8 @@ public class MatchEngine(Random rng, CardCatalog catalog)
         }
     }
 
-    private void OwnCard(MatchState s, Side side, string card)
+    /// <summary>The effect of a team card for the team that flipped it (its owner or a thief).</summary>
+    private void TeamCard(MatchState s, Side side, string card)
     {
         var team = s.Team(side);
         switch (card)
@@ -421,7 +445,7 @@ public class MatchEngine(Random rng, CardCatalog catalog)
             AddEvent(s, "play", side, Text(s, "press_extra", side), Cards.Press);
             return;
         }
-        s.Turn = side.Other();
+        SetTurn(s, side.Other());
     }
 
     private void Goal(MatchState s, Side side, string source, string? card)
@@ -434,13 +458,13 @@ public class MatchEngine(Random rng, CardCatalog catalog)
             opp.WallActive = false;
             opp.Stats.Saves++;
             AddEvent(s, "save", side, Text(s, "wall", side), Cards.Wall);
-            s.Turn = side.Other();
+            SetTurn(s, side.Other());
             return;
         }
         team.Goals++;
         team.Stats.GoalSources[source] = team.Stats.GoalSources.GetValueOrDefault(source) + 1;
         AddEvent(s, "goal", side, Text(s, Cards.Goal, side) + $" ({source})", card);
-        s.Turn = side.Other();
+        SetTurn(s, side.Other());
     }
 
     private void HalfTime(MatchState s, Side side)
@@ -460,6 +484,7 @@ public class MatchEngine(Random rng, CardCatalog catalog)
             t.PressActive = false;
             t.CounterFlips = 0;
             t.HandPlayedThisTurn = false;
+            t.OwnCardUsedThisTurn = false;
         }
         s.Turn = s.FirstKickOff.Other();
         AddEvent(s, "whistle", s.Turn, Text(s, "kickoff2", s.Turn));
@@ -575,7 +600,7 @@ public class MatchEngine(Random rng, CardCatalog catalog)
             case DecisionKind.Penalty:
             {
                 if (PenaltyKick(s, a, attackChoice, defenseChoice, attackTiming, defenseTiming)) Goal(s, a, "Penalty", Cards.Penalty);
-                else s.Turn = a.Other();
+                else SetTurn(s, a.Other());
                 break;
             }
             case DecisionKind.Shootout:
@@ -666,7 +691,7 @@ public class MatchEngine(Random rng, CardCatalog catalog)
         for (var i = 0; i < s.Table.Count; i++)
         {
             var c = s.Table[i];
-            if (!c.Available || c.Owner != null || !Cards.Dangerous.Contains(c.Card)) continue;
+            if (!c.Available || c.Owner != null || !Cards.Dangerous.Contains(c.Card)) continue; // a 0 can still hide a team card
             rows[i / n]++;
             cols[i % n]++;
         }

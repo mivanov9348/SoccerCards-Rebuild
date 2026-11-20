@@ -256,7 +256,7 @@ export default function Editor() {
           <h3>New league</h3>
           <LeagueForm onSave={async (l) => void (await guard(() => api.createLeague(l), `League "${l.name}" added.`))} />
           <p className="muted small">
-            Tip: you can also add teams directly in <code>server/FootballCards.Api/Data/Seed/seed.json</code> — missing teams
+            Tip: you can also add teams directly in <code>server/DugoutDeck.Api/Data/Seed/seed.json</code> — missing teams
             are added automatically the next time the server starts.
           </p>
         </div>

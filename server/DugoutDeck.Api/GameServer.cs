@@ -1,14 +1,14 @@
 using System.Text.Json.Serialization;
-using FootballCards.Api.Careers;
-using FootballCards.Api.Data;
-using FootballCards.Api.Data.Entities;
-using FootballCards.Api.Endpoints;
-using FootballCards.Api.Game;
+using DugoutDeck.Api.Careers;
+using DugoutDeck.Api.Data;
+using DugoutDeck.Api.Data.Entities;
+using DugoutDeck.Api.Endpoints;
+using DugoutDeck.Api.Game;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 
-namespace FootballCards.Api;
+namespace DugoutDeck.Api;
 
 /// <summary>Options that differ between the web server and the desktop app.</summary>
 public record GameServerOptions

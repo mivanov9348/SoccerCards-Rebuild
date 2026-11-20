@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="DugoutDeck.Api/DugoutDeck.Api.csproj" />
+  <Project Path="DugoutDeck.Desktop/DugoutDeck.Desktop.csproj" />
+  <Project Path="DugoutDeck.Tests/DugoutDeck.Tests.csproj" />
+</Solution>
