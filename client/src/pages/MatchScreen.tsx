@@ -297,16 +297,27 @@ export default function MatchScreen() {
     if (goal && scorer) setOverlay({ kind: goal.side === human ? 'goal' : 'against', title: 'GOAL!', sub: scorer.name, colors: [scorer.primaryColor, scorer.secondaryColor], key: goal.id })
     else if (half) setOverlay({ kind: 'whistle', title: 'HALF TIME', sub: `${m.home.goals} : ${m.away.goals} — new grid, ${m.turn === 'Home' ? m.home.name : m.away.name} start`, colors: [], key: half.id })
     else if (full) setOverlay({ kind: 'whistle', title: 'FULL TIME', sub: `${m.home.name} ${m.home.goals} : ${m.away.goals} ${m.away.name}`, colors: [], key: full.id })
-    if (goal || half || full) timers.push(window.setTimeout(() => setOverlay(null), goal ? 2300 : 1900))
 
     const steal = [...fresh].reverse().find((e) => e.type === 'steal')
     if (steal) {
       const name = m.table.find((c) => c.card === steal.card && c.stolen)?.name ?? 'card'
       setToast(steal.side === human ? { text: `🕵 You stole the opponent's ${name}!`, good: true } : { text: `😱 The opponent stole your ${name}!`, good: false })
-      timers.push(window.setTimeout(() => setToast(null), 3500))
     }
     return () => timers.forEach((t) => window.clearTimeout(t))
   }, [m])
+
+  // The banner and the steal message hide by themselves. These timers live on their own: a new update of the match
+  // (e.g. you flip right after a goal) must not cancel them — a banner that never hides would stop the computer for good.
+  useEffect(() => {
+    if (!overlay) return
+    const t = window.setTimeout(() => setOverlay(null), overlay.kind === 'whistle' ? 1900 : 2300)
+    return () => window.clearTimeout(t)
+  }, [overlay])
+  useEffect(() => {
+    if (!toast) return
+    const t = window.setTimeout(() => setToast(null), 3500)
+    return () => window.clearTimeout(t)
+  }, [toast])
 
   const run = async (fn: () => Promise<MatchView>) => {
     setBusy(true)
@@ -335,6 +346,8 @@ export default function MatchScreen() {
         setData(await api.aiStep(m.id))
       } catch (e) {
         setError((e as Error).message)
+        // reload the match so the computer tries again instead of waiting forever
+        window.setTimeout(() => void api.match(m.id).then(setData).catch(() => undefined), 1500)
       } finally {
         aiInFlight.current = false
       }
@@ -451,7 +464,7 @@ export default function MatchScreen() {
             {toast && <div className={`steal-toast ${toast.good ? 'good' : 'bad'}`}>{toast.text}</div>}
             {myTurn && m.ownCardUsed && <div className="own-used-note">You have played one of your own cards this turn — the others wait until your next turn.</div>}
 
-            {m.phase === 'Decision' && m.decision && m.role !== 'wait' && !settings.autoMiniGames && (
+            {m.phase === 'Decision' && m.decision && m.role !== 'wait' && (!settings.autoMiniGames || m.role === 'discard') && (
               <DecisionPanel m={m} d={m.decision} busy={busy} onDecide={(c, t, auto) => run(() => api.decide(m.id, c, t, auto))} />
             )}
 
