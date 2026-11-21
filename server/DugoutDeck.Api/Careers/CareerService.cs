@@ -662,7 +662,11 @@ public class CareerService(AppDbContext db, MatchService matches)
         var clubs = nextMembership.Keys.Where(id => id != season.TeamId).ToList();
         List<int> offers;
         if (fired)
+        {
             offers = clubs.Where(id => ratings[id] < myRating && ratings[id] >= myRating - 12).OrderBy(_ => rng.Next()).Take(2).ToList();
+            // a sacked manager always gets a way back: if no club is weaker, the weakest clubs make an offer
+            if (offers.Count == 0) offers = clubs.OrderBy(id => ratings[id]).Take(6).OrderBy(_ => rng.Next()).Take(2).ToList();
+        }
         else if (score >= 1 || career.Reputation >= 70)
         {
             var reach = 3 + score * 2 + career.Reputation / 20;

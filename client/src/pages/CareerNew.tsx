@@ -14,7 +14,8 @@ export default function CareerNew() {
   const { data: leagues, error: leaguesError } = useLoad(() => api.leagues(), [])
   const playable = useMemo(() => (leagues ?? []).filter((l) => l.isPlayable && l.teamCount >= 4), [leagues])
   const [leagueId, setLeagueId] = useState<number | null>(null)
-  const activeLeague = leagueId ?? playable[0]?.id ?? null
+  // default: the first league in the country order (Bulgaria first), like the other menus
+  const activeLeague = leagueId ?? byCountry(playable, (l) => l.country)[0]?.[1][0]?.id ?? null
   const { data: teams } = useLoad(() => (activeLeague ? api.teams(activeLeague) : Promise.resolve([])), [activeLeague])
 
   const [manager, setManager] = useState(settings.managerName)

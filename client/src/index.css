@@ -512,3 +512,9 @@ ul.conditions li::before { content: '☁ '; color: var(--muted); }
 .half-break .btn { font-size: 1.1rem; padding: 0.7rem 1.4rem; }
 .first-half-view .grid-face { opacity: 0.92; }
 .form-row { display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: center; margin-bottom: 0.6rem; }
+
+/* ---------------------------------------------------------------- settings page: one column with sections */
+.form-grid.settings { grid-template-columns: 1fr; max-width: 640px; align-items: stretch; }
+.form-grid.settings h3 { margin: 0.8rem 0 0; padding-top: 0.6rem; border-top: 1px solid var(--panel-border); color: var(--accent); }
+.form-grid.settings input[type='range'] { width: 100%; }
+.form-grid.settings label.checkbox { justify-content: flex-start; }
