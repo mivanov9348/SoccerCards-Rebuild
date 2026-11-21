@@ -124,7 +124,7 @@ public class CareerService(AppDbContext db, MatchService matches)
 
     // ================================================================== create
 
-    public async Task<Career> CreateAsync(string saveName, string managerName, int teamId)
+    public async Task<Career> CreateAsync(string saveName, string managerName, int teamId, Difficulty difficulty = Difficulty.Normal)
     {
         var team = await db.Teams.Include(t => t.League).FirstOrDefaultAsync(t => t.Id == teamId)
                    ?? throw new GameRuleException("Team not found.");
@@ -138,6 +138,7 @@ public class CareerService(AppDbContext db, MatchService matches)
             TeamId = team.Id,
             LeagueId = team.League.Id,
             Reputation = 30,
+            Difficulty = difficulty,
             Money = (long)(2_000_000 * LeagueFactor(team.League)),
             LastTacticJson = JsonSerializer.Serialize(TacticRules.Default())
         };
@@ -182,7 +183,7 @@ public class CareerService(AppDbContext db, MatchService matches)
 
     /// <summary>
     /// Makes every European cup exactly 32 teams. With many leagues a cup can get more qualifiers than places: the weakest
-    /// of them drop to the next cup (Champions → Europa → Conference). Free places are filled with the strongest clubs that
+    /// of them drop to the next cup (Champions → Continental → Challenge). Free places are filled with the strongest clubs that
     /// have no league, then with the strongest top-division clubs that did not qualify.
     /// </summary>
     private async Task FillEuropeAsync(Dictionary<string, List<int>> europe, Dictionary<int, int> ratings, List<int> topDivision)
@@ -405,7 +406,7 @@ public class CareerService(AppDbContext db, MatchService matches)
         var ratings = await RatingsAsync(career.Id);
         var humanSide = fixture.HomeTeamId == season.TeamId ? Side.Home : Side.Away;
         var match = await matches.CreateAsync(fixture.HomeTeam!, fixture.AwayTeam!, ratings[fixture.HomeTeamId], ratings[fixture.AwayTeamId],
-            humanSide, fixture.IsKnockout, $"{fixture.Competition!.Name} – {fixture.Stage}", fixture.Id, career.Id);
+            humanSide, fixture.IsKnockout, $"{fixture.Competition!.Name} – {fixture.Stage}", fixture.Id, career.Id, career.Difficulty);
 
         if (useLastTactic && career.LastTacticJson != null)
         {

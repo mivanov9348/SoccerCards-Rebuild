@@ -1,38 +1,39 @@
 import { useState } from 'react'
-/** Look of every card face: icon and color theme. */
-export const cardStyles: Record<string, { icon: string; theme: string }> = {
-  PASS: { icon: '➜', theme: 'green' },
-  TACKLE: { icon: '✂', theme: 'red' },
-  CORNER: { icon: '⚑', theme: 'blue' },
-  FREE_KICK: { icon: '↷', theme: 'blue' },
-  OFFSIDE: { icon: '⚐', theme: 'grey' },
-  SAVE: { icon: '🧤', theme: 'purple' },
-  MISS: { icon: '✗', theme: 'grey' },
-  GOAL: { icon: '⚽', theme: 'gold' },
-  PENALTY: { icon: '◎', theme: 'gold' },
-  YELLOW_CARD: { icon: '▮', theme: 'yellow' },
-  RED_CARD: { icon: '▮', theme: 'red' },
-  HALF_TIME: { icon: '⏸', theme: 'black' },
-  FULL_TIME: { icon: '⏹', theme: 'black' },
+import { Icon } from './Icons'
+/** Colour theme of every card face (the icons are in Icons.tsx). */
+export const cardStyles: Record<string, { theme: string }> = {
+  PASS: { theme: 'green' },
+  TACKLE: { theme: 'red' },
+  CORNER: { theme: 'blue' },
+  FREE_KICK: { theme: 'blue' },
+  OFFSIDE: { theme: 'grey' },
+  SAVE: { theme: 'purple' },
+  MISS: { theme: 'grey' },
+  GOAL: { theme: 'gold' },
+  PENALTY: { theme: 'gold' },
+  YELLOW_CARD: { theme: 'yellow' },
+  RED_CARD: { theme: 'red' },
+  HALF_TIME: { theme: 'black' },
+  FULL_TIME: { theme: 'black' },
   // team (field) cards
-  STRIKER: { icon: '🎯', theme: 'gold' },
-  BIG_CHANCE_CARD: { icon: '💥', theme: 'gold' },
-  LONG_SHOT: { icon: '🚀', theme: 'blue' },
-  PLAYMAKER: { icon: '🧠', theme: 'green' },
-  CAPTAIN: { icon: '©', theme: 'green' },
-  WALL: { icon: '🧱', theme: 'purple' },
-  OFFSIDE_TRAP: { icon: '🪤', theme: 'purple' },
-  COUNTER_ATTACK: { icon: '⚡', theme: 'red' },
-  SQUAD_PLAYER: { icon: '👟', theme: 'grey' },
+  STRIKER: { theme: 'gold' },
+  BIG_CHANCE_CARD: { theme: 'gold' },
+  LONG_SHOT: { theme: 'blue' },
+  PLAYMAKER: { theme: 'green' },
+  CAPTAIN: { theme: 'green' },
+  WALL: { theme: 'purple' },
+  OFFSIDE_TRAP: { theme: 'purple' },
+  COUNTER_ATTACK: { theme: 'red' },
+  SQUAD_PLAYER: { theme: 'grey' },
   // hand cards
-  SCOUT: { icon: '👁', theme: 'blue' },
-  SWAP: { icon: '⇄', theme: 'blue' },
-  CALM: { icon: '☯', theme: 'green' },
-  PRESS: { icon: '⏩', theme: 'red' },
-  BURN: { icon: '🔥', theme: 'red' },
+  SCOUT: { theme: 'blue' },
+  SWAP: { theme: 'blue' },
+  CALM: { theme: 'green' },
+  PRESS: { theme: 'red' },
+  BURN: { theme: 'red' },
 }
 
-export const iconFor = (code: string) => cardStyles[code]?.icon ?? (code.startsWith('MOD_') ? '±' : '?')
+export const iconFor = (code: string) => <Icon code={code} />
 
 interface FaceProps {
   code: string
@@ -43,10 +44,10 @@ interface FaceProps {
 
 /** A face-up card. */
 export function CardFace({ code, name, description, size = 'normal' }: FaceProps) {
-  const style = cardStyles[code] ?? { icon: iconFor(code), theme: 'grey' }
+  const style = cardStyles[code] ?? { theme: 'grey' }
   return (
     <div className={`card-face theme-${style.theme} size-${size}`}>
-      <span className="cf-icon">{style.icon}</span>
+      <span className="cf-icon">{iconFor(code)}</span>
       <span className="cf-name">{name}</span>
       {description && <span className="cf-desc">{description}</span>}
     </div>
@@ -88,11 +89,11 @@ export function CardBack({
       )}
       {peeked ? (
         <span className="peek-label">
-          👁 {iconFor(peeked.code)}
+          <span className="peek-icons"><Icon code="SCOUT" /> {iconFor(peeked.code)}</span>
           <small>{peeked.opponent ? 'Opp: ' : ''}{peeked.name}</small>
         </span>
       ) : (
-        <span className="back-ball">⚽</span>
+        <span className="back-ball"><Icon code="GOAL" /></span>
       )}
     </button>
   )
@@ -121,7 +122,7 @@ export function PackOpening({ cards, onClose, onReveal }: { cards: PackCard[]; o
         {cards.map((c, i) => (
           <button key={i} className={`pack-slot rarity-${c.rarity} ${open[i] ? 'open' : ''}`} onClick={() => reveal(i)}>
             <div className="pack-inner">
-              <div className="pack-back">⚽</div>
+              <div className="pack-back"><Icon code="GOAL" /></div>
               <div className="pack-front">
                 <CardFace code={c.code} name={c.name} description={c.description} size="normal" />
               </div>

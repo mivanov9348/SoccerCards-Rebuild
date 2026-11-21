@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, type Decision, type MatchTeam, type MatchView, type Side, type Tactic } from '../api'
 import { Badge, ErrorBox, useLoad } from '../components/common'
 import { CardBack, CardFace, iconFor } from '../components/GameCard'
+import { Icon } from '../components/Icons'
 import { play, playEvent } from '../sound'
 import { TacticBuilder } from '../components/TacticBuilder'
 import { useSettings } from '../settings'
@@ -434,7 +435,10 @@ export default function MatchScreen() {
               pens {m.homePenalties}:{m.awayPenalties}
             </div>
           )}
-          <div className="clock">{finished ? 'Full time' : m.half === 1 ? '1st half' : '2nd half'}</div>
+          <div className="clock">
+            {finished ? 'Full time' : m.half === 1 ? '1st half' : '2nd half'}
+            {m.difficulty && m.difficulty !== 'Normal' ? ` · ${m.difficulty}` : ''}
+          </div>
           <div className="muted small">
             {m.competition} · {m.stadium}
           </div>
@@ -453,7 +457,7 @@ export default function MatchScreen() {
                 : targeting
                   ? targeting.card === 'SWAP'
                     ? targeting.first == null ? '⇄ Swap: pick the first face-down card' : '⇄ Swap: pick the second card'
-                    : '👁 Scout: pick a card to look under'
+                    : 'Scout: pick a card to look under'
                   : m.phase === 'Decision'
                     ? m.role === 'wait' ? '⏳ The computer is deciding…' : '⚠ Your decision!'
                     : myTurn
@@ -485,7 +489,7 @@ export default function MatchScreen() {
                         >
                           <CardFace code={c.card} name={c.name ?? ''} size="mini" />
                           <span className="grid-owner" style={{ background: by.primaryColor }}>
-                            {c.stolen ? (c.card === 'OFFSIDE_TRAP' ? '🪤' : '🕵') : ''}
+                            {c.stolen ? <Icon code={c.card === 'OFFSIDE_TRAP' ? 'OFFSIDE_TRAP' : 'SWAP'} /> : null}
                             {by.shortName}
                           </span>
                         </div>
@@ -494,7 +498,7 @@ export default function MatchScreen() {
                     if (c.burned)
                       return (
                         <div key={c.index} className="grid-face burned-slot" title={c.mine ? `Your ${c.name} — burned` : 'A burned opponent card'}>
-                          {finished && c.card ? <CardFace code={c.card} name={c.name ?? ''} size="mini" /> : <span>🔥</span>}
+                          {finished && c.card ? <CardFace code={c.card} name={c.name ?? ''} size="mini" /> : <span className="burn-mark"><Icon code="BURN" /></span>}
                         </div>
                       )
                     if (finished && c.card)
@@ -562,7 +566,7 @@ export default function MatchScreen() {
                 <div className="hand-cards">
                   {m.freeScouts > 0 && (
                     <button className="hand-card free" disabled={!myTurn || busy} onClick={() => setTargeting({ card: 'SCOUT', free: true })} title="Free scout from your Playmaker">
-                      👁 Free Scout ×{m.freeScouts}
+                      <Icon code="SCOUT" /> Free Scout ×{m.freeScouts}
                     </button>
                   )}
                   {m.hand.map((h, i) => (

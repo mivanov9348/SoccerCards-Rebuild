@@ -4,6 +4,8 @@ namespace DugoutDeck.Api.Data.Entities;
 public class League
 {
     public int Id { get; set; }
+    /// <summary>Stable id from seed.json (e.g. "BG1"), so the league can be renamed safely.</summary>
+    public string? Code { get; set; }
     public string Name { get; set; } = "";
     public string Country { get; set; } = "";
     /// <summary>1 = top division, 2 = second division.</summary>
@@ -11,7 +13,7 @@ public class League
     public bool IsPlayable { get; set; }
     /// <summary>Teams relegated to the tier below (= teams promoted from it).</summary>
     public int Relegation { get; set; } = 2;
-    /// <summary>European places for a top division (Champions Cup / Europa Cup / Conference Cup).</summary>
+    /// <summary>European places for a top division (Champions Cup / Continental Cup / Challenge Cup).</summary>
     public int UclSpots { get; set; }
     public int UelSpots { get; set; }
     public int UeclSpots { get; set; }
@@ -21,6 +23,10 @@ public class League
 public class Team
 {
     public int Id { get; set; }
+    /// <summary>Stable id from seed.json (e.g. "BG1-01"). Names, colours and stadiums are synced from seed.json by this code.</summary>
+    public string? Code { get; set; }
+    /// <summary>Changed in the in-game editor: seed.json no longer overwrites this team.</summary>
+    public bool EditedInGame { get; set; }
     public string Name { get; set; } = "";
     public string ShortName { get; set; } = "";
     public string City { get; set; } = "";
@@ -83,9 +89,13 @@ public class CardDefinition
 public enum CareerStatus { Active = 0, Fired = 1 }
 
 /// <summary>A save slot (career).</summary>
+/// <summary>Difficulty of a career or friendly. Normal = 0 so older saves are Normal.</summary>
+public enum Difficulty { Normal = 0, Easy = 1, Hard = 2 }
+
 public class Career
 {
     public int Id { get; set; }
+    public Difficulty Difficulty { get; set; } = Difficulty.Normal;
     public string SaveName { get; set; } = "";
     public string ManagerName { get; set; } = "";
     public int TeamId { get; set; }

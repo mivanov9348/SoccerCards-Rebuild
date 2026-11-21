@@ -284,7 +284,7 @@ details summary { cursor: pointer; padding: 0.3rem 0; color: var(--muted); font-
 .card-back-big, .card-slot-empty { aspect-ratio: 5 / 7; border-radius: 8px; }
 .card-slot-empty { border: 2px dashed rgba(255, 255, 255, 0.15); }
 .card-back-big { display: grid; place-items: center; border: 3px solid #f4ecd8; background: repeating-linear-gradient(45deg, #8c1d1d 0 6px, #a82a2a 6px 12px); box-shadow: 0 4px 8px #0007; cursor: pointer; font-size: 1.3rem; padding: 0; transition: transform 0.12s, box-shadow 0.12s; }
-.card-back-big span { background: #f4ecd8; border-radius: 50%; width: 1.8em; height: 1.8em; display: grid; place-items: center; }
+.card-back-big .back-ball { background: #f4ecd8; border-radius: 50%; width: 1.8em; height: 1.8em; display: grid; place-items: center; }
 .card-back-big:hover:not(:disabled) { transform: translateY(-5px) rotate(-1deg); box-shadow: 0 10px 16px #000a; }
 .card-back-big:disabled { cursor: default; opacity: 0.85; }
 .card-back-big.just-flipped { animation: newcard 0.5s ease-out; }
@@ -487,3 +487,14 @@ ul.conditions li::before { content: '☁ '; color: var(--muted); }
 .tutorial-pulse { animation: target 1.1s ease-in-out infinite; box-shadow: 0 0 0 3px var(--accent); }
 .menu-item.tutorial-call { animation: pulse 1.8s ease-in-out infinite; }
 .tutorial .flip-grid > div:not(.grid-face) > .card-back-big { width: 100%; }
+
+/* ---------------------------------------------------------------- SVG icons */
+.icon { display: inline-block; vertical-align: -0.14em; flex-shrink: 0; }
+.cf-icon .icon { vertical-align: middle; }
+.card-back-big .back-ball { color: #1d5530; }
+.peek-icons { display: inline-flex; gap: 2px; align-items: center; }
+.burn-mark { color: #ff7a3c; font-size: 1.6rem; display: grid; place-items: center; }
+.grid-owner .icon { margin-right: 2px; }
+.pack-back { color: #f6efdc; }
+.logo-mark { display: flex; justify-content: center; filter: drop-shadow(0 6px 12px #0008); }
+.hand-card .icon, .tb-icon .icon { color: inherit; }

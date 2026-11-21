@@ -125,6 +125,7 @@ public class MatchState
     public TeamMatchState Home { get; set; } = new();
     public TeamMatchState Away { get; set; } = new();
     public string CompetitionName { get; set; } = "Friendly";
+    public DugoutDeck.Api.Data.Entities.Difficulty Difficulty { get; set; }
     public string Stadium { get; set; } = "";
     public bool IsKnockout { get; set; }
 

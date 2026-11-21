@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { applyVolumes, play, startCrowd, startMusic, stopCrowd, stopMusic, unlockOnFirstGesture } from '../sound'
 import { loadSettings, saveSettings } from '../settings'
+import { isDesktop, setFullscreen } from '../display'
 
 /** Menu music outside matches, crowd ambience during matches, button clicks and the M (mute) key. */
 export default function SoundManager() {
@@ -25,12 +26,22 @@ export default function SoundManager() {
   syncRef.current = sync
 
   useEffect(() => {
+    // the desktop window remembers fullscreen; a browser only allows it after a click
+    if (loadSettings().fullscreen && isDesktop()) setFullscreen(true)
     unlockOnFirstGesture(() => {
       unlocked.current = true
       syncRef.current()
+      if (loadSettings().fullscreen && !isDesktop()) setFullscreen(true)
     })
     const onSettings = () => syncRef.current()
     const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'F11') {
+        e.preventDefault()
+        const on = !loadSettings().fullscreen
+        saveSettings({ fullscreen: on })
+        setFullscreen(on)
+        return
+      }
       if ((e.key === 'm' || e.key === 'M') && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
         saveSettings({ muted: !loadSettings().muted })
       }

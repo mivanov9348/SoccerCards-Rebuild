@@ -37,7 +37,7 @@ export default function Tables() {
           <h2>Team ratings</h2>
           <div className="tabs small">
             <button className={group === 'BG' ? 'active' : ''} onClick={() => setGroup('BG')}>
-              First League
+              Bulgaria
             </button>
             <button className={group === 'EU' ? 'active' : ''} onClick={() => setGroup('EU')}>
               European clubs

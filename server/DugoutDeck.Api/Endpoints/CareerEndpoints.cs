@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DugoutDeck.Api.Endpoints;
 
-public record CreateCareerRequest(string SaveName, string ManagerName, int TeamId);
+public record CreateCareerRequest(string SaveName, string ManagerName, int TeamId, Difficulty? Difficulty = null);
 public record RenameCareerRequest(string SaveName);
 public record PlayCareerRequest(bool UseLastTactic);
 public record NextSeasonRequest(int? AcceptTeamId);
@@ -37,7 +37,7 @@ public static class CareerEndpoints
 
         api.MapPost("/", async (CreateCareerRequest req, CareerService careers) =>
         {
-            var c = await careers.CreateAsync(req.SaveName, req.ManagerName, req.TeamId);
+            var c = await careers.CreateAsync(req.SaveName, req.ManagerName, req.TeamId, req.Difficulty ?? Difficulty.Normal);
             return Results.Ok(new { c.Id });
         });
 
@@ -72,7 +72,7 @@ public static class CareerEndpoints
                 {
                     team!.Id, team.Name, team.City, team.Stadium, team.PrimaryColor, team.SecondaryColor,
                     rating, upgradeLevel,
-                    tacticPoints = Rules.TacticPoints(rating, false), handSize = Rules.HandSize(rating), aiLevel = Rules.AiLevelNames[Rules.AiLevel(rating)]
+                    tacticPoints = Rules.TacticPoints(rating, false) + Rules.DifficultyPoints(career.Difficulty), difficulty = career.Difficulty.ToString(), handSize = Rules.HandSize(rating), aiLevel = Rules.AiLevelNames[Rules.AiLevel(rating)]
                 },
                 league = new { league!.Id, league.Name, league.Country, league.Tier },
                 cupName = cup?.Name,

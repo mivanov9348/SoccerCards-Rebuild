@@ -2,7 +2,8 @@ using DugoutDeck.Api.Data.Entities;
 
 namespace DugoutDeck.Api.Game;
 
-public record MatchSetup(Team Home, Team Away, int HomeRating, int AwayRating, Side? HumanSide, bool IsKnockout, string CompetitionName);
+public record MatchSetup(Team Home, Team Away, int HomeRating, int AwayRating, Side? HumanSide, bool IsKnockout, string CompetitionName,
+    Difficulty Difficulty = Difficulty.Normal);
 
 public class GameRuleException(string message) : Exception(message);
 
@@ -21,8 +22,9 @@ public class MatchEngine(Random rng, CardCatalog catalog)
     /// <summary>Creates a match in the Setup phase: teams and conditions are known, tactics are not chosen yet.</summary>
     public MatchState Create(MatchSetup setup) => new()
     {
-        Home = CreateTeam(setup.Home, setup.HomeRating, setup.HumanSide == Side.Home),
-        Away = CreateTeam(setup.Away, setup.AwayRating, setup.HumanSide == Side.Away),
+        Home = CreateTeam(setup.Home, setup.HomeRating, setup.HumanSide == Side.Home, setup.HumanSide == Side.Away ? setup.Difficulty : Difficulty.Normal),
+        Away = CreateTeam(setup.Away, setup.AwayRating, setup.HumanSide == Side.Away, setup.HumanSide == Side.Home ? setup.Difficulty : Difficulty.Normal),
+        Difficulty = setup.HumanSide == null ? Difficulty.Normal : setup.Difficulty,
         CompetitionName = setup.CompetitionName,
         Stadium = setup.Home.Stadium,
         IsKnockout = setup.IsKnockout,
@@ -30,19 +32,21 @@ public class MatchEngine(Random rng, CardCatalog catalog)
         Phase = MatchPhase.Setup
     };
 
-    private static TeamMatchState CreateTeam(Team t, int rating, bool human) => new()
+    /// <param name="vsHuman">difficulty of the human opponent (shifts this computer team's level)</param>
+    private static TeamMatchState CreateTeam(Team t, int rating, bool human, Difficulty vsHuman) => new()
     {
         TeamId = t.Id, Name = t.Name, ShortName = t.ShortName, City = t.City,
         PrimaryColor = t.PrimaryColor, SecondaryColor = t.SecondaryColor,
-        IsHuman = human, Rating = rating, AiLevel = Rules.AiLevel(rating)
+        IsHuman = human, Rating = rating, AiLevel = Math.Clamp(Rules.AiLevel(rating) + Rules.DifficultyAiShift(vsHuman), 0, 2)
     };
 
     /// <summary>Applies both tactics (the computer builds its own if null), deals both grids and kicks off.</summary>
     public void Start(MatchState s, TacticSpec? homeTactic, TacticSpec? awayTactic)
     {
         if (s.Phase != MatchPhase.Setup) throw new GameRuleException("The match has already started.");
-        s.Home.Tactic = homeTactic ?? TacticRules.BuildAi(catalog, s.Home.Rating, s.Away.Rating, true, rng);
-        s.Away.Tactic = awayTactic ?? TacticRules.BuildAi(catalog, s.Away.Rating, s.Home.Rating, false, rng);
+        var aiBudget = Rules.DifficultyAiShift(s.Difficulty);
+        s.Home.Tactic = homeTactic ?? TacticRules.BuildAi(catalog, s.Home.Rating, s.Away.Rating, true, rng, s.HumanSide == Side.Away ? aiBudget : 0);
+        s.Away.Tactic = awayTactic ?? TacticRules.BuildAi(catalog, s.Away.Rating, s.Home.Rating, false, rng, s.HumanSide == Side.Home ? aiBudget : 0);
         s.Home.Hand = new List<string>(s.Home.Tactic.Hand);
         s.Away.Hand = new List<string>(s.Away.Tactic.Hand);
         s.Composition = TacticRules.Composition(catalog, s.Conditions, s.Home.Tactic, s.Away.Tactic);

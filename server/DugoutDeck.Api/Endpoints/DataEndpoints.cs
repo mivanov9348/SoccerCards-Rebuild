@@ -156,5 +156,6 @@ public static partial class DataEndpoints
         t.Midfield = i.Midfield;
         t.Defense = i.Defense;
         t.LeagueId = i.LeagueId;
+        t.EditedInGame = true; // seed.json no longer overwrites this team
     }
 }

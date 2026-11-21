@@ -37,10 +37,23 @@ public static class Program
                 .SetSize(1366, 860)
                 .Center()
                 .SetResizable(true)
+                .SetMinSize(1024, 680)
                 .SetContextMenuEnabled(false)
                 .SetDevToolsEnabled(false);
             var icon = Path.Combine(AppContext.BaseDirectory, "app.ico");
             if (File.Exists(icon)) window.SetIconFile(icon);
+
+            // messages from the game page: "fullscreen:on" / "fullscreen:off" / "fullscreen:toggle" (F11 or Settings)
+            window.RegisterWebMessageReceivedHandler((sender, message) =>
+            {
+                if (sender is not PhotinoWindow w) return;
+                switch (message)
+                {
+                    case "fullscreen:on": w.SetFullScreen(true); break;
+                    case "fullscreen:off": w.SetFullScreen(false); break;
+                    case "fullscreen:toggle": w.SetFullScreen(!w.FullScreen); break;
+                }
+            });
 
             window.Load(url);
             window.WaitForClose();

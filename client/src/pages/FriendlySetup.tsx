@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, type Side, type Team } from '../api'
 import { Badge, byCountry, ErrorBox, Screen, useLoad } from '../components/common'
+import { loadSettings } from '../settings'
 
 function TeamPicker({ label, teams, value, onChange }: { label: string; teams: Team[]; value: number | null; onChange: (id: number) => void }) {
   const groups = [...new Set(teams.map((t) => t.leagueName ?? 'Other European clubs'))]
   const countryOf = (g: string) => (g === 'Other European clubs' ? 'Other' : (teams.find((t) => t.leagueName === g)?.country ?? 'Other'))
-  const [filter, setFilter] = useState<string>('First League')
+  const [filter, setFilter] = useState<string>('Bulgarian Premier Division')
   const active = groups.includes(filter) ? filter : groups[0]
   const shown = teams.filter((t) => (t.leagueName ?? 'Other European clubs') === active)
   const selected = teams.find((t) => t.id === value)
@@ -62,7 +63,7 @@ export default function FriendlySetup() {
     if (home === away) return setError('Pick two different teams.')
     setBusy(true)
     try {
-      const m = await api.createFriendly(home, away, side)
+      const m = await api.createFriendly(home, away, side, loadSettings().difficulty)
       navigate(`/match/${m.id}`)
     } catch (e) {
       setError((e as Error).message)

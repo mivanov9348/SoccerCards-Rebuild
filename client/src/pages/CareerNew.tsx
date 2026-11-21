@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { Badge, byCountry, ErrorBox, Screen, useLoad } from '../components/common'
 import { useSettings } from '../settings'
+import { DIFFICULTIES, type Difficulty } from '../display'
 
 // Same rule as the server: the board target depends on the club's rank by rating.
 const expectationByRank = (rank: number) => (rank <= 1 ? 'Title' : rank <= 4 ? 'Top 4' : rank <= 9 ? 'Top half' : 'Avoid the drop')
@@ -18,6 +19,7 @@ export default function CareerNew() {
 
   const [manager, setManager] = useState(settings.managerName)
   const [saveName, setSaveName] = useState('')
+  const [difficulty, setDifficulty] = useState<Difficulty>('Normal')
   const [teamId, setTeamId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -32,7 +34,7 @@ export default function CareerNew() {
     setBusy(true)
     try {
       updateSettings({ managerName: manager.trim() })
-      const { id } = await api.createCareer(saveName, manager, teamId)
+      const { id } = await api.createCareer(saveName, manager, teamId, difficulty)
       navigate(`/career/${id}`)
     } catch (e) {
       setError((e as Error).message)
@@ -51,6 +53,17 @@ export default function CareerNew() {
         <label>
           Save name (optional)
           <input value={saveName} maxLength={60} onChange={(e) => setSaveName(e.target.value)} placeholder="My career" />
+        </label>
+        <label>
+          Difficulty
+          <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as Difficulty)}>
+            {DIFFICULTIES.map(([d, label]) => (
+              <option key={d} value={d}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <small className="muted">Fixed for the whole career.</small>
         </label>
         {playable.length > 1 && (
           <label>

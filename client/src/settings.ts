@@ -17,13 +17,17 @@ export interface Settings {
   reduceMotion: boolean
   /** The tutorial match was offered / played. */
   tutorialDone: boolean
+  /** Fullscreen (F11). */
+  fullscreen: boolean
+  /** Difficulty for friendlies (a career keeps the difficulty it was started with). */
+  difficulty: 'Easy' | 'Normal' | 'Hard'
 }
 
 const KEY = 'dugout-deck-settings'
 const defaults: Settings = {
   aiDelay: 900, managerName: '', autoMiniGames: false,
   volume: 0.8, sfxVolume: 0.8, crowdVolume: 0.6, musicVolume: 0.5, musicOn: true, muted: false,
-  reduceMotion: false, tutorialDone: false,
+  reduceMotion: false, tutorialDone: false, fullscreen: false, difficulty: 'Normal',
 }
 
 /** Updates settings outside React (e.g. the M key). */

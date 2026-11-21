@@ -93,7 +93,10 @@ public static class GameServer
         var saveFile = provider == "Sqlite"
             ? Path.GetFullPath(new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder(connection).DataSource, builder.Environment.ContentRootPath)
             : provider;
-        app.MapGet("/api/info", () => Results.Ok(new { saveFile }));
+        var version = typeof(GameServer).Assembly
+            .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+            .OfType<System.Reflection.AssemblyInformationalVersionAttribute>().FirstOrDefault()?.InformationalVersion ?? "dev";
+        app.MapGet("/api/info", () => Results.Ok(new { saveFile, version, desktop = options.ClientPath != null && options.Urls != null }));
         app.MapDataEndpoints();
         app.MapMatchEndpoints();
         app.MapCareerEndpoints();
@@ -116,12 +119,12 @@ public static class GameServer
         return app;
     }
 
-    /// <summary>Creates the database if needed and loads the seed data.</summary>
+    /// <summary>Creates or updates the save file (migrations) and loads the seed data.</summary>
     public static async Task InitializeDatabaseAsync(WebApplication app)
     {
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        db.Database.EnsureCreated();
+        await DatabaseUpgrade.RunAsync(db, app.Logger);
         var seedPath = Path.Combine(AppContext.BaseDirectory, "Data", "Seed", "seed.json");
         await DbSeeder.SeedAsync(db, seedPath, app.Logger);
 

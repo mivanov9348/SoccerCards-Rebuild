@@ -2,19 +2,19 @@ import { Link } from 'react-router-dom'
 import { api, seasonLabel } from '../api'
 import { useLoad } from '../components/common'
 import { useSettings } from '../settings'
+import { Logo } from '../components/Icons'
 
 export default function MainMenu() {
   const { data: careers, error } = useLoad(() => api.careers(), [])
+  const { data: info } = useLoad(() => api.info(), [])
   const latest = careers?.[0]
   const [settings] = useSettings()
 
   return (
     <div className="main-menu">
       <div className="logo">
-        <div className="logo-cards">
-          <span className="logo-card c1">⚽</span>
-          <span className="logo-card c2">⚡</span>
-          <span className="logo-card c3">🛡</span>
+        <div className="logo-mark">
+          <Logo size={150} />
         </div>
         <h1>Dugout Deck</h1>
         <p className="tagline">The football card game · 25 countries, 35 leagues, national cups and three European cups</p>
@@ -30,7 +30,7 @@ export default function MainMenu() {
           </Link>
         )}
         <Link className={`menu-item ${settings.tutorialDone ? '' : 'primary tutorial-call'}`} to="/tutorial">
-          {settings.tutorialDone ? 'Tutorial' : '🎓 New here? Play the tutorial'}
+          {settings.tutorialDone ? 'Tutorial' : 'New here? Play the tutorial'}
           <small>A short guided match — all the rules in 3 minutes</small>
         </Link>
         <Link className="menu-item" to="/friendly">
@@ -57,9 +57,12 @@ export default function MainMenu() {
         <Link className="menu-item" to="/settings">
           Settings
         </Link>
+        <Link className="menu-item" to="/about">
+          About & credits
+        </Link>
       </nav>
       {error && <p className="error-box">{error}</p>}
-      <footer className="footer">Original game · Generated badges · All data is editable</footer>
+      <footer className="footer">{info ? `v${info.version} · ` : ''}Fictional clubs · Generated badges and sounds · All data is editable</footer>
     </div>
   )
 }

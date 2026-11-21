@@ -23,6 +23,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     {
         b.Entity<League>().HasIndex(l => l.Name).IsUnique();
         b.Entity<Team>().HasIndex(t => t.Name).IsUnique();
+        b.Entity<Team>().HasIndex(t => t.Code).IsUnique();
+        b.Entity<League>().HasIndex(l => l.Code).IsUnique();
         b.Entity<Team>().Ignore(t => t.Overall);
         b.Entity<Team>().HasOne(t => t.League).WithMany(l => l.Teams)
             .HasForeignKey(t => t.LeagueId).OnDelete(DeleteBehavior.SetNull);

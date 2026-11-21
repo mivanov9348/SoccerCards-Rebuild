@@ -1,3 +1,5 @@
+using DugoutDeck.Api.Data.Entities;
+
 namespace DugoutDeck.Api.Game;
 
 /// <summary>Card codes. Their effects are coded in <see cref="MatchEngine"/>; costs/prices are in the database.</summary>
@@ -112,6 +114,11 @@ public static class Rules
     public static int TacticPoints(int rating, bool home) => BaseTacticPoints + RatingBonus(rating) + (home ? 1 : 0);
 
     /// <summary>Number of hand cards a team may take (1–3).</summary>
+    /// <summary>Difficulty: extra tactic points for the human (Easy +2, Hard −1).</summary>
+    public static int DifficultyPoints(Difficulty d) => d switch { Difficulty.Easy => 2, Difficulty.Hard => -1, _ => 0 };
+    /// <summary>Difficulty: the computer opponent plays one level weaker (Easy) or stronger (Hard), with 1 point less / more.</summary>
+    public static int DifficultyAiShift(Difficulty d) => d switch { Difficulty.Easy => -1, Difficulty.Hard => 1, _ => 0 };
+
     public static int HandSize(int rating) => rating >= 78 ? 3 : rating >= 66 ? 2 : 1;
 
     /// <summary>Computer skill: 0 weak, 1 average, 2 strong.</summary>

@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DugoutDeck.Api.Endpoints;
 
-public record CreateFriendlyRequest(int HomeTeamId, int AwayTeamId, Side HumanSide);
+public record CreateFriendlyRequest(int HomeTeamId, int AwayTeamId, Side HumanSide, Difficulty? Difficulty = null);
 public record StartRequest(TacticSpec Tactic, string? SaveAs);
 public record FlipRequest(int Cell);
 public record HandRequest(string Card, int? Cell, int? Cell2);
@@ -25,7 +25,8 @@ public static class MatchEndpoints
             if (req.HomeTeamId == req.AwayTeamId) throw new GameRuleException("Pick two different teams.");
             var home = await db.Teams.FindAsync(req.HomeTeamId) ?? throw new GameRuleException("Home team not found.");
             var away = await db.Teams.FindAsync(req.AwayTeamId) ?? throw new GameRuleException("Away team not found.");
-            var match = await matches.CreateAsync(home, away, home.Overall, away.Overall, req.HumanSide, false, "Friendly");
+            var match = await matches.CreateAsync(home, away, home.Overall, away.Overall, req.HumanSide, false, "Friendly",
+                difficulty: req.Difficulty ?? Difficulty.Normal);
             return Results.Ok(await ViewAsync(match, MatchService.Load(match), db, matches));
         });
 

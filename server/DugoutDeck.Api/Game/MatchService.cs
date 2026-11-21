@@ -19,10 +19,10 @@ public class MatchService(AppDbContext db)
     public async Task<MatchEngine> EngineAsync() => new(Random.Shared, await CatalogAsync());
 
     public async Task<Match> CreateAsync(Team home, Team away, int homeRating, int awayRating, Side? humanSide, bool knockout,
-        string competition, int? fixtureId = null, int? careerId = null)
+        string competition, int? fixtureId = null, int? careerId = null, Difficulty difficulty = Difficulty.Normal)
     {
         var engine = await EngineAsync();
-        var state = engine.Create(new MatchSetup(home, away, homeRating, awayRating, humanSide, knockout, competition));
+        var state = engine.Create(new MatchSetup(home, away, homeRating, awayRating, humanSide, knockout, competition, difficulty));
         var match = new Match
         {
             HomeTeamId = home.Id, AwayTeamId = away.Id, FixtureId = fixtureId, CareerId = careerId,
@@ -55,7 +55,7 @@ public class MatchService(AppDbContext db)
     {
         var human = s.HumanSide ?? Side.Home;
         var t = s.Team(human);
-        return (Rules.TacticPoints(t.Rating, human == Side.Home), Rules.HandSize(t.Rating));
+        return (Rules.TacticPoints(t.Rating, human == Side.Home) + Rules.DifficultyPoints(s.Difficulty), Rules.HandSize(t.Rating));
     }
 
     // ------------------------------------------------------------- view model
@@ -95,7 +95,7 @@ public class MatchService(AppDbContext db)
         {
             id = m.Id, fixtureId = m.FixtureId, careerId = m.CareerId,
             competition = s.CompetitionName, stadium = s.Stadium, isKnockout = s.IsKnockout,
-            phase = s.Phase.ToString(), half = s.Half, turn = s.Turn.ToString(),
+            phase = s.Phase.ToString(), half = s.Half, turn = s.Turn.ToString(), difficulty = s.Difficulty.ToString(),
             humanSide = s.HumanSide?.ToString(), role,
             home = TeamView(s.Home, s, human, finished, catalog),
             away = TeamView(s.Away, s, human, finished, catalog),

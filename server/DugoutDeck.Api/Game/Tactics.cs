@@ -112,9 +112,9 @@ public static class TacticRules
     };
 
     /// <summary>The computer builds a tactic from its rating, the opponent and the conditions.</summary>
-    public static TacticSpec BuildAi(CardCatalog catalog, int rating, int opponentRating, bool home, Random rng)
+    public static TacticSpec BuildAi(CardCatalog catalog, int rating, int opponentRating, bool home, Random rng, int budgetDelta = 0)
     {
-        var budget = Rules.TacticPoints(rating, home);
+        var budget = Rules.TacticPoints(rating, home) + budgetDelta;
         var handSize = Rules.HandSize(rating);
         var style = rating - opponentRating >= 4 || (home && rating >= opponentRating) ? "attack"
             : opponentRating - rating >= 4 ? "defend" : "balanced";

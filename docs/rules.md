@@ -148,7 +148,7 @@ chose what.
 
 Limits: Pass ≥ 1, Goal 0–5, Corner 0–4, Tackle 0–6, Penalty 0–3, Miss 0–4, Yellow 0–3. Modifiers apply to both halves.
 
-## 7. Ratings and the computer
+## 7. Ratings, difficulty and the computer
 
 The rating **never changes the odds of a card**. It gives tactic points, hand cards and the computer's skill:
 
@@ -158,11 +158,19 @@ The rating **never changes the odds of a card**. It gives tactic points, hand ca
 | Average | 66–77 | Prefers safe cards by the hints but makes mistakes (20% random) |
 | Strong | 78+ | Almost always the best card by the hints; plays its own cards at the right moment (one per turn, keeps its Offside Trap in the grid), uses the blind Burn early |
 
-The computer never knows where your team cards are — it can only steal them by chance, like you. Background matches use the same rules.
+Difficulty (chosen for a career when it starts; for friendlies in Settings):
+
+| Difficulty | You | The computer opponent |
+|---|---|---|
+| Easy | +2 tactic points | plays one level weaker, 1 tactic point less |
+| Normal | — | — |
+| Hard | −1 tactic point | plays one level stronger, 1 tactic point more |
+
+Background matches are not affected. The computer never knows where your team cards are — it can only steal them by chance, like you. Background matches use the same rules.
 
 ## 8. Career
 
-- **Leagues:** 35 leagues from 25 countries (real names during development). Two divisions with promotion/relegation and a national
+- **Leagues:** 35 leagues from 25 countries (all clubs, leagues and cups are fictional — see the README for how to rename them). Two divisions with promotion/relegation and a national
   cup: England, Spain, Germany, Italy, France, Netherlands, Portugal, Turkey, Scotland, Bulgaria. Top division only: Belgium,
   Greece, Austria, Switzerland, Denmark, Czechia, Croatia, Serbia, Romania, Poland, Ukraine, Cyprus, Hungary, Norway, Sweden.
   Leagues of 12 teams or fewer play each other three times.
@@ -170,12 +178,12 @@ The computer never knows where your team cards are — it can only steal them by
   plus 5 cup weeks and 5 European weeks — 56 weeks. After your match every other match of the week is played in the background
   with the same rules. "Continue" skips weeks in which your team has no match.
 - **National cups:** 32 teams (top division + the best of the second), knockout from the Round of 32 (a country with fewer teams starts later).
-- **European cups:** Champions Cup, Europa Cup, Conference Cup — 32 teams each, knockout from the Round of 32 (group stage later).
+- **European cups:** Champions Cup, Continental Cup, Challenge Cup — 32 teams each, knockout from the Round of 32 (group stage later).
   Places: top-five countries 1st–4th / 5th + cup winner / 6th; Bulgaria 1st / 2nd + cup winner / 3rd. If the cup winner has
   already qualified, the place goes to the next team in the table. The remaining places are filled with the strongest clubs that
   have no league, then with the strongest top-division clubs that did not qualify. If a cup has more than 32 qualifiers, the
-  weakest drop to the next cup (Champions → Europa → Conference). In the first season the places go by rating.
-- **Promotion/relegation:** Premier League, LaLiga, Serie A and Super Lig 3; Bundesliga, Ligue 1, Bulgaria, Eredivisie and Primeira Liga 2;
+  weakest drop to the next cup (Champions → Continental → Challenge). In the first season the places go by rating.
+- **Promotion/relegation:** England, Spain, Italy and Turkey 3; Germany, France, Bulgaria, the Netherlands and Portugal 2;
   Scotland 1.
 - **Board target** by rating rank in the league: title (top 2) / top 4 (3rd–5th) / top half (6th–10th) / avoid the drop.
   Review: target − actual position, +2 for the cup, +1 per European knockout win. ≤ −4 or last place = sacked.
@@ -201,3 +209,11 @@ The computer never knows where your team cards are — it can only steal them by
   *Reduce animations* turns off confetti and shaking.
 - **Sound:** every effect and the menu music are generated in code (`client/src/sound.ts`, Web Audio API) — no recordings, nothing
   copyrighted. Crowd ambience during matches, music in the menus, volume sliders in Settings, **M** mutes everywhere.
+
+## 11. Saves and versions
+
+- The game version is in `server/Directory.Build.props` and is shown in the main menu and on the About screen.
+- Save files are upgraded with EF Core migrations (`server/DugoutDeck.Api/Data/Migrations`). Before an upgrade the game writes
+  a backup copy next to the save (`dugout-deck.db.backup-<date>`). Saves from before migrations existed are recognised and upgraded.
+- Every team, league and competition has a stable code in `seed.json`; names, stadiums, colours and ratings are synced from
+  seed.json by that code on every start (teams changed in the in-game editor are left alone).

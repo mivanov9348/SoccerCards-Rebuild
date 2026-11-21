@@ -150,6 +150,7 @@ export interface MatchView {
   isKnockout: boolean
   phase: 'Setup' | 'Play' | 'Decision' | 'Finished'
   half: number
+  difficulty: 'Easy' | 'Normal' | 'Hard'
   turn: Side
   humanSide: Side | null
   role: 'flip' | 'wait' | 'attack' | 'defend' | 'discard' | null
@@ -257,6 +258,7 @@ export interface CareerView {
     tacticPoints: number
     handSize: number
     aiLevel: string
+    difficulty: 'Easy' | 'Normal' | 'Hard'
   }
   league: { id: number; name: string; country: string; tier: number }
   cupName: string | null
@@ -345,7 +347,7 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
 }
 
 export const api = {
-  info: () => request<{ saveFile: string }>('GET', '/info'),
+  info: () => request<{ saveFile: string; version: string; desktop: boolean }>('GET', '/info'),
   leagues: () => request<League[]>('GET', '/leagues'),
   createLeague: (l: Omit<League, 'id' | 'teamCount'>) => request<{ id: number }>('POST', '/leagues', l),
   updateLeague: (id: number, l: Omit<League, 'id' | 'teamCount'>) => request<void>('PUT', `/leagues/${id}`, l),
@@ -359,8 +361,8 @@ export const api = {
   cards: () => request<CardInfo[]>('GET', '/cards'),
 
   // matches
-  createFriendly: (homeTeamId: number, awayTeamId: number, humanSide: Side) =>
-    request<MatchView>('POST', '/matches', { homeTeamId, awayTeamId, humanSide }),
+  createFriendly: (homeTeamId: number, awayTeamId: number, humanSide: Side, difficulty: string = 'Normal') =>
+    request<MatchView>('POST', '/matches', { homeTeamId, awayTeamId, humanSide, difficulty }),
   match: (id: number) => request<MatchView>('GET', `/matches/${id}`),
   startMatch: (id: number, tactic: Tactic, saveAs?: string) =>
     request<MatchView>('POST', `/matches/${id}/start`, { tactic, saveAs: saveAs || null }),
@@ -380,8 +382,8 @@ export const api = {
 
   // careers
   careers: () => request<CareerSlot[]>('GET', '/careers'),
-  createCareer: (saveName: string, managerName: string, teamId: number) =>
-    request<{ id: number }>('POST', '/careers', { saveName, managerName, teamId }),
+  createCareer: (saveName: string, managerName: string, teamId: number, difficulty: string = 'Normal') =>
+    request<{ id: number }>('POST', '/careers', { saveName, managerName, teamId, difficulty }),
   career: (id: number) => request<CareerView>('GET', `/careers/${id}`),
   renameCareer: (id: number, saveName: string) => request<void>('PUT', `/careers/${id}`, { saveName }),
   deleteCareer: (id: number) => request<void>('DELETE', `/careers/${id}`),

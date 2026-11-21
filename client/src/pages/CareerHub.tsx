@@ -366,7 +366,7 @@ export default function CareerHub() {
           </span>
           <span className="muted small">
             Rating {c.team.rating}
-            {c.team.upgradeLevel > 0 && ` (upgrade level ${c.team.upgradeLevel})`} · {c.team.tacticPoints} tactic points · {c.team.handSize} hand card(s)
+            {c.team.upgradeLevel > 0 && ` (upgrade level ${c.team.upgradeLevel})`} · {c.team.tacticPoints} tactic points · {c.team.handSize} hand card(s) · {c.team.difficulty ?? "Normal"} difficulty
           </span>
           {c.status === 'Fired' && <span className="error-text">Sacked</span>}
         </div>

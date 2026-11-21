@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { CardBack, CardFace } from '../components/GameCard'
+import { Icon } from '../components/Icons'
 import { play } from '../sound'
 import { useSettings } from '../settings'
 
@@ -315,7 +316,7 @@ export default function Tutorial() {
                   >
                     <CardFace code={c.card} name={c.name} size="mini" />
                     <span className="grid-owner" style={{ background: c.flippedBy === 'me' ? '#1d8a4a' : '#c0392b' }}>
-                      {stolen ? (c.card === 'OFFSIDE_TRAP' ? '🪤' : '🕵') : ''}
+                      {stolen ? <Icon code={c.card === 'OFFSIDE_TRAP' ? 'OFFSIDE_TRAP' : 'SWAP'} /> : null}
                       {c.flippedBy === 'me' ? 'YOU' : 'CPU'}
                     </span>
                   </div>
@@ -366,7 +367,7 @@ export default function Tutorial() {
             disabled={step.action.kind !== 'scout' || done}
             onClick={() => setScouting(true)}
           >
-            👁 Scout
+            <Icon code="SCOUT" /> Scout
           </button>
           {scouting && <span className="muted small">Now click the highlighted card.</span>}
         </div>
