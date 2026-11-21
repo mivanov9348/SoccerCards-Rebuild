@@ -3,8 +3,8 @@
   <PropertyGroup>
     <Version>1.0.0</Version>
     <Product>Dugout Deck</Product>
-    <Company>Dugout Deck</Company>
-    <Copyright>© 2026 Dugout Deck</Copyright>
+    <Company>Martin Ivanov</Company>
+    <Copyright>© 2026 Martin Ivanov</Copyright>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 </Project>

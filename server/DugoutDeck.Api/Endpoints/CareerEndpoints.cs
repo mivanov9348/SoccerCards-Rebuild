@@ -67,6 +67,7 @@ public static class CareerEndpoints
             return Results.Ok(new
             {
                 career.Id, career.SaveName, career.ManagerName, career.Reputation, career.Money,
+                hasTactic = career.LastTacticJson != null,
                 status = career.Status.ToString(),
                 team = new
                 {

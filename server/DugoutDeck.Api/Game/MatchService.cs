@@ -122,6 +122,15 @@ public class MatchService(AppDbContext db)
                 };
             }),
             cardsLeft = s.Table.Count(c => c.Available),
+            // the first half, fully revealed, for the half-time break screen
+            firstHalfTable = s.Half == 2 && s.FirstHalfTable.Count > 0
+                ? s.FirstHalfTable.Select((c, i) => new
+                {
+                    index = i, faceUp = c.FaceUp, burned = c.Burned, owner = c.Owner?.ToString(), flippedBy = c.FlippedBy?.ToString(),
+                    card = c.Card, name = Cards.Name(c.Card), peeked = false, mine = c.Owner == human,
+                    stolen = c.FaceUp && c.Owner != null && c.Owner != c.FlippedBy
+                })
+                : null,
             lastFlip = s.LastFlip == null ? null : new
             {
                 cell = s.LastFlip.Cell, card = s.LastFlip.Card, name = Cards.Name(s.LastFlip.Card),

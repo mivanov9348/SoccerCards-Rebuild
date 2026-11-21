@@ -268,6 +268,8 @@ export default function MatchScreen() {
   const [toast, setToast] = useState<{ text: string; good: boolean } | null>(null)
   const [overlay, setOverlay] = useState<Overlay | null>(null)
   const [hover, setHover] = useState<number | null>(null)
+  // half-time break: the finished first half stays on screen until the player starts the second half
+  const [halfBreak, setHalfBreak] = useState(false)
 
   // New events since the last update: sounds, the goal / half-time overlays and the steal messages
   useEffect(() => {
@@ -296,7 +298,7 @@ export default function MatchScreen() {
     const full = fresh.find((e) => e.type === 'whistle' && e.card === 'FULL_TIME')
     const scorer = goal ? (goal.side === 'Home' ? m.home : m.away) : null
     if (goal && scorer) setOverlay({ kind: goal.side === human ? 'goal' : 'against', title: 'GOAL!', sub: scorer.name, colors: [scorer.primaryColor, scorer.secondaryColor], key: goal.id })
-    else if (half) setOverlay({ kind: 'whistle', title: 'HALF TIME', sub: `${m.home.goals} : ${m.away.goals} — new grid, ${m.turn === 'Home' ? m.home.name : m.away.name} start`, colors: [], key: half.id })
+    else if (half && m.phase !== 'Finished') setHalfBreak(true)
     else if (full) setOverlay({ kind: 'whistle', title: 'FULL TIME', sub: `${m.home.name} ${m.home.goals} : ${m.away.goals} ${m.away.name}`, colors: [], key: full.id })
 
     const steal = [...fresh].reverse().find((e) => e.type === 'steal')
@@ -338,7 +340,7 @@ export default function MatchScreen() {
 
   // The computer acts after a short pause (its flips, and decisions only it has to make).
   // (it waits while a GOAL! / HALF TIME banner is on screen)
-  const computerToAct = m != null && !showReveal && !overlay && m.role === 'wait' && (m.phase === 'Play' || m.phase === 'Decision')
+  const computerToAct = m != null && !showReveal && !overlay && !halfBreak && m.role === 'wait' && (m.phase === 'Play' || m.phase === 'Decision')
   useEffect(() => {
     if (!m || !computerToAct || aiInFlight.current) return
     const timer = setTimeout(async () => {
@@ -392,7 +394,9 @@ export default function MatchScreen() {
   const theirPens = human === 'Home' ? m.awayPenalties : m.homePenalties
   const won = myGoals > theirGoals || (myGoals === theirGoals && myPens != null && myPens > (theirPens ?? 0))
   const lost = myGoals < theirGoals || (myGoals === theirGoals && myPens != null && myPens < (theirPens ?? 0))
-  const myTurn = m.phase === 'Play' && m.role === 'flip'
+  const myTurn = m.phase === 'Play' && m.role === 'flip' && !halfBreak
+  const revealAll = finished || halfBreak
+  const grid = halfBreak && m.firstHalfTable ? m.firstHalfTable : m.table
   const last = m.lastFlip
   const events = [...m.events].reverse()
   const teamOf = (s: string | null) => (s === 'Home' ? m.home : s === 'Away' ? m.away : null)
@@ -454,6 +458,8 @@ export default function MatchScreen() {
             <div className={`turn-banner ${myTurn ? 'mine' : ''}`}>
               {finished
                 ? 'The match is over'
+                : halfBreak
+                  ? 'Half time — press Start second half when you are ready'
                 : targeting
                   ? targeting.card === 'SWAP'
                     ? targeting.first == null ? '⇄ Swap: pick the first face-down card' : '⇄ Swap: pick the second card'
@@ -472,11 +478,25 @@ export default function MatchScreen() {
               <DecisionPanel m={m} d={m.decision} busy={busy} onDecide={(c, t, auto) => run(() => api.decide(m.id, c, t, auto))} />
             )}
 
-            <div className={`table-area ${overlay ? 'has-overlay' : ''}`}>
+            {halfBreak && (
+              <div className="half-break panel">
+                <h2>Half time — {m.home.name} {m.home.goals} : {m.away.goals} {m.away.name}</h2>
+                <p>
+                  Below is the whole first half, revealed — now you can see where every card was. In the second half all cards are reshuffled
+                  face down, both teams get their team cards back, and <b>Full Time</b> is hidden somewhere in the new grid.{' '}
+                  <b>{m.turn === 'Home' ? m.home.name : m.away.name}</b> kick off.
+                </p>
+                <button className="btn btn-primary" onClick={() => setHalfBreak(false)}>
+                  Start second half ▶
+                </button>
+              </div>
+            )}
+
+            <div className={`table-area ${overlay ? 'has-overlay' : ''} ${halfBreak ? 'first-half-view' : ''}`}>
               {overlay && <MatchOverlay o={overlay} calm={settings.reduceMotion} />}
               <div className="grid-wrap">
-                <div className={`flip-grid half-${m.half} ${settings.reduceMotion ? '' : 'deal-in'}`} key={`half-${m.half}`} onMouseLeave={() => setHover(null)}>
-                  {m.table.map((c) => {
+                <div className={`flip-grid half-${halfBreak ? 1 : m.half} ${settings.reduceMotion ? '' : 'deal-in'}`} key={`half-${halfBreak ? 1 : m.half}`} onMouseLeave={() => setHover(null)}>
+                  {grid.map((c) => {
                     const owner = teamOf(c.owner)
                     if (c.faceUp && c.card) {
                       const by = teamOf(c.flippedBy)!
@@ -498,10 +518,10 @@ export default function MatchScreen() {
                     if (c.burned)
                       return (
                         <div key={c.index} className="grid-face burned-slot" title={c.mine ? `Your ${c.name} — burned` : 'A burned opponent card'}>
-                          {finished && c.card ? <CardFace code={c.card} name={c.name ?? ''} size="mini" /> : <span className="burn-mark"><Icon code="BURN" /></span>}
+                          {revealAll && c.card ? <CardFace code={c.card} name={c.name ?? ''} size="mini" /> : <span className="burn-mark"><Icon code="BURN" /></span>}
                         </div>
                       )
-                    if (finished && c.card)
+                    if (revealAll && c.card)
                       return (
                         <div key={c.index} className="grid-face unflipped" style={owner ? { borderColor: owner.primaryColor } : undefined}>
                           <CardFace code={c.card} name={c.name ?? ''} size="mini" />
@@ -523,14 +543,14 @@ export default function MatchScreen() {
                     )
                   })}
                 </div>
-                <div className="row-hints">
+                <div className="row-hints" style={halfBreak ? { visibility: 'hidden' } : undefined}>
                   {m.rowHints.map((h, i) => (
                     <span key={i} className={`${h === 0 ? 'safe' : ''} ${hover != null && Math.floor(hover / 5) === i ? 'hot' : ''}`} title="Dangerous grey cards still face down in this row">
                       {h}
                     </span>
                   ))}
                 </div>
-                <div className="col-hints">
+                <div className="col-hints" style={halfBreak ? { visibility: 'hidden' } : undefined}>
                   {m.colHints.map((h, i) => (
                     <span key={i} className={`${h === 0 ? 'safe' : ''} ${hover != null && hover % 5 === i ? 'hot' : ''}`} title="Dangerous grey cards still face down in this column">
                       {h}
@@ -560,7 +580,7 @@ export default function MatchScreen() {
               </div>
             </div>
 
-            {!finished && (
+            {!finished && !halfBreak && (
               <div className="hand-panel">
                 <span className="muted small">Your hand {m.handPlayed ? '(one card per flip — played)' : ''}</span>
                 <div className="hand-cards">

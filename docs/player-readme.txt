@@ -25,3 +25,5 @@ PROBLEMS?
   If the game does not start, there is an error.log in %LOCALAPPDATA%\DugoutDeck - please send it with your bug report.
 
 All clubs, leagues and cups in the game are fictional. Open-source licences: THIRD-PARTY-NOTICES.txt.
+
+(c) 2026 Martin Ivanov

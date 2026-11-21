@@ -498,3 +498,17 @@ ul.conditions li::before { content: '☁ '; color: var(--muted); }
 .pack-back { color: #f6efdc; }
 .logo-mark { display: flex; justify-content: center; filter: drop-shadow(0 6px 12px #0008); }
 .hand-card .icon, .tb-icon .icon { color: inherit; }
+
+/* ---------------------------------------------------------------- tactic coach (first time) */
+.coach { border: 2px solid var(--accent); background: rgba(242, 193, 78, 0.08); }
+.coach-head { display: flex; align-items: center; gap: 0.6rem; }
+.coach-head .btn { margin-left: auto; }
+.coach p { margin: 0.4rem 0; }
+.tb-section.coach-focus { outline: 3px solid var(--accent); outline-offset: 6px; border-radius: 10px; animation: pulse 1.8s ease-in-out infinite; }
+
+/* ---------------------------------------------------------------- half-time break */
+.half-break { border: 2px solid var(--accent); text-align: center; margin-bottom: 0.8rem; animation: newcard 0.4s ease-out; }
+.half-break h2 { margin-top: 0; }
+.half-break .btn { font-size: 1.1rem; padding: 0.7rem 1.4rem; }
+.first-half-view .grid-face { opacity: 0.92; }
+.form-row { display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: center; margin-bottom: 0.6rem; }

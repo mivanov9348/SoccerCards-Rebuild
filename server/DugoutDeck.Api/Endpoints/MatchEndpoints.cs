@@ -144,7 +144,8 @@ public static class MatchEndpoints
             setup = new
             {
                 budget, handSize, maxModifiers = Rules.MaxModifiers, fieldCards = Rules.FieldCardsPerTeam,
-                lastTactic = last ?? TacticRules.Default(),
+                // a career's first match starts with an empty tactic; friendlies start with a sensible default
+                lastTactic = last ?? (match.CareerId != null ? new TacticSpec() : TacticRules.Default()),
                 cards = catalog.ByCode.Values.Where(c => c.Kind != CardKind.Neutral).OrderBy(c => c.Kind).ThenBy(c => c.Cost).Select(c => new
                 {
                     c.Code, c.Name, c.Description, kind = c.Kind.ToString(), rarity = c.Rarity.ToString(), c.Cost,

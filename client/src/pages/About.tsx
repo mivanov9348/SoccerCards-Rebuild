@@ -28,7 +28,10 @@ export default function About() {
           </p>
         )}
         <h2>Credits</h2>
-        <p>Game design: Dugout Deck team · Programming: Dugout Deck team with Claude (Anthropic)</p>
+        <p>
+          <b>Game design &amp; programming:</b> Martin Ivanov
+        </p>
+        <p className="muted small">Developed with the help of Claude (Anthropic).</p>
         <h2>Open-source software</h2>
         <p className="muted small">Dugout Deck is built with these libraries. Their licence texts are in THIRD-PARTY-NOTICES.txt next to the game.</p>
         <table className="table">

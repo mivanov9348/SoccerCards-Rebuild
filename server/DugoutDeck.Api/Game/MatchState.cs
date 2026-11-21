@@ -140,6 +140,8 @@ public class MatchState
 
     public List<TableCell> Table { get; set; } = new();
     public List<TableCell> SecondHalfTable { get; set; } = new();
+    /// <summary>The finished first-half grid (shown revealed during the half-time break).</summary>
+    public List<TableCell> FirstHalfTable { get; set; } = new();
     public Flip? LastFlip { get; set; }
 
     public PendingDecision? Decision { get; set; }

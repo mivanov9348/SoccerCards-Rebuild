@@ -140,7 +140,7 @@ public class CareerService(AppDbContext db, MatchService matches)
             Reputation = 30,
             Difficulty = difficulty,
             Money = (long)(2_000_000 * LeagueFactor(team.League)),
-            LastTacticJson = JsonSerializer.Serialize(TacticRules.Default())
+            LastTacticJson = null // every career starts with an empty tactic: the player builds the first one
         };
         db.Careers.Add(career);
         await db.SaveChangesAsync();

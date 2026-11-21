@@ -475,6 +475,7 @@ public class MatchEngine(Random rng, CardCatalog catalog)
     {
         AddEvent(s, "whistle", side, Text(s, Cards.HalfTime, side), Cards.HalfTime);
         s.Half = 2;
+        s.FirstHalfTable = s.Table;
         s.Table = s.SecondHalfTable;
         s.SecondHalfTable = new();
         s.LastFlip!.Cell = -1;

@@ -1,48 +1,93 @@
 import { useState } from 'react'
 import { api, seasonLabel } from '../api'
-import { Badge, ErrorBox, Screen, StandingsTable, useLoad } from '../components/common'
+import { Badge, byCountry, ErrorBox, Screen, StandingsTable, useLoad } from '../components/common'
 
+/** League tables of a saved career (any league) and the ratings of every club (any league or the clubs without one). */
 export default function Tables() {
   const { data: careers, error } = useLoad(() => api.careers(), [])
   const { data: teams } = useLoad(() => api.teams(), [])
+  const { data: leagues } = useLoad(() => api.leagues(), [])
   const [careerId, setCareerId] = useState<number | null>(null)
   const active = careerId ?? careers?.[0]?.id ?? null
   const { data: career } = useLoad(() => (active ? api.career(active) : Promise.resolve(null)), [active])
-  const [group, setGroup] = useState<'BG' | 'EU'>('BG')
+  const { data: careerLeagues } = useLoad(() => (active ? api.careerLeagues(active) : Promise.resolve([])), [active])
+  const [tableLeague, setTableLeague] = useState<number | null>(null)
+  const shownTableLeague = tableLeague ?? career?.league.id ?? null
+  const { data: rows } = useLoad(
+    () => (active && shownTableLeague ? api.careerStandings(active, shownTableLeague) : Promise.resolve([])),
+    [active, shownTableLeague],
+  )
 
-  const shown = (teams ?? []).filter((t) => (group === 'BG' ? t.leagueId !== null : t.leagueId === null))
+  // team ratings: a league id, or 0 = clubs without a league
+  const [ratingsLeague, setRatingsLeague] = useState<number | null>(null)
+  const firstLeague = byCountry(leagues ?? [], (l) => l.country)[0]?.[1][0]?.id ?? null
+  const shownLeague = ratingsLeague ?? firstLeague
+  const shown = (teams ?? [])
+    .filter((t) => (shownLeague === 0 ? t.leagueId === null : t.leagueId === shownLeague))
+    .sort((a, b) => b.overall - a.overall || a.name.localeCompare(b.name))
 
   return (
     <Screen title="Tables & teams">
       <ErrorBox error={error} />
       <div className="two-col">
         <div className="panel">
-          <h2>Career league table</h2>
-          {careers && careers.length === 0 && <p className="muted">Start a career to see a league table.</p>}
+          <h2>Career league tables</h2>
+          {careers && careers.length === 0 && <p className="muted">Start a career to see league tables.</p>}
           {careers && careers.length > 0 && (
-            <label className="inline">
-              Save
-              <select value={active ?? ''} onChange={(e) => setCareerId(Number(e.target.value))}>
-                {careers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.saveName} ({c.team}, {c.year ? seasonLabel(c.year) : ''})
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="form-row">
+              <label className="inline">
+                Save
+                <select
+                  value={active ?? ''}
+                  onChange={(e) => {
+                    setCareerId(Number(e.target.value))
+                    setTableLeague(null)
+                  }}
+                >
+                  {careers.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.saveName} ({c.team}, {c.year ? seasonLabel(c.year) : ''})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {careerLeagues && careerLeagues.length > 0 && (
+                <label className="inline">
+                  League
+                  <select value={shownTableLeague ?? ''} onChange={(e) => setTableLeague(Number(e.target.value))}>
+                    {byCountry(careerLeagues, (l) => l.country).map(([country, ls]) => (
+                      <optgroup key={country} label={country}>
+                        {ls.map((l) => (
+                          <option key={l.id} value={l.id}>
+                            {l.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </div>
           )}
-          {career && <StandingsTable rows={career.table} highlight={career.team.id} />}
+          {career && rows && <StandingsTable rows={rows} highlight={career.team.id} />}
         </div>
         <div className="panel">
           <h2>Team ratings</h2>
-          <div className="tabs small">
-            <button className={group === 'BG' ? 'active' : ''} onClick={() => setGroup('BG')}>
-              Bulgaria
-            </button>
-            <button className={group === 'EU' ? 'active' : ''} onClick={() => setGroup('EU')}>
-              European clubs
-            </button>
-          </div>
+          <label className="inline">
+            League
+            <select value={shownLeague ?? ''} onChange={(e) => setRatingsLeague(Number(e.target.value))}>
+              {byCountry(leagues ?? [], (l) => l.country).map(([country, ls]) => (
+                <optgroup key={country} label={country}>
+                  {ls.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+              <option value={0}>Clubs without a league (continental cups only)</option>
+            </select>
+          </label>
           <table className="table">
             <thead>
               <tr>
@@ -63,7 +108,7 @@ export default function Tables() {
                   </td>
                   <td className="left muted">
                     {t.city}
-                    {group === 'EU' && `, ${t.country}`}
+                    {shownLeague === 0 && `, ${t.country}`}
                   </td>
                   <td>{t.attack}</td>
                   <td>{t.midfield}</td>

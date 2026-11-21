@@ -19,13 +19,14 @@
 
 Всички останали мачове се играят на заден план по същите правила.
 
-**Още:** мач за обучение, три нива на трудност, анимации, генерирани звуци и музика, собствени SVG икони, цял екран (F11). Всички отбори, лиги, купи и стадиони са **измислени** (виж „Имената“ по-долу).
+**Още:** мач за обучение, треньор за първата тактика, пауза на полувремето, три нива на трудност, анимации, генерирани звуци и музика, собствени SVG икони, цял екран (F11). Всички отбори, лиги, купи и стадиони са **измислени** (виж „Имената“ по-долу).
 
 - Пълна документация (Word, на български): [docs/DugoutDeck-Dokumentacia-BG.docx](docs/DugoutDeck-Dokumentacia-BG.docx)
 - Ръководство за играча (Word, на английски): [docs/DugoutDeck-Game-Manual-EN.docx](docs/DugoutDeck-Game-Manual-EN.docx)
 - Пълните правила (на английски): [docs/rules.md](docs/rules.md)
 - **Как да проверите всичко стъпка по стъпка:** [docs/testing-guide.md](docs/testing-guide.md)
 - **Как да качите играта в itch.io:** [docs/itch-io-guide.md](docs/itch-io-guide.md)
+- **Как пускаме версии (1.0, 1.0.1, 2.0):** [docs/releases.md](docs/releases.md)
 
 ## Технологии
 
@@ -98,12 +99,12 @@ dotnet test
 
 ## Имената: къде да ги промените
 
-Всички имена са измислени и генерирани в стила на държавата (напр. „FC Razgrad“, „Manchester Rovers“, „Real Union Madrid“, „Istanbul Kartalspor“). Ако някое не ви харесва, има два начина.
+Всички имена са измислени. Всеки клуб се казва по **основния си цвят и града** (напр. „Red Sofia“, „Blue Sofia“, „Green Razgrad“, „Sky Blue Manchester“, „White Madrid“). Ако два клуба от един град имат един цвят, вторият получава двата си цвята („Red-Black Sofia“). Ако и това е заето, името е измислено, без асоциация („Iskra Sofia“). Ако някое име не ви харесва, има два начина.
 
 **1. Във файла `server/DugoutDeck.Api/Data/Seed/seed.json`.** Всеки отбор е на един ред:
 
 ```json
-{"code": "BG1-01", "name": "FC Razgrad", "short": "RAZ", "city": "Razgrad", "stadium": "Razgrad City Stadium", "colors": ["#0b7a3b", "#ffffff"], "ratings": [82,82,80]}
+{"code": "BG1-01", "name": "Green Razgrad", "short": "GRA", "city": "Razgrad", "stadium": "Razgrad City Stadium", "colors": ["#0b7a3b", "#ffffff"], "ratings": [82,82,80]}
 ```
 
 - Сменете `name`, `short` (2–4 букви), `stadium`, `city`, цветовете или рейтинга.

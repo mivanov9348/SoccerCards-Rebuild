@@ -25,7 +25,8 @@ Each half has its own 5×5 grid of 25 face-down cards. **All backs are the same 
 card, only on their screen). Nobody sees where the opponent's cards are — the computer only knows its own cards, and the server
 never sends the positions of the computer's cards to the browser. At half time the cards are reshuffled and the flags move.
 
-Full Time can never come before Half Time. At half time every card goes face down again and is reshuffled; the team cards come
+Full Time can never come before Half Time. When Half Time is flipped the match pauses: the finished first half is shown revealed
+and the player presses **Start second half**. Then every card goes face down again and is reshuffled; the team cards come
 back (a card burned in the first half returns in the second). There is no clock — a half lasts 1–25 flips (about 14).
 
 ### Neutral base set (per half)
@@ -128,6 +129,8 @@ choose when to play each card — the longer it waits, the bigger the risk that 
 - Budget: **10 tactic points** + 0–3 by rating (64+ → 1, 72+ → 2, 80+ → 3) + 1 for the home team.
 - Hand cards: 1 (rating < 66), 2 (66+), 3 (78+).
 - Tactics can be saved; in a career the last tactic is used automatically ("Play (last tactic)").
+- Every career starts with an **empty tactic**: the first match asks you to build one. The first time ever, a coach panel explains
+  each step (field cards → hand cards → modifiers) while you pick.
 - The computer builds its tactic from its rating and the opponent (attacking / balanced / defensive). Rare cards from rating 66,
   epic cards from 76. Background matches do the same.
 
@@ -170,7 +173,7 @@ Background matches are not affected. The computer never knows where your team ca
 
 ## 8. Career
 
-- **Leagues:** 35 leagues from 25 countries (all clubs, leagues and cups are fictional — see the README for how to rename them). Two divisions with promotion/relegation and a national
+- **Leagues:** 35 leagues from 25 countries (all clubs, leagues and cups are fictional: a club is named after its main colour and city, e.g. "Red Sofia"; see the README for how to rename them). Two divisions with promotion/relegation and a national
   cup: England, Spain, Germany, Italy, France, Netherlands, Portugal, Turkey, Scotland, Bulgaria. Top division only: Belgium,
   Greece, Austria, Switzerland, Denmark, Czechia, Croatia, Serbia, Romania, Poland, Ukraine, Cyprus, Hungary, Norway, Sweden.
   Leagues of 12 teams or fewer play each other three times.

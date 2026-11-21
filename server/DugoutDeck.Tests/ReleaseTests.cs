@@ -41,6 +41,11 @@ public class ReleaseTests
         bg1["name"] = "Renamed League";
         bg1["teams"]![0]!["name"] = "Renamed Club One";
         bg1["teams"]![1]!["name"] = "Should Not Apply";
+        // two clubs swap names
+        var n3 = bg1["teams"]![2]!["name"]!.GetValue<string>();
+        var n4 = bg1["teams"]![3]!["name"]!.GetValue<string>();
+        bg1["teams"]![2]!["name"] = n4;
+        bg1["teams"]![3]!["name"] = n3;
         var seed2 = Path.Combine(dir, "seed.json");
         await File.WriteAllTextAsync(seed2, json.ToJsonString());
 
@@ -51,6 +56,8 @@ public class ReleaseTests
             Assert.Equal(581, await db.Teams.CountAsync()); // renamed, not duplicated
             Assert.Equal("Renamed Club One", (await db.Teams.FirstAsync(t => t.Code == "BG1-01")).Name);
             Assert.Equal("My Own Club", (await db.Teams.FirstAsync(t => t.Code == "BG1-02")).Name);
+            Assert.Equal(n4, (await db.Teams.FirstAsync(t => t.Code == "BG1-03")).Name);
+            Assert.Equal(n3, (await db.Teams.FirstAsync(t => t.Code == "BG1-04")).Name);
             Assert.Equal("Renamed League", (await db.Leagues.FirstAsync(l => l.Code == "BG1")).Name);
             Assert.Equal("Renamed League", (await db.Competitions.FirstAsync(c => c.Code == "BG1")).Name);
         }

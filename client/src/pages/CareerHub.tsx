@@ -60,12 +60,20 @@ function NextMatch({ c, busy, onPlay, onSimulate, onContinue }: {
           </button>
         ) : (
           <>
-            <button className="btn btn-primary" disabled={busy} onClick={() => onPlay(true)} title="Kick off straight away with your last tactic">
-              Play (last tactic) ▶
-            </button>
-            <button className="btn" disabled={busy} onClick={() => onPlay(false)}>
-              Change tactic
-            </button>
+            {c.hasTactic ? (
+              <>
+                <button className="btn btn-primary" disabled={busy} onClick={() => onPlay(true)} title="Kick off straight away with your last tactic">
+                  Play (last tactic) ▶
+                </button>
+                <button className="btn" disabled={busy} onClick={() => onPlay(false)}>
+                  Change tactic
+                </button>
+              </>
+            ) : (
+              <button className="btn btn-primary" disabled={busy} onClick={() => onPlay(false)} title="Your club has no tactic yet">
+                Build your first tactic ▶
+              </button>
+            )}
           </>
         )}
         <button className="btn btn-ghost" disabled={busy} onClick={onSimulate}>

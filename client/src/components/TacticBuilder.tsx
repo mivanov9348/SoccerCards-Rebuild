@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { api, type MatchView, type SetupCard, type Tactic } from '../api'
 import { ErrorBox, useLoad } from './common'
 import { iconFor } from './GameCard'
+import { TacticCoach } from './TacticCoach'
+import { saveSettings, useSettings } from '../settings'
 
 const rarityClass = (r: string) => `rarity-${r.toLowerCase()}`
 
@@ -17,6 +19,8 @@ export function TacticBuilder({ m, onStart }: { m: MatchView; onStart: (t: Tacti
     modifiers: [...setup.lastTactic.modifiers],
   }))
   const [saveAs, setSaveAs] = useState('')
+  const [settings, updateSettings] = useSettings()
+  const coaching = !settings.tacticTutorialDone
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { data: saved } = useLoad(() => api.tactics(m.careerId), [m.careerId])
@@ -46,14 +50,17 @@ export function TacticBuilder({ m, onStart }: { m: MatchView; onStart: (t: Tacti
     setBusy(true)
     try {
       await onStart(tactic, saveAs.trim() || undefined)
+      // saved directly: after kick-off this screen is already gone
+      if (coaching) saveSettings({ tacticTutorialDone: true })
     } catch (e) {
       setError((e as Error).message)
       setBusy(false)
     }
   }
 
+  const coachStep = tactic.field.length < setup.fieldCards ? 'Field' : tactic.hand.length === 0 ? 'Hand' : 'Modifier'
   const section = (kind: 'Field' | 'Hand' | 'Modifier', title: string, hint: string) => (
-    <div className="tb-section">
+    <div className={`tb-section ${coaching && coachStep === kind ? 'coach-focus' : ''}`}>
       <h3>
         {title} <span className="muted small">{hint}</span>
       </h3>
@@ -95,6 +102,17 @@ export function TacticBuilder({ m, onStart }: { m: MatchView; onStart: (t: Tacti
           <span className="muted small">Hand cards: up to {setup.handSize}</span>
         </div>
       </div>
+
+      {coaching && (
+        <TacticCoach
+          tactic={tactic}
+          fieldCards={setup.fieldCards}
+          handSize={setup.handSize}
+          budget={setup.budget}
+          left={left}
+          onSkip={() => updateSettings({ tacticTutorialDone: true })}
+        />
+      )}
 
       <div className="panel tb-chosen">
         <div>

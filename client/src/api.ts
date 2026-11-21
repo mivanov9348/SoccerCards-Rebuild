@@ -162,6 +162,8 @@ export interface MatchView {
   colHints: number[]
   table: GridCell[]
   cardsLeft: number
+  /** the finished first half, revealed (second half only) */
+  firstHalfTable: GridCell[] | null
   lastFlip: { cell: number; card: string; name: string; side: Side; owner: Side | null; description: string | null } | null
   hand: { code: string; name: string; description: string | null }[]
   freeScouts: number
@@ -241,6 +243,7 @@ export interface SeasonSummary {
 
 export interface CareerView {
   id: number
+  hasTactic: boolean
   saveName: string
   managerName: string
   reputation: number

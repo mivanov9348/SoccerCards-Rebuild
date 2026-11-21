@@ -37,6 +37,19 @@ public static class DbSeeder
         var byName = teams.GroupBy(t => t.Name).ToDictionary(g => g.Key, g => g.First());
         var leagueComps = await db.Competitions.Where(c => c.Type == CompetitionType.League && c.LeagueId != null).ToListAsync();
 
+        // Renames happen in two steps, so clubs can swap names (e.g. A gets B's old name) without breaking the unique name rule:
+        // first every club that will be renamed gets a temporary name, then the new names are applied.
+        var seedNames = seed.Leagues.SelectMany(l => l.Teams).Concat(seed.EuropeanClubs)
+            .Select(e => SeedTeam.From(e, null)).Where(t => t.Code != null).ToDictionary(t => t.Code!, t => t.Name);
+        var blocked = teams.Where(t => t.EditedInGame || t.Code == null || !seedNames.ContainsKey(t.Code)).Select(t => t.Name).ToHashSet();
+        var renaming = teams.Where(t => t.Code != null && !t.EditedInGame && seedNames.TryGetValue(t.Code, out var n) && n != t.Name && !blocked.Contains(n)).ToList();
+        if (renaming.Count > 0)
+        {
+            foreach (var t in renaming) t.Name = $"~{t.Code}";
+            await db.SaveChangesAsync();
+            byName = teams.GroupBy(t => t.Name).ToDictionary(g => g.Key, g => g.First());
+        }
+
         foreach (var l in seed.Leagues)
         {
             // find the league by code, or (older saves) through its competition code, or by name
