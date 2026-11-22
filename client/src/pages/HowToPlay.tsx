@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { api, type CardInfo } from '../api'
 import { Screen, useLoad } from '../components/common'
 import { CardFace } from '../components/GameCard'
@@ -24,6 +25,9 @@ export default function HowToPlay() {
   return (
     <Screen title="How to play">
       <div className="panel prose">
+        <p>
+          Want to look at every card in detail? Open the <Link to="/cards">Card gallery</Link>.
+        </p>
         <h2>The match</h2>
         <p>
           You play against the computer. Each half is a <b>5×5 grid of face-down cards</b>, all with the same grey back: 16 neutral

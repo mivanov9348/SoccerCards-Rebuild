@@ -1,5 +1,6 @@
 import { api } from '../api'
 import { Screen, useLoad } from '../components/common'
+import { ReviewButton } from '../components/ReviewButton'
 
 const LIBRARIES: [string, string, string][] = [
   ['.NET, ASP.NET Core, Entity Framework Core', 'Microsoft', 'MIT'],
@@ -27,6 +28,9 @@ export default function About() {
             Your saves: <code>{info.saveFile}</code>
           </p>
         )}
+        <p>
+          <ReviewButton />
+        </p>
         <h2>Credits</h2>
         <p>
           <b>Game design &amp; programming:</b> Martin Ivanov

@@ -44,14 +44,23 @@ public static class Program
             if (File.Exists(icon)) window.SetIconFile(icon);
 
             // messages from the game page: "fullscreen:on" / "fullscreen:off" / "fullscreen:toggle" (F11 or Settings)
+            // messages from the game page:
+            //   "fullscreen:on" / "fullscreen:off" / "fullscreen:toggle" (F11 or Settings)
+            //   "open:https://..." (opens a web page, e.g. the itch.io page, in the player's browser)
+            Fullscreen? fullscreen = null;
             window.RegisterWebMessageReceivedHandler((sender, message) =>
             {
                 if (sender is not PhotinoWindow w) return;
+                fullscreen ??= new Fullscreen(w.WindowHandle);
                 switch (message)
                 {
-                    case "fullscreen:on": w.SetFullScreen(true); break;
-                    case "fullscreen:off": w.SetFullScreen(false); break;
-                    case "fullscreen:toggle": w.SetFullScreen(!w.FullScreen); break;
+                    case "fullscreen:on": fullscreen.Set(true); break;
+                    case "fullscreen:off": fullscreen.Set(false); break;
+                    case "fullscreen:toggle": fullscreen.Set(!fullscreen.IsOn); break;
+                    default:
+                        if (message.StartsWith("open:https://", StringComparison.Ordinal))
+                            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(message[5..]) { UseShellExecute = true });
+                        break;
                 }
             });
 

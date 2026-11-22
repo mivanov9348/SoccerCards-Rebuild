@@ -4,6 +4,7 @@ import { api, type Decision, type MatchTeam, type MatchView, type Side, type Tac
 import { Badge, ErrorBox, useLoad } from '../components/common'
 import { CardBack, CardFace, iconFor } from '../components/GameCard'
 import { Icon } from '../components/Icons'
+import { ReviewButton } from '../components/ReviewButton'
 import { play, playEvent } from '../sound'
 import { TacticBuilder } from '../components/TacticBuilder'
 import { useSettings } from '../settings'
@@ -611,6 +612,9 @@ export default function MatchScreen() {
               <div className={`result-box ${won ? 'won' : lost ? 'lost' : ''}`}>
                 <h2>{won ? '🏆 You win!' : lost ? 'You lose' : 'Draw'}</h2>
                 <StatsTable m={m} />
+                <div className="center">
+                  <ReviewButton variant="link" />
+                </div>
                 <div className="row-buttons">
                   {m.careerId ? (
                     <button className="btn btn-primary" onClick={() => navigate(`/career/${m.careerId}`)}>

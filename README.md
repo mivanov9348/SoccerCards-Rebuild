@@ -1,4 +1,4 @@
-# Dugout Deck — v1.0.0
+# Dugout Deck — v1.0.1
 
 Футболна игра с карти за един играч срещу компютъра. Цялата игра е на английски. Вдъхновена е от ретро картовите футболни игри, а отгоре има собствен слой с колекция карти и тактика.
 
@@ -19,7 +19,7 @@
 
 Всички останали мачове се играят на заден план по същите правила.
 
-**Още:** мач за обучение, треньор за първата тактика, пауза на полувремето, три нива на трудност, анимации, генерирани звуци и музика, собствени SVG икони, цял екран (F11). Всички отбори, лиги, купи и стадиони са **измислени** (виж „Имената“ по-долу).
+**Още:** галерия с всички карти, бутон „Rate & review“ към itch.io, мач за обучение, треньор за първата тактика, пауза на полувремето, три нива на трудност, анимации, генерирани звуци и музика, собствени SVG икони, цял екран (F11). Всички отбори, лиги, купи и стадиони са **измислени** (виж „Имената“ по-долу).
 
 - Пълна документация (Word, на български): [docs/DugoutDeck-Dokumentacia-BG.docx](docs/DugoutDeck-Dokumentacia-BG.docx)
 - Ръководство за играча (Word, на английски): [docs/DugoutDeck-Game-Manual-EN.docx](docs/DugoutDeck-Game-Manual-EN.docx)
@@ -81,7 +81,7 @@ powershell -ExecutionPolicy Bypass -File scripts\publish-desktop.ps1
 
 Резултат:
 - `dist\DugoutDeck-win-x64\DugoutDeck.exe` – готовата папка, с `README.txt` за играча и `THIRD-PARTY-NOTICES.txt`;
-- `dist\DugoutDeck-1.0.0-win-x64.zip` – архив от около 50 MB (за itch.io или за пращане).
+- `dist\DugoutDeck-1.0.1-win-x64.zip` – архив от около 50 MB (за itch.io или за пращане).
 
 Пакетът съдържа .NET, така че на играча не му трябва нищо друго. Записите са в `%LOCALAPPDATA%\DugoutDeck\dugout-deck.db`. Ако нещо се счупи при стартиране, там се появява `error.log`.
 
@@ -137,6 +137,8 @@ client/src/
   pages/Tutorial.tsx        мачът за обучение
   pages/CareerHub.tsx       кариерата: преглед, таблици, купи и Европа, колекция, Store
   pages/About.tsx           версия, credits, лицензи
+  pages/CardGallery.tsx     галерията с всички карти
+  components/ReviewButton   бутонът „Rate & review“ (адресът е в display.ts: REVIEW_URL)
   components/TacticBuilder  екранът за тактика преди мача
   components/Icons.tsx      собствените SVG икони и логото
   sound.ts                  генерираните звуци и музика
@@ -151,7 +153,7 @@ server/DugoutDeck.Api/
   Data/Migrations/          миграции на базата (записите оцеляват при обновления)
   Data/DatabaseUpgrade.cs   прилага миграциите, прави резервно копие преди това
   Data/DbSeeder.cs          зарежда seed.json и синхронизира имената по код
-server/DugoutDeck.Desktop/  настолната програма (прозорец, цял екран, икона)
+server/DugoutDeck.Desktop/  настолната програма (прозорец, истински цял екран в Fullscreen.cs, икона)
 server/DugoutDeck.Tests/    тестове
 scripts/                    пакетиране и иконата
 docs/                       документация, правила, проверка, itch.io

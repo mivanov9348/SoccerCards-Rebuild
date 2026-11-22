@@ -206,6 +206,9 @@ Background matches are not affected. The computer never knows where your team ca
 ## 10. Presentation
 
 - **Tutorial:** a scripted 14-step match (main menu → Tutorial) that shows every rule once.
+- **Card gallery:** every card with its picture, effect, type, cost, rarity and store price (main menu → Card gallery).
+- **Rate & review:** opens the game's itch.io page in the browser (main menu, About, after a match).
+- **Fullscreen (F11):** in the desktop app the window covers the whole monitor, taskbar included.
 - **Animations:** 3D card flips, red shake for dangerous cards, purple glow for steals, gold for goals and penalties, a GOAL! / HALF
   TIME / FULL TIME banner (confetti for your own goals; the computer waits while it is shown), the second-half grid is dealt card by
   card, row/column highlight with the danger count on hover, speed buttons in the match, animated pack opening. Settings →

@@ -28,3 +28,13 @@ export const DIFFICULTIES: [Difficulty, string][] = [
   ['Normal', 'Normal — the standard game'],
   ['Hard', 'Hard — −1 tactic point, the computer plays one level stronger'],
 ]
+
+/** The game's page on itch.io (ratings and comments). Change here if the page moves (e.g. to Steam later). */
+export const REVIEW_URL = 'https://mivanov93.itch.io/dugout-deck'
+
+/** Opens a web page in the player's own browser (the desktop window would otherwise navigate away from the game). */
+export function openExternal(url: string) {
+  const h = host()
+  if (h) h.sendMessage!(`open:${url}`)
+  else window.open(url, '_blank', 'noopener')
+}

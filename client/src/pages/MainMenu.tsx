@@ -3,6 +3,7 @@ import { api, seasonLabel } from '../api'
 import { useLoad } from '../components/common'
 import { useSettings } from '../settings'
 import { Logo } from '../components/Icons'
+import { ReviewButton } from '../components/ReviewButton'
 
 export default function MainMenu() {
   const { data: careers, error } = useLoad(() => api.careers(), [])
@@ -54,9 +55,14 @@ export default function MainMenu() {
         <Link className="menu-item" to="/how-to-play">
           How to play
         </Link>
+        <Link className="menu-item" to="/cards">
+          Card gallery
+          <small>Every card and what it does</small>
+        </Link>
         <Link className="menu-item" to="/settings">
           Settings
         </Link>
+        <ReviewButton variant="menu" />
         <Link className="menu-item" to="/about">
           About & credits
         </Link>
