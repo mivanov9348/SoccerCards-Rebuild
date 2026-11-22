@@ -27,6 +27,8 @@
 - **Как да проверите всичко стъпка по стъпка:** [docs/testing-guide.md](docs/testing-guide.md)
 - **Как да качите играта в itch.io:** [docs/itch-io-guide.md](docs/itch-io-guide.md)
 - **Как пускаме версии (1.0, 1.0.1, 2.0):** [docs/releases.md](docs/releases.md)
+- **План за развитие до 2.0 (Word):** [docs/DugoutDeck-Roadmap-BG.docx](docs/DugoutDeck-Roadmap-BG.docx)
+- **Картинки за картите:** в `client/public/cards/`, имената са в [client/public/cards/README.txt](client/public/cards/README.txt)
 
 ## Технологии
 
