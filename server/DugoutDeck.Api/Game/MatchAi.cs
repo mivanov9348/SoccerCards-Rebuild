@@ -10,8 +10,15 @@ public class MatchAi(Random rng)
     private static readonly double[] RandomFlipChance = [0.5, 0.2, 0.04];
 
     /// <summary>Value of flipping one of its own team cards now. The Offside Trap is worth more left in the grid.</summary>
-    private static double OwnValue(TeamMatchState team, string card) => card switch
+    private static double OwnValue(MatchState s, Side side, TeamMatchState team, string card) => card switch
     {
+        Cards.SuperSub => s.Half == 2 ? 0.75 : 0.2,
+        Cards.Winger => 0.6,
+        Cards.Goalkeeper => team.GoalkeeperActive ? 0.3 : 0.45,
+        Cards.TargetMan => team.TargetManActive ? 0.3 : 0.42,
+        Cards.Sweeper => team.SweeperActive ? 0.3 : 0.45,
+        Cards.TwelfthMan => side == Side.Home && !team.TwelfthManActive ? 0.5 : 0.3,
+        Cards.Decoy => 0.08,
         Cards.Striker => 0.75,
         Cards.BigChanceCard => 0.7,
         Cards.CounterAttack => 0.6,
@@ -25,10 +32,10 @@ public class MatchAi(Random rng)
     };
 
     /// <summary>Value of a card the computer has seen (scouted) for the team that flips it.</summary>
-    private static double KnownValue(TeamMatchState team, TableCell c, Side side)
+    private static double KnownValue(MatchState s, TeamMatchState team, TableCell c, Side side)
     {
-        if (c.Owner == side) return OwnValue(team, c.Card);
-        if (c.Owner == side.Other()) return c.Card == Cards.OffsideTrap ? -0.6 : 0.6; // a steal
+        if (c.Owner == side) return OwnValue(s, side, team, c.Card);
+        if (c.Owner == side.Other()) return c.Card == Cards.OffsideTrap ? -0.6 : c.Card == Cards.Decoy ? 0.15 : 0.6; // a steal
         return c.Card switch
         {
             Cards.Goal => 1.0,
@@ -72,11 +79,11 @@ public class MatchAi(Random rng)
         {
             var cell = s.Table[i];
             if (!cell.Available || !MatchEngine.CanFlipOwn(s, side, i)) continue;
-            if (cell.Owner == side) { list.Add((i, OwnValue(team, cell.Card), 0)); continue; }
+            if (cell.Owner == side) { list.Add((i, OwnValue(s, side, team, cell.Card), 0)); continue; }
             if (team.Peeks.Contains(i))
             {
                 var bad = (cell.Owner == null && Cards.Dangerous.Contains(cell.Card)) || (cell.Owner != null && cell.Card == Cards.OffsideTrap);
-                list.Add((i, KnownValue(team, cell, side), bad ? 1 : 0));
+                list.Add((i, KnownValue(s, team, cell, side), bad ? 1 : 0));
                 continue;
             }
             var p = Danger(s, side, i, rows, cols);
@@ -125,6 +132,24 @@ public class MatchAi(Random rng)
 
         // the blind Burn is best early, while the opponent still has most of its cards in the grid
         if (team.Hand.Contains(Cards.Burn) && oppLeft >= 3) return (Cards.Burn, null, null);
+        // Marking: protect the best own card that is still hidden
+        if (team.Hand.Contains(Cards.Marking) && team.MarkedCell < 0)
+        {
+            var toMark = BestOwnHidden(s, side, team);
+            if (toMark >= 0) return (Cards.Marking, toMark, null);
+        }
+        // Substitution: bring back a strong card that is already used
+        if (team.Hand.Contains(Cards.Substitution) && unknown.Count > 2)
+        {
+            var used = Enumerable.Range(0, s.Table.Count).FirstOrDefault(i => s.Table[i].FaceUp && s.Table[i].Owner == side
+                && s.Table[i].Card is Cards.Striker or Cards.BigChanceCard or Cards.SuperSub or Cards.Winger, -1);
+            if (used >= 0) return (Cards.Substitution, used, null);
+        }
+        // VAR and the penalty taker are "armed" cards: play them early, they wait for their moment
+        var myGoals = team.Goals;
+        var theirGoals = s.Team(side.Other()).Goals;
+        if (team.Hand.Contains(Cards.Var) && !team.VarActive && myGoals >= theirGoals) return (Cards.Var, null, null);
+        if (team.Hand.Contains(Cards.PenaltyTaker) && !team.PenaltyTakerActive) return (Cards.PenaltyTaker, null, null);
         if (best.Value >= 0.3) return (null, null, null); // a good card is available anyway
         if (team.Hand.Contains(Cards.Scout) && unknown.Count > 0)
             return (Cards.Scout, unknown.OrderByDescending(o => o.Value).First().Index, null);
@@ -132,6 +157,13 @@ public class MatchAi(Random rng)
         if (team.Hand.Contains(Cards.Press) && best.Danger > 0.4) return (Cards.Press, null, null);
         return (null, null, null);
     }
+
+    /// <summary>The most valuable own team card that is still face down (and not yet marked), or -1.</summary>
+    private static int BestOwnHidden(MatchState s, Side side, TeamMatchState team) =>
+        Enumerable.Range(0, s.Table.Count)
+            .Where(i => s.Table[i].Available && s.Table[i].Owner == side && s.Table[i].Card != Cards.OffsideTrap && s.Table[i].Card != Cards.Decoy)
+            .OrderByDescending(i => OwnValue(s, side, team, s.Table[i].Card))
+            .DefaultIfEmpty(-1).First();
 
     private (string?, int?, int?) Target(MatchState s, Side side, string card, List<(int Index, double Value, double Danger)> unknown, int oppLeft)
     {
@@ -147,6 +179,14 @@ public class MatchAi(Random rng)
                 return (card, a, b);
             case Cards.Burn:
                 return oppLeft > 0 ? (card, null, null) : (null, null, null);
+            case Cards.Marking:
+                var mark = BestOwnHidden(s, side, s.Team(side));
+                return mark >= 0 ? (card, mark, null) : (null, null, null);
+            case Cards.Substitution:
+                var up = Enumerable.Range(0, s.Table.Count).FirstOrDefault(i => s.Table[i].FaceUp && s.Table[i].Owner == side, -1);
+                return up >= 0 && avail.Count > 0 ? (card, up, null) : (null, null, null);
+            case Cards.Analysis:
+                return avail.Count > 0 ? (card, avail[rng.Next(avail.Count)], null) : (null, null, null);
             default:
                 return (card, null, null);
         }

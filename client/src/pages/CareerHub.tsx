@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api, money, seasonLabel, type CareerView, type Fixture } from '../api'
 import { Badge, byCountry, ErrorBox, FixtureRow, Screen, StandingsTable, useLoad } from '../components/common'
-import { iconFor, PackOpening, type PackCard } from '../components/GameCard'
+import { CardThumb, PackOpening, type PackCard } from '../components/GameCard'
 import { play } from '../sound'
 
 type Tab = 'overview' | 'tables' | 'fixtures' | 'cups' | 'collection' | 'store' | 'news'
@@ -226,7 +226,7 @@ function CollectionTab({ careerId, reload }: { careerId: number; reload: () => v
       <div className="collection">
         {cards?.map((card) => (
           <div key={card.code} className={`coll-card rarity-${card.rarity.toLowerCase()} ${card.owned === 0 ? 'missing' : ''}`}>
-            <span className="tb-icon">{iconFor(card.code)}</span>
+            <span className="tb-icon"><CardThumb code={card.code} /></span>
             <b>{card.name}</b>
             <span className="muted small">
               {card.kind === 'Field' ? 'Field card' : 'Hand card'} · {card.rarity} · {card.cost} pt
@@ -296,7 +296,7 @@ function StoreTab({ careerId, c, reload }: { careerId: number; c: CareerView; re
         <div className="collection">
           {cards?.map((card) => (
             <div key={card.code} className={`coll-card rarity-${card.rarity.toLowerCase()}`}>
-              <span className="tb-icon">{iconFor(card.code)}</span>
+              <span className="tb-icon"><CardThumb code={card.code} /></span>
               <b>{card.name}</b>
               <span className="muted small">
                 {card.rarity} · owned {card.owned}

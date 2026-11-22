@@ -19,7 +19,7 @@
 
 Всички останали мачове се играят на заден план по същите правила.
 
-**Още:** картинки на картите с 3D наклон, холо блясък и увеличение (десен клик), бутони Sound/Music в менюто, галерия с всички карти, бутон „Rate & review“ към itch.io, мач за обучение, треньор за първата тактика, пауза на полувремето, три нива на трудност, анимации, генерирани звуци и музика, собствени SVG икони, цял екран (F11). Всички отбори, лиги, купи и стадиони са **измислени** (виж „Имената“ по-долу).
+**Още:** 53 карти (12 нови карти и 4 модификатора в 1.1), картинки на картите с 3D наклон, холо блясък и увеличение (десен клик), бутони Sound/Music в менюто, галерия с всички карти, бутон „Rate & review“ към itch.io, мач за обучение, треньор за първата тактика, пауза на полувремето, три нива на трудност, анимации, генерирани звуци и музика, собствени SVG икони, цял екран (F11). Всички отбори, лиги, купи и стадиони са **измислени** (виж „Имената“ по-долу).
 
 - Пълна документация (Word, на български): [docs/DugoutDeck-Dokumentacia-BG.docx](docs/DugoutDeck-Dokumentacia-BG.docx)
 - Ръководство за играча (Word, на английски): [docs/DugoutDeck-Game-Manual-EN.docx](docs/DugoutDeck-Game-Manual-EN.docx)
@@ -28,6 +28,8 @@
 - **Как да качите играта в itch.io:** [docs/itch-io-guide.md](docs/itch-io-guide.md)
 - **Как пускаме версии (1.0, 1.0.1, 2.0):** [docs/releases.md](docs/releases.md)
 - **План за развитие до 2.0 (Word):** [docs/DugoutDeck-Roadmap-BG.docx](docs/DugoutDeck-Roadmap-BG.docx)
+- **Чеклист за тестване на 1.1 (Word):** [docs/DugoutDeck-Test-Checklist-1.1.docx](docs/DugoutDeck-Test-Checklist-1.1.docx)
+- **Шаблон за картинките (Photoshop):** [docs/card-template-600x840.png](docs/card-template-600x840.png)
 - **Картинки за картите:** в `client/public/cards/`, имената са в [client/public/cards/README.txt](client/public/cards/README.txt). Играта ги намира сама; след нови картинки пуснете отново играта (настолната версия: `scripts\publish-desktop.ps1`).
 
 ## Технологии

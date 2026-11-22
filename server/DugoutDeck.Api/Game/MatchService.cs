@@ -117,7 +117,7 @@ public class MatchService(AppDbContext db)
                     owner = know ? c.Owner?.ToString() : null, flippedBy = c.FlippedBy?.ToString(),
                     card = know ? c.Card : null,
                     name = know ? Cards.Name(c.Card) : null,
-                    peeked, mine,
+                    peeked, mine, marked = mine && me.MarkedCell == i,
                     stolen = c.FaceUp && c.Owner != null && c.Owner != c.FlippedBy
                 };
             }),
@@ -161,6 +161,8 @@ public class MatchService(AppDbContext db)
             goals = t.Goals, isHuman = t.IsHuman, rating = t.Rating, aiLevel = Rules.AiLevelNames[t.AiLevel],
             passStreak = t.PassStreak, captain = t.CaptainShield, wall = t.WallActive, calm = t.CalmActive,
             press = t.PressActive, counterFlips = t.CounterFlips,
+            goalkeeper = t.GoalkeeperActive, targetMan = t.TargetManActive, sweeper = t.SweeperActive, twelfthMan = t.TwelfthManActive,
+            var = t.VarActive, penaltyTaker = t.PenaltyTakerActive,
             // the opponent's field cards stay secret; modifiers are revealed when the match starts
             fieldCards = started && (isMe || finished) ? t.Tactic.Field.Select(Cards.Name) : null,
             fieldCount = started ? t.Tactic.Field.Count : 0,

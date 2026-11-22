@@ -5,7 +5,7 @@ before each match both teams build a tactic from their card collection. Luck lea
 well-timed hand cards win more often.
 
 All numbers below are in `server/DugoutDeck.Api/Game/Rules.cs` and the card catalog in `server/DugoutDeck.Api/Data/Seed/seed.json`.
-They were tuned with 4,000 simulated matches (see the balance test): about **4.9 goals per match**, 0:0 in under 1% of matches,
+They were tuned with 4,000 simulated matches (see the balance test): about **5 goals per match**, 0:0 in under 1% of matches,
 a strong team (85) beats a weak one (58) about 55% of the time and loses about 23%. About 1.7 team cards are stolen per match.
 
 ---
@@ -105,6 +105,13 @@ choose when to play each card — the longer it waits, the bigger the risk that 
 | Offside Trap | epic | 3 | Works like a Pass | **cannot be stolen** — caught offside, they lose the ball |
 | Counter Attack | epic | 3 | Flip 2 more cards; dangerous ones don't count | the same, for the thief |
 | Squad Player | — | 0 | Works like a Pass (free filler) | a Pass for the thief |
+| Winger *(1.1)* | common | 2 | A corner (mini-game); the team keeps the ball even if it is not a goal | the same, for the thief |
+| Goalkeeper *(1.1)* | rare | 2 | The next shot or penalty against you: −20% goal chance | protects the thief |
+| Target Man *(1.1)* | common | 1 | Your next cross (corner or free kick): +20% goal chance | the same, for the thief |
+| Sweeper *(1.1)* | rare | 1 | Your next Offside or Save is ignored — you keep the ball | protects the thief |
+| Super Sub *(1.1)* | epic | 3 | 2nd half: 60% goal; 1st half: works like a Pass | the same, for the thief |
+| Decoy *(1.1)* | common | 1 | Works like a Pass | **cannot be stolen** — they gain nothing and lose their pass streak |
+| 12th Man *(1.1)* | rare | 2 | Home team: the next dangerous card is ignored; away team: a Pass | the same, for the thief |
 
 *Balance changes vs. the draft: Striker is a 35% chance (not a sure goal) and costs 4; Big Chance costs 3; Long Shot 12%.*
 
@@ -116,6 +123,11 @@ choose when to play each card — the longer it waits, the bigger the risk that 
 | Swap | 1 | Swap the places of two face-down cards |
 | Calm | 2 | If your next card is a Tackle, you keep the ball |
 | Press | 2 | The next time you lose the ball, flip one more card straight away |
+| VAR *(1.1)* | 2 | The opponent's next goal is checked: 40% chance it is disallowed |
+| Marking *(1.1)* | 2 | Pick one of your face-down cards: if the opponent flips it, they can't steal it and lose the ball |
+| Substitution *(1.1)* | 2 | Pick one of your team cards that is already face up: it goes back face down to a random place |
+| Analysis *(1.1)* | 1 | Pick a row: you learn how many opponent cards are hidden in it |
+| Penalty Taker *(1.1)* | 1 | Your next penalty: +10% goal chance |
 | Burn | 2 | **Blind:** burns a random face-down team card of the opponent. A 🔥 is left in its place; you don't see which card it was (cost to be reviewed after balancing) |
 
 ## 5. Discipline
@@ -148,8 +160,12 @@ chose what.
 | −1 / −2 Corner | 1 / 2 | Corners become Pass cards |
 | +1 Tackle | 1 | A Pass becomes a Tackle |
 | +1 Penalty | 3 | A Pass becomes a Penalty |
+| +1 Free Kick *(1.1)* | 1 | A Pass becomes a Free Kick |
+| −1 Tackle *(1.1)* | 1 | A Tackle becomes a Pass |
+| +1 Save *(1.1)* | 1 | A Pass becomes a Save |
+| Wet pitch *(1.1)* | 1 | A Pass becomes a Miss |
 
-Limits: Pass ≥ 1, Goal 0–5, Corner 0–4, Tackle 0–6, Penalty 0–3, Miss 0–4, Yellow 0–3. Modifiers apply to both halves.
+Limits: Pass ≥ 1, Goal 0–5, Corner 0–4, Tackle 0–6, Penalty 0–3, Miss 0–4, Yellow 0–3, Free Kick 0–3, Save 0–3. Modifiers apply to both halves.
 
 ## 7. Ratings, difficulty and the computer
 

@@ -34,6 +34,7 @@ public class TeamStats
     public int BigChances { get; set; }
     public int CardsBurned { get; set; }
     public int CardsStolen { get; set; }
+    public int GoalsDisallowed { get; set; }
     public Dictionary<string, int> GoalSources { get; set; } = new();
 }
 
@@ -64,6 +65,15 @@ public class TeamMatchState
     public bool HandPlayedThisTurn { get; set; }
     /// <summary>A team may flip only one of its own team cards per turn (a turn = until it loses the ball).</summary>
     public bool OwnCardUsedThisTurn { get; set; }
+    // version 1.1 effects
+    public bool GoalkeeperActive { get; set; }
+    public bool TargetManActive { get; set; }
+    public bool SweeperActive { get; set; }
+    public bool TwelfthManActive { get; set; }
+    public bool VarActive { get; set; }
+    public bool PenaltyTakerActive { get; set; }
+    /// <summary>Marking: the cell of an own face-down card that cannot be stolen (current half), or -1.</summary>
+    public int MarkedCell { get; set; } = -1;
     /// <summary>Cells this team has looked under (current half).</summary>
     public List<int> Peeks { get; set; } = new();
 

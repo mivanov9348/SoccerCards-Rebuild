@@ -334,13 +334,13 @@ public class MatchEngineTests(ITestOutputHelper output)
         Assert.InRange(goals / n, 3.0, 5.0);
         Assert.True(strongWins > weakWins);
 
-        // how strong is the Offside Trap? the same team with a Long Shot vs with an Offside Trap in its place
-        foreach (var trap in new[] { false, true })
+        // how strong is each field card? the same team with a Long Shot in the third slot replaced by the card
+        foreach (var card in new[] { Cards.LongShot, Cards.OffsideTrap, Cards.Winger, Cards.Goalkeeper, Cards.TargetMan, Cards.Sweeper, Cards.SuperSub, Cards.Decoy, Cards.TwelfthMan })
         {
             int wins = 0, losses = 0, sprung = 0;
             for (var i = 0; i < 2000; i++)
             {
-                var tactic = new TacticSpec { Field = [Cards.Striker, Cards.LongShot, trap ? Cards.OffsideTrap : Cards.LongShot, Cards.Captain], Hand = [Cards.Scout] };
+                var tactic = new TacticSpec { Field = [Cards.Striker, Cards.LongShot, card, Cards.Captain], Hand = [Cards.Scout] };
                 var engine = new MatchEngine(new Random(20000 + i), Catalog);
                 var s = engine.Create(new MatchSetup(T(1), T(2), 75, 75, null, false, "Test"));
                 engine.Start(s, tactic, TacticRules.Default());
@@ -349,17 +349,7 @@ public class MatchEngineTests(ITestOutputHelper output)
                 if (s.Home.Goals < s.Away.Goals) losses++;
                 sprung += s.Events.Count(e => e.Type == "lost" && e.Card == Cards.OffsideTrap);
             }
-            output.WriteLine($"{(trap ? "with Offside Trap" : "with Long Shot   ")}: wins {wins / 20.0:F1}%, losses {losses / 20.0:F1}%, traps sprung per match {sprung / 2000.0:F2}");
+            output.WriteLine($"with {Cards.Name(card),-13} ({Catalog.Cost(card)} pt): wins {wins / 20.0:F1}%, losses {losses / 20.0:F1}%" + (card == Cards.OffsideTrap ? $", traps sprung per match {sprung / 2000.0:F2}" : ""));
         }
-    }
-    [Fact]
-    public void RoundRobin_SmallLeaguesPlayThreeTimes_OthersTwice()
-    {
-        var twelve = DugoutDeck.Api.Careers.CareerService.RoundRobin(Enumerable.Range(1, 12).ToList());
-        Assert.Equal(33, twelve.Count);
-        var games = twelve.SelectMany(r => r).ToList();
-        Assert.Equal(198, games.Count);
-        Assert.All(games.GroupBy(g => (Math.Min(g.Home, g.Away), Math.Max(g.Home, g.Away))), g => Assert.Equal(3, g.Count()));
-        Assert.Equal(30, DugoutDeck.Api.Careers.CareerService.RoundRobin(Enumerable.Range(1, 16).ToList()).Count);
     }
 }

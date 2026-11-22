@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { api, type MatchView, type SetupCard, type Tactic } from '../api'
 import { ErrorBox, useLoad } from './common'
-import { iconFor } from './GameCard'
+import { CardThumb, iconFor } from './GameCard'
 import { TacticCoach } from './TacticCoach'
 import { saveSettings, useSettings } from '../settings'
 
@@ -69,7 +69,7 @@ export function TacticBuilder({ m, onStart }: { m: MatchView; onStart: (t: Tacti
           .filter((c) => c.kind === kind)
           .map((c) => (
             <button key={c.code} className={`tb-card ${rarityClass(c.rarity)}`} disabled={busy || !available(c)} onClick={() => add(c)} title={c.description}>
-              <span className="tb-icon">{iconFor(c.code)}</span>
+              <span className="tb-icon"><CardThumb code={c.code} /></span>
               <span className="tb-name">{c.name}</span>
               <span className="tb-cost">{c.cost} pt</span>
               {c.owned != null && <span className="tb-owned">×{c.owned - used(c.code)}</span>}

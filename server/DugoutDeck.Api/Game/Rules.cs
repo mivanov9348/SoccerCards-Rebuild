@@ -30,6 +30,13 @@ public static class Cards
     public const string OffsideTrap = "OFFSIDE_TRAP";
     public const string CounterAttack = "COUNTER_ATTACK";
     public const string SquadPlayer = "SQUAD_PLAYER";
+    public const string Winger = "WINGER";
+    public const string Goalkeeper = "GOALKEEPER";
+    public const string TargetMan = "TARGET_MAN";
+    public const string Sweeper = "SWEEPER";
+    public const string SuperSub = "SUPER_SUB";
+    public const string Decoy = "DECOY";
+    public const string TwelfthMan = "TWELFTH_MAN";
 
     // hand cards
     public const string Scout = "SCOUT";
@@ -37,11 +44,17 @@ public static class Cards
     public const string Calm = "CALM";
     public const string Press = "PRESS";
     public const string Burn = "BURN";
+    public const string Var = "VAR";
+    public const string Marking = "MARKING";
+    public const string Substitution = "SUBSTITUTION";
+    public const string Analysis = "ANALYSIS";
+    public const string PenaltyTaker = "PENALTY_TAKER";
 
     public static readonly HashSet<string> Dangerous = [Tackle, Offside, Save, Miss, YellowCard, RedCard];
 
-    public static readonly string[] FieldCodes = [Striker, BigChanceCard, LongShot, Playmaker, Captain, Wall, OffsideTrap, CounterAttack, SquadPlayer];
-    public static readonly string[] HandCodes = [Scout, Swap, Calm, Press, Burn];
+    public static readonly string[] FieldCodes = [Striker, BigChanceCard, LongShot, Playmaker, Captain, Wall, OffsideTrap, CounterAttack, SquadPlayer,
+        Winger, Goalkeeper, TargetMan, Sweeper, SuperSub, Decoy, TwelfthMan];
+    public static readonly string[] HandCodes = [Scout, Swap, Calm, Press, Burn, Var, Marking, Substitution, Analysis, PenaltyTaker];
 
     public static readonly Dictionary<string, string> Names = new()
     {
@@ -50,8 +63,10 @@ public static class Cards
         [Penalty] = "Penalty", [HalfTime] = "Half Time", [FullTime] = "Full Time",
         [Striker] = "Striker", [BigChanceCard] = "Big Chance", [LongShot] = "Long Shot", [Playmaker] = "Playmaker",
         [Captain] = "Captain", [Wall] = "Wall", [OffsideTrap] = "Offside Trap", [CounterAttack] = "Counter Attack",
-        [SquadPlayer] = "Squad Player",
+        [SquadPlayer] = "Squad Player", [Winger] = "Winger", [Goalkeeper] = "Goalkeeper", [TargetMan] = "Target Man",
+        [Sweeper] = "Sweeper", [SuperSub] = "Super Sub", [Decoy] = "Decoy", [TwelfthMan] = "12th Man",
         [Scout] = "Scout", [Swap] = "Swap", [Calm] = "Calm", [Press] = "Press", [Burn] = "Burn",
+        [Var] = "VAR", [Marking] = "Marking", [Substitution] = "Substitution", [Analysis] = "Analysis", [PenaltyTaker] = "Penalty Taker",
     };
 
     public static string Name(string code) => Names.GetValueOrDefault(code, code);
@@ -84,6 +99,18 @@ public static class Rules
     public const int MaxModifiers = 2;
     public const int BaseTacticPoints = 10;
     public const int PassesForBigChance = 3;
+
+    // version 1.1 cards (percent)
+    /// <summary>Goalkeeper: the next shot or penalty against the team is this much less likely to go in.</summary>
+    public const int GoalkeeperReduction = 20;
+    /// <summary>Target Man: the next cross (corner or free kick) is this much more likely to go in.</summary>
+    public const int TargetManBonus = 20;
+    /// <summary>Super Sub: goal chance in the second half (in the first half the card is a Pass).</summary>
+    public const int SuperSubGoal = 60;
+    /// <summary>VAR: chance that the opponent's next goal is disallowed.</summary>
+    public const int VarCancel = 40;
+    /// <summary>Penalty Taker: the next penalty is this much more likely to go in.</summary>
+    public const int PenaltyTakerBonus = 10;
     /// <summary>Rain, wind and derby conditions are switched off for now (only the home bonus stays).</summary>
     public static readonly bool WeatherAndDerby = false;
 
@@ -106,6 +133,7 @@ public static class Rules
     {
         [Cards.Pass] = (1, 16), [Cards.Goal] = (0, 5), [Cards.Corner] = (0, 4),
         [Cards.Tackle] = (0, 6), [Cards.Penalty] = (0, 3), [Cards.Miss] = (0, 4), [Cards.YellowCard] = (0, 3),
+        [Cards.FreeKick] = (0, 3), [Cards.Save] = (0, 3),
     };
 
     /// <summary>Extra tactic points from the team rating (0–3).</summary>

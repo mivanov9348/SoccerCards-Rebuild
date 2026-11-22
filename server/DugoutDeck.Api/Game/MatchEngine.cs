@@ -237,6 +237,51 @@ public class MatchEngine(Random rng, CardCatalog catalog)
                 team.PressActive = true;
                 AddEvent(s, "hand", side, $"{team.Name} play Press.", card);
                 break;
+            case Cards.Var:
+                team.VarActive = true;
+                AddEvent(s, "hand", side, $"{team.Name} ask for VAR — the opponent's next goal will be checked.", card);
+                break;
+            case Cards.PenaltyTaker:
+                team.PenaltyTakerActive = true;
+                AddEvent(s, "hand", side, $"{team.Name}'s penalty taker is ready — their next penalty is more likely to go in.", card);
+                break;
+            case Cards.Marking:
+            {
+                var c = Target(cell, "mark");
+                if (!c.Available || c.Owner != side) throw new GameRuleException("Pick one of your own face-down cards.");
+                team.MarkedCell = cell!.Value;
+                AddEvent(s, "hand", side, $"{team.Name} put a man-marker on one of their cards.", card);
+                break;
+            }
+            case Cards.Substitution:
+            {
+                var c = Target(cell, "bring back");
+                if (!c.FaceUp || c.Owner != side) throw new GameRuleException("Pick one of your own team cards that is already face up.");
+                var free = Enumerable.Range(0, s.Table.Count).Where(i => s.Table[i].Available).ToList();
+                if (free.Count == 0) throw new GameRuleException("There is no face-down card left to swap with.");
+                var j = free[rng.Next(free.Count)];
+                var i0 = cell!.Value;
+                var hidden = s.Table[j];
+                c.FlippedBy = null;
+                s.Table[j] = c;
+                s.Table[i0] = hidden;
+                foreach (var t in new[] { s.Home, s.Away })
+                {
+                    t.Peeks = t.Peeks.Select(p => p == j ? i0 : p).ToList();
+                    if (t.MarkedCell == j) t.MarkedCell = i0;
+                }
+                if (s.LastFlip?.Cell == i0) s.LastFlip.Cell = -1;
+                AddEvent(s, "hand", side, $"Substitution! {team.Name} bring their {Cards.Name(c.Card)} back into the grid.", card);
+                break;
+            }
+            case Cards.Analysis:
+            {
+                Target(cell, "analyse");
+                var row = cell!.Value / Rules.GridSize;
+                var n = Enumerable.Range(row * Rules.GridSize, Rules.GridSize).Count(i => s.Table[i].Available && s.Table[i].Owner == side.Other());
+                AddEvent(s, "hand", side, $"Analysis: {opp.Name} have {n} card{(n == 1 ? "" : "s")} hidden in row {row + 1}.", card);
+                break;
+            }
             default:
                 throw new GameRuleException("Unknown hand card.");
         }
@@ -274,6 +319,20 @@ public class MatchEngine(Random rng, CardCatalog catalog)
                 LoseBall(s, side);
                 return;
             }
+            var owner = s.Team(side.Other());
+            if (owner.MarkedCell == index)
+            {
+                owner.MarkedCell = -1;
+                AddEvent(s, "lost", side, $"Man-marked! {owner.Name}'s {Cards.Name(cell.Card)} was marked — {team.Name} cannot take it and lose the ball.", Cards.Marking);
+                LoseBall(s, side);
+                return;
+            }
+            if (cell.Card == Cards.Decoy)
+            {
+                team.PassStreak = 0;
+                AddEvent(s, "play", side, $"A decoy run by {owner.Name} — {team.Name} gain nothing and their passing move breaks down.", cell.Card);
+                return;
+            }
             team.Stats.CardsStolen++;
             AddEvent(s, "steal", side, $"{team.Name} steal {s.Team(side.Other()).Name}'s {Cards.Name(cell.Card)}!", cell.Card);
             TeamCard(s, side, cell.Card);
@@ -284,6 +343,7 @@ public class MatchEngine(Random rng, CardCatalog catalog)
         if (cell.Owner == side)
         {
             if (!counter) team.OwnCardUsedThisTurn = true;
+            if (team.MarkedCell == index) team.MarkedCell = -1;
             TeamCard(s, side, cell.Card);
             return;
         }
@@ -355,7 +415,32 @@ public class MatchEngine(Random rng, CardCatalog catalog)
                 team.CounterFlips = 2;
                 AddEvent(s, "play", side, $"COUNTER ATTACK! {team.Name} flip two more cards — dangerous ones don't count.", card);
                 break;
-            default: // Offside Trap and Squad Player work like a Pass for the owner
+            case Cards.Winger:
+                team.Stats.Corners++;
+                AddEvent(s, "chance", side, $"{team.Name}'s winger beats his man and wins a corner!", card);
+                StartDecision(s, DecisionKind.Corner, side, "Winger");
+                break;
+            case Cards.Goalkeeper:
+                team.GoalkeeperActive = true;
+                AddEvent(s, "play", side, $"{team.Name}'s goalkeeper is on fire — the next shot against them is harder to score.", card);
+                break;
+            case Cards.TargetMan:
+                team.TargetManActive = true;
+                AddEvent(s, "play", side, $"{team.Name}'s target man takes up position — their next cross is more dangerous.", card);
+                break;
+            case Cards.Sweeper:
+                team.SweeperActive = true;
+                AddEvent(s, "play", side, $"{team.Name}'s sweeper reads the game — their next Offside or Save will be ignored.", card);
+                break;
+            case Cards.SuperSub when s.Half == 2:
+                AddEvent(s, "chance", side, $"SUPER SUB! {team.Name}'s fresh legs burst through!", card);
+                Shot(s, side, Rules.SuperSubGoal, "Super Sub");
+                break;
+            case Cards.TwelfthMan when side == Side.Home:
+                team.TwelfthManActive = true;
+                AddEvent(s, "play", side, $"The home crowd roars — {team.Name}'s next dangerous card will be ignored.", card);
+                break;
+            default: // Offside Trap, Squad Player, Decoy, Super Sub (1st half) and 12th Man (away) work like a Pass
                 Pass(s, side, card);
                 break;
         }
@@ -397,6 +482,18 @@ public class MatchEngine(Random rng, CardCatalog catalog)
         if (card == Cards.Tackle && calm)
         {
             AddEvent(s, "play", side, Text(s, "calm", side), card);
+            return;
+        }
+        if ((card == Cards.Offside || card == Cards.Save) && team.SweeperActive)
+        {
+            team.SweeperActive = false;
+            AddEvent(s, "play", side, $"{Cards.Name(card)} — but {team.Name}'s sweeper saves the move. They keep the ball.", card);
+            return;
+        }
+        if (team.TwelfthManActive)
+        {
+            team.TwelfthManActive = false;
+            AddEvent(s, "play", side, $"{Cards.Name(card)} — the home crowd carries {team.Name} through it. They keep the ball.", card);
             return;
         }
 
@@ -465,6 +562,18 @@ public class MatchEngine(Random rng, CardCatalog catalog)
             SetTurn(s, side.Other());
             return;
         }
+        if (opp.VarActive)
+        {
+            opp.VarActive = false;
+            if (rng.Next(100) < Rules.VarCancel)
+            {
+                team.Stats.GoalsDisallowed++;
+                AddEvent(s, "save", side, $"VAR check… the goal is DISALLOWED! {team.Name} are furious.", Cards.Var);
+                SetTurn(s, side.Other());
+                return;
+            }
+            AddEvent(s, "info", side, "VAR check… the goal stands!", Cards.Var);
+        }
         team.Goals++;
         team.Stats.GoalSources[source] = team.Stats.GoalSources.GetValueOrDefault(source) + 1;
         AddEvent(s, "goal", side, Text(s, Cards.Goal, side) + $" ({source})", card);
@@ -490,6 +599,11 @@ public class MatchEngine(Random rng, CardCatalog catalog)
             t.CounterFlips = 0;
             t.HandPlayedThisTurn = false;
             t.OwnCardUsedThisTurn = false;
+            t.GoalkeeperActive = false;
+            t.TargetManActive = false;
+            t.SweeperActive = false;
+            t.TwelfthManActive = false;
+            t.MarkedCell = -1; // VAR and the penalty taker stay ready
         }
         s.Turn = s.FirstKickOff.Other();
         AddEvent(s, "whistle", s.Turn, Text(s, "kickoff2", s.Turn));
@@ -567,14 +681,19 @@ public class MatchEngine(Random rng, CardCatalog catalog)
             }
             case DecisionKind.Corner:
             {
+                var winger = d.Source == "Winger"; // the winger's team keeps the ball if the corner does not end in a goal
                 AddEvent(s, "info", a, $"{team.Name}: {Pick(true, attackChoice)} — {opp.Name}: {Pick(false, defenseChoice)}.");
                 if (attackChoice == 2)
                 {
-                    if (defenseChoice == 2) { AddEvent(s, "lost", a, $"{opp.Name} read the short corner and win the ball."); LoseBall(s, a); }
+                    if (defenseChoice == 2 && !winger) { AddEvent(s, "lost", a, $"{opp.Name} read the short corner and win the ball."); LoseBall(s, a); }
                     else AddEvent(s, "play", a, $"Short corner — {team.Name} keep the ball.");
                 }
-                else if (attackChoice == defenseChoice) { AddEvent(s, "lost", a, $"{opp.Name} clear the corner."); LoseBall(s, a); }
-                else Shot(s, a, Rules.CornerGoal, "Corner");
+                else if (attackChoice == defenseChoice)
+                {
+                    if (winger) AddEvent(s, "play", a, $"{opp.Name} clear the corner — but the winger wins it back.");
+                    else { AddEvent(s, "lost", a, $"{opp.Name} clear the corner."); LoseBall(s, a); }
+                }
+                else Shot(s, a, Rules.CornerGoal + TargetMan(team), "Corner", keepBallOnMiss: winger);
                 break;
             }
             case DecisionKind.FreeKick:
@@ -585,7 +704,7 @@ public class MatchEngine(Random rng, CardCatalog catalog)
                     case 0: Shot(s, a, defenseChoice == 0 ? Rules.FreeKickDirectIntoWallGoal : Rules.FreeKickDirectGoal, "Free kick"); break;
                     case 1:
                         if (defenseChoice == 1) { AddEvent(s, "lost", a, $"{opp.Name} head the cross clear."); LoseBall(s, a); }
-                        else Shot(s, a, Rules.CornerGoal, "Free kick");
+                        else Shot(s, a, Rules.CornerGoal + TargetMan(team), "Free kick");
                         break;
                     default:
                         if (defenseChoice == 2 && rng.Next(100) < Rules.FreeKickPressLoseBall)
@@ -628,8 +747,27 @@ public class MatchEngine(Random rng, CardCatalog catalog)
         }
     }
 
-    private void Shot(MatchState s, Side a, int goalChance, string source)
+    /// <summary>Target Man bonus for this cross (used once).</summary>
+    private static int TargetMan(TeamMatchState team)
     {
+        if (!team.TargetManActive) return 0;
+        team.TargetManActive = false;
+        return Rules.TargetManBonus;
+    }
+
+    /// <summary>Goalkeeper card of the defending team: makes this shot harder (used once).</summary>
+    private int Keeper(MatchState s, Side defending)
+    {
+        var d = s.Team(defending);
+        if (!d.GoalkeeperActive) return 0;
+        d.GoalkeeperActive = false;
+        AddEvent(s, "info", defending, $"{d.Name}'s goalkeeper is ready for it…", Cards.Goalkeeper);
+        return Rules.GoalkeeperReduction;
+    }
+
+    private void Shot(MatchState s, Side a, int goalChance, string source, bool keepBallOnMiss = false)
+    {
+        goalChance -= Keeper(s, a.Other());
         if (rng.Next(100) < goalChance) { Goal(s, a, source, null); return; }
         var opp = s.Team(a.Other());
         if (rng.Next(2) == 0)
@@ -642,6 +780,7 @@ public class MatchEngine(Random rng, CardCatalog catalog)
             s.Team(a).Stats.Misses++;
             AddEvent(s, "miss", a, $"{s.Team(a).Name} put it wide!");
         }
+        if (keepBallOnMiss) { AddEvent(s, "play", a, $"{s.Team(a).Name} keep the ball."); return; }
         LoseBall(s, a);
     }
 
@@ -661,6 +800,13 @@ public class MatchEngine(Random rng, CardCatalog catalog)
             goal = 100 - save;
         }
         if (shotOff >= 0.38) goal -= 15; // a badly timed shot can fly over the bar
+        var taker = s.Team(shooter);
+        if (taker.PenaltyTakerActive)
+        {
+            taker.PenaltyTakerActive = false;
+            goal += Rules.PenaltyTakerBonus;
+        }
+        goal -= Keeper(s, shooter.Other());
         var scored = rng.NextDouble() * 100 < goal;
         var dirs = new[] { "left", "centre", "right" };
         var team = s.Team(shooter);

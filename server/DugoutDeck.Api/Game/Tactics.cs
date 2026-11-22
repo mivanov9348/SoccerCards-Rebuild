@@ -24,6 +24,8 @@ public static class TacticRules
         ["MOD_CORNER_UP1"] = (Cards.Corner, 1), ["MOD_CORNER_UP2"] = (Cards.Corner, 2),
         ["MOD_CORNER_DOWN1"] = (Cards.Corner, -1), ["MOD_CORNER_DOWN2"] = (Cards.Corner, -2),
         ["MOD_TACKLE_UP1"] = (Cards.Tackle, 1), ["MOD_PENALTY_UP1"] = (Cards.Penalty, 1),
+        ["MOD_TACKLE_DOWN1"] = (Cards.Tackle, -1), ["MOD_FREEKICK_UP1"] = (Cards.FreeKick, 1),
+        ["MOD_SAVE_UP1"] = (Cards.Save, 1), ["MOD_WET_PITCH"] = (Cards.Miss, 1),
     };
 
     public static int Cost(TacticSpec t, CardCatalog catalog) =>
@@ -72,7 +74,7 @@ public static class TacticRules
             if (ModifierEffects.TryGetValue(m, out var e))
                 deltas[e.Card] = deltas.GetValueOrDefault(e.Card) + e.Delta;
         // removals first (they free Pass cards), then additions in a fixed order — the result never depends on who chose what
-        string[] order = [Cards.Goal, Cards.Penalty, Cards.Corner, Cards.Tackle];
+        string[] order = [Cards.Goal, Cards.Penalty, Cards.Corner, Cards.Tackle, Cards.FreeKick, Cards.Save, Cards.Miss];
         foreach (var card in order.Where(k => deltas.GetValueOrDefault(k) < 0)) Convert(c, card, Cards.Pass, -deltas[card]);
         foreach (var card in order.Where(k => deltas.GetValueOrDefault(k) > 0)) Convert(c, Cards.Pass, card, deltas[card]);
         return c.Where(kv => kv.Value > 0).ToDictionary(kv => kv.Key, kv => kv.Value);
@@ -121,15 +123,17 @@ public static class TacticRules
 
         string[] fieldPriority = style switch
         {
-            "attack" => [Cards.Striker, Cards.BigChanceCard, Cards.CounterAttack, Cards.LongShot, Cards.Playmaker, Cards.Captain, Cards.LongShot],
-            "defend" => [Cards.Wall, Cards.OffsideTrap, Cards.Captain, Cards.Striker, Cards.LongShot, Cards.LongShot],
-            _ => [Cards.Striker, Cards.BigChanceCard, Cards.Captain, Cards.LongShot, Cards.Playmaker, Cards.Wall, Cards.LongShot]
+            "attack" => [Cards.Striker, Cards.SuperSub, Cards.BigChanceCard, Cards.CounterAttack, Cards.Winger, Cards.LongShot, Cards.TargetMan, Cards.Playmaker, Cards.Captain, Cards.LongShot],
+            "defend" => [Cards.Wall, Cards.OffsideTrap, Cards.Goalkeeper, Cards.Captain, Cards.Sweeper, Cards.Striker, Cards.Decoy, Cards.LongShot, Cards.LongShot],
+            _ => [Cards.Striker, Cards.BigChanceCard, Cards.Winger, Cards.Captain, Cards.Goalkeeper, Cards.LongShot, Cards.Playmaker, Cards.TwelfthMan, Cards.Wall, Cards.LongShot]
         };
-        string[] handPriority = [Cards.Scout, Cards.Calm, Cards.Burn, Cards.Press, Cards.Swap];
+        string[] handPriority = style == "defend"
+            ? [Cards.Scout, Cards.Var, Cards.Marking, Cards.Calm, Cards.Burn, Cards.Press]
+            : [Cards.Scout, Cards.Calm, Cards.Marking, Cards.Burn, Cards.Substitution, Cards.Var, Cards.Press, Cards.Swap, Cards.PenaltyTaker];
         string[] modPriority = style switch
         {
             "attack" => ["MOD_GOAL_UP1", "MOD_CORNER_UP1"],
-            "defend" => ["MOD_GOAL_DOWN1", "MOD_CORNER_DOWN1"],
+            "defend" => ["MOD_GOAL_DOWN1", "MOD_SAVE_UP1", "MOD_CORNER_DOWN1"],
             _ => ["MOD_CORNER_UP1", "MOD_GOAL_UP1"]
         };
 

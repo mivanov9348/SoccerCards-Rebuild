@@ -27,12 +27,24 @@ export const cardStyles: Record<string, { theme: string }> = {
   OFFSIDE_TRAP: { theme: 'purple' },
   COUNTER_ATTACK: { theme: 'red' },
   SQUAD_PLAYER: { theme: 'grey' },
+  WINGER: { theme: 'blue' },
+  GOALKEEPER: { theme: 'purple' },
+  TARGET_MAN: { theme: 'blue' },
+  SWEEPER: { theme: 'purple' },
+  SUPER_SUB: { theme: 'gold' },
+  DECOY: { theme: 'grey' },
+  TWELFTH_MAN: { theme: 'green' },
   // hand cards
   SCOUT: { theme: 'blue' },
   SWAP: { theme: 'blue' },
   CALM: { theme: 'green' },
   PRESS: { theme: 'red' },
   BURN: { theme: 'red' },
+  VAR: { theme: 'black' },
+  MARKING: { theme: 'purple' },
+  SUBSTITUTION: { theme: 'green' },
+  ANALYSIS: { theme: 'blue' },
+  PENALTY_TAKER: { theme: 'gold' },
 }
 
 export const iconFor = (code: string) => <Icon code={code} />
@@ -117,7 +129,9 @@ export function CardBack({
   title,
   aligned,
   onHover,
+  marked,
 }: {
+  marked?: boolean
   aligned?: boolean
   onHover?: () => void
   onClick?: () => void
@@ -140,6 +154,11 @@ export function CardBack({
       title={title}
       aria-label={title ?? 'Face-down card'}
     >
+      {marked && (
+        <span className="marked-badge" title="Marked: cannot be stolen">
+          <Icon code="MARKING" />
+        </span>
+      )}
       {mark && (
         <i className="own-mark" style={{ background: `linear-gradient(225deg, ${mark.color} 0 30%, ${mark.color2} 30% 42%, ${mark.color} 42% 50%, transparent 50%)` }} />
       )}
@@ -203,4 +222,10 @@ export function PackOpening({ cards, onClose, onReveal }: { cards: PackCard[]; o
 function PackBack() {
   const { art } = useCardData()
   return art.BACK ? <div className="pack-back art-back" style={{ backgroundImage: `url(${art.BACK})` }} /> : <div className="pack-back"><Icon code="GOAL" /></div>
+}
+
+/** A tiny picture of the card (its art, or the icon) for tactic and collection tiles. */
+export function CardThumb({ code }: { code: string }) {
+  const { art } = useCardData()
+  return art[code] ? <img className="card-thumb" src={art[code]} alt="" draggable={false} /> : iconFor(code)
 }

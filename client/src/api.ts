@@ -82,6 +82,12 @@ export interface MatchTeam {
   calm: boolean
   press: boolean
   counterFlips: number
+  goalkeeper: boolean
+  targetMan: boolean
+  sweeper: boolean
+  twelfthMan: boolean
+  var: boolean
+  penaltyTaker: boolean
   fieldCards: string[] | null
   fieldCount: number
   modifiers: string[] | null
@@ -108,6 +114,8 @@ export interface GridCell {
   peeked: boolean
   /** one of my own team cards (only my own are ever marked — the computer's positions are not sent) */
   mine: boolean
+  /** my own face-down card protected by Marking */
+  marked?: boolean
   /** a team card flipped by the other team */
   stolen: boolean
 }

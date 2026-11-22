@@ -10,8 +10,8 @@ public class RandomHumanTests(ITestOutputHelper output)
     {
         var catalogField = typeof(MatchEngineTests).GetField("Catalog", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
         var catalog = (CardCatalog)catalogField.GetValue(null)!;
-        var hands = new[] { Cards.Scout, Cards.Swap, Cards.Calm, Cards.Press, Cards.Burn };
-        var fields = new[] { Cards.Striker, Cards.BigChanceCard, Cards.LongShot, Cards.Playmaker, Cards.Captain, Cards.Wall, Cards.OffsideTrap, Cards.CounterAttack, Cards.SquadPlayer };
+        var hands = Cards.HandCodes;
+        var fields = Cards.FieldCodes;
         int errors = 0, stuck = 0;
         for (var i = 0; i < 800; i++)
         {

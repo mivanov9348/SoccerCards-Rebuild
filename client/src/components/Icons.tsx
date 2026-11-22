@@ -133,6 +133,88 @@ const PATHS: Record<string, ReactNode> = {
   ),
   PRESS: <path d="M4 6l6 6-6 6M12 6l6 6-6 6" {...S} />,
   BURN: <path d="M12 2c1 4.2 6 6.2 6 12.2a6 6 0 0 1-12 0c0-3.2 1.9-5.2 3-6.2 0 2 1 3.3 2.2 3.3C11.2 8 10.4 5.2 12 2z" {...F} />,
+  // version 1.1 field cards
+  WINGER: (
+    <>
+      <path d="M3 20h18" {...S} />
+      <path d="M4 16c4-1 8-6 9-11" {...S} />
+      <path d="M10 5l3-1 1 3" {...S} />
+      <circle cx="18" cy="15" r="2.5" {...F} />
+    </>
+  ),
+  GOALKEEPER: (
+    <>
+      <path d="M3 21V6h18v15" {...S} />
+      <path d="M8.5 19v-4l-1.5-2.5 1-1 1.8 1.6V8.5a1.1 1.1 0 0 1 2.2 0V12V7.5a1.1 1.1 0 0 1 2.2 0V12V9a1.1 1.1 0 0 1 2.2 0v6.5c0 2-1.4 3.5-3.4 3.5z" {...F} />
+    </>
+  ),
+  TARGET_MAN: (
+    <>
+      <circle cx="12" cy="7" r="3" {...S} />
+      <path d="M6 21c0-4 2.7-7 6-7s6 3 6 7" {...S} />
+      <circle cx="18.5" cy="4.5" r="2" {...F} />
+    </>
+  ),
+  SWEEPER: (
+    <>
+      <path d="M14 3l-5 11" {...S} />
+      <path d="M6 13l6 3-2 5c-2 0-5-1.5-6-3.5z" {...F} />
+      <path d="M17 14h4M18 18h3" {...S} strokeWidth={1.5} />
+    </>
+  ),
+  SUPER_SUB: (
+    <>
+      <path d="M7 20V8M3.5 11.5L7 8l3.5 3.5" {...S} />
+      <path d="M15 12l1.5 3 3.3.5-2.4 2.3.6 3.2-3-1.6-3 1.6.6-3.2L10.2 15.5l3.3-.5z" {...F} />
+    </>
+  ),
+  DECOY: (
+    <>
+      <circle cx="12" cy="6.5" r="3" {...S} strokeDasharray="2 2" />
+      <path d="M6 21c0-4 2.7-7 6-7s6 3 6 7" {...S} strokeDasharray="2.5 2.5" />
+    </>
+  ),
+  TWELFTH_MAN: (
+    <>
+      <path d="M4 10v4l3 1 9 4V5L7 9z" {...F} />
+      <path d="M19 9.5c1 .8 1 4.2 0 5" {...S} />
+      <path d="M7 15l1 5h2.5l-1-4.5" {...S} strokeWidth={1.5} />
+    </>
+  ),
+  // version 1.1 hand cards
+  VAR: (
+    <>
+      <rect x="3" y="4" width="18" height="13" rx="2" {...S} />
+      <path d="M9 21h6M12 17v4" {...S} />
+      <path d="M8 9l2 4 2-4M14 13l1.5-4 1.5 4M14.5 11.5h2" {...S} strokeWidth={1.5} />
+    </>
+  ),
+  MARKING: (
+    <>
+      <path d="M12 3l8 3v5c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z" {...S} />
+      <path d="M8.5 12l2.5 2.5 4.5-5" {...S} />
+    </>
+  ),
+  SUBSTITUTION: (
+    <>
+      <path d="M8 21V5M4.5 8.5L8 5l3.5 3.5" {...S} />
+      <path d="M16 3v16M12.5 15.5L16 19l3.5-3.5" {...S} />
+    </>
+  ),
+  ANALYSIS: (
+    <>
+      <circle cx="10.5" cy="10.5" r="6.5" {...S} />
+      <path d="M15.5 15.5L21 21" {...S} />
+      <path d="M8 12.5v-2M10.5 12.5V8M13 12.5v-3" {...S} strokeWidth={1.6} />
+    </>
+  ),
+  PENALTY_TAKER: (
+    <>
+      <circle cx="16" cy="8" r="5" {...S} />
+      <circle cx="16" cy="8" r="1.6" {...F} />
+      <path d="M3 20l6-1.5 1.5-3.5-2-1-2 2.5-3 .5z" {...F} />
+    </>
+  ),
   // modifiers
   MOD: <path d="M12 3.5v9M7.5 8h9M7.5 19h9" {...S} />,
 }

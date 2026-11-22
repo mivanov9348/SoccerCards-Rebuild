@@ -19,6 +19,12 @@ function ScoreTeam({ t, align, turn }: { t: MatchTeam; align: 'left' | 'right'; 
   if (t.calm) chips.push('☯ calm')
   if (t.press) chips.push('⏩ press')
   if (t.counterFlips > 0) chips.push(`⚡ counter ×${t.counterFlips}`)
+  if (t.goalkeeper) chips.push('🧤 goalkeeper')
+  if (t.targetMan) chips.push('🎯 target man')
+  if (t.sweeper) chips.push('🧹 sweeper')
+  if (t.twelfthMan) chips.push('📣 12th man')
+  if (t.var) chips.push('📺 VAR')
+  if (t.penaltyTaker) chips.push('◎ penalty taker')
   return (
     <div className={`score-team ${align} ${turn ? 'has-turn' : ''}`}>
       <Badge name={t.name} primary={t.primaryColor} secondary={t.secondaryColor} size={46} />
@@ -142,7 +148,7 @@ function DecisionPanel({ m, d, busy, onDecide }: { m: MatchView; d: Decision; bu
 }
 
 interface Overlay {
-  kind: 'goal' | 'against' | 'whistle'
+  kind: 'goal' | 'against' | 'whistle' | 'result'
   title: string
   sub: string
   colors: string[]
@@ -180,6 +186,13 @@ const SPEEDS: [number, string][] = [
   [400, '2×'],
   [100, '⚡'],
 ]
+
+const TARGET_HINT: Record<string, string> = {
+  SCOUT: 'Scout: pick a card to look under',
+  MARKING: 'Marking: pick one of your own face-down cards (with your flag) to protect',
+  SUBSTITUTION: 'Substitution: pick one of your own team cards that is already face up',
+  ANALYSIS: 'Analysis: click any card in the row you want to analyse',
+}
 
 function StatsTable({ m }: { m: MatchView }) {
   const rows: [string, number, number][] = [
@@ -271,6 +284,8 @@ export default function MatchScreen() {
   const [hover, setHover] = useState<number | null>(null)
   // half-time break: the finished first half stays on screen until the player starts the second half
   const [halfBreak, setHalfBreak] = useState(false)
+  const [whistleKey, setWhistleKey] = useState(0)
+  const [flying, setFlying] = useState<string | null>(null)
 
   // New events since the last update: sounds, the goal / half-time overlays and the steal messages
   useEffect(() => {
@@ -301,6 +316,18 @@ export default function MatchScreen() {
     if (goal && scorer) setOverlay({ kind: goal.side === human ? 'goal' : 'against', title: 'GOAL!', sub: scorer.name, colors: [scorer.primaryColor, scorer.secondaryColor], key: goal.id })
     else if (half && m.phase !== 'Finished') setHalfBreak(true)
     else if (full) setOverlay({ kind: 'whistle', title: 'FULL TIME', sub: `${m.home.name} ${m.home.goals} : ${m.away.goals} ${m.away.name}`, colors: [], key: full.id })
+    else {
+      // the outcome of a mini-game (corner, free kick, Big Chance, penalty): SAVED! / WIDE! / CLEARED! / KEPT IT!
+      const pick = fresh.findIndex((e) => e.type === 'info' && / — /.test(e.text) && /: /.test(e.text))
+      const after = pick >= 0 ? fresh.slice(pick + 1).find((e) => ['save', 'miss', 'lost', 'play'].includes(e.type)) : undefined
+      const penaltyMiss = fresh.find((e) => e.type === 'miss' && e.text.includes('NO GOAL'))
+      const outcome = penaltyMiss ? penaltyMiss : after
+      if (outcome) {
+        const title = outcome.type === 'save' ? 'SAVED!' : outcome.type === 'miss' ? (penaltyMiss ? 'NO GOAL!' : 'WIDE!') : outcome.type === 'lost' ? 'CLEARED!' : 'KEPT IT!'
+        setOverlay({ kind: 'result', title, sub: '', colors: [], key: outcome.id })
+      }
+    }
+    if (half || full) setWhistleKey((k) => k + 1)
 
     const steal = [...fresh].reverse().find((e) => e.type === 'steal')
     if (steal) {
@@ -314,7 +341,7 @@ export default function MatchScreen() {
   // (e.g. you flip right after a goal) must not cancel them — a banner that never hides would stop the computer for good.
   useEffect(() => {
     if (!overlay) return
-    const t = window.setTimeout(() => setOverlay(null), overlay.kind === 'whistle' ? 1900 : 2300)
+    const t = window.setTimeout(() => setOverlay(null), overlay.kind === 'result' ? 1100 : overlay.kind === 'whistle' ? 1900 : 2300)
     return () => window.clearTimeout(t)
   }, [overlay])
   useEffect(() => {
@@ -418,7 +445,7 @@ export default function MatchScreen() {
 
   const playHand = (code: string) => {
     setError(null)
-    if (code === 'SCOUT' || code === 'SWAP') setTargeting({ card: code })
+    if (['SCOUT', 'SWAP', 'MARKING', 'SUBSTITUTION', 'ANALYSIS'].includes(code)) setTargeting({ card: code })
     else void run(() => api.playHand(m.id, code))
   }
 
@@ -429,7 +456,7 @@ export default function MatchScreen() {
 
   return (
     <div className="screen match-screen">
-      <div className="scoreboard">
+      <div className={`scoreboard ${whistleKey && !settings.reduceMotion ? 'whistle-shake' : ''}`} key={`sb-${whistleKey}`}>
         <ScoreTeam t={m.home} align="left" turn={m.phase === 'Play' && m.turn === 'Home'} />
         <div className="score-center">
           <div className="score score-pop" key={`${m.home.goals}-${m.away.goals}`}>
@@ -464,7 +491,7 @@ export default function MatchScreen() {
                 : targeting
                   ? targeting.card === 'SWAP'
                     ? targeting.first == null ? '⇄ Swap: pick the first face-down card' : '⇄ Swap: pick the second card'
-                    : 'Scout: pick a card to look under'
+                    : TARGET_HINT[targeting.card] ?? 'Pick a card'
                   : m.phase === 'Decision'
                     ? m.role === 'wait' ? '⏳ The computer is deciding…' : '⚠ Your decision!'
                     : myTurn
@@ -504,7 +531,8 @@ export default function MatchScreen() {
                       return (
                         <div
                           key={c.index}
-                          className={`grid-face ${last?.cell === c.index ? `just-flipped ${settings.reduceMotion ? '' : 'anim'} ${DANGEROUS.includes(c.card) || (c.stolen && c.card === 'OFFSIDE_TRAP') ? 'danger' : ''} ${c.stolen && c.card !== 'OFFSIDE_TRAP' ? 'stolen-flash' : ''} ${c.card === 'GOAL' || c.card === 'PENALTY' ? 'golden' : ''}` : ''}`}
+                          onClick={targeting?.card === 'SUBSTITUTION' && c.owner === human && !halfBreak ? () => clickCell(c.index) : undefined}
+                          className={`grid-face ${targeting?.card === 'SUBSTITUTION' && c.owner === human && !halfBreak ? 'pickable' : ''} ${last?.cell === c.index ? `just-flipped ${settings.reduceMotion ? '' : 'anim'} ${DANGEROUS.includes(c.card) || (c.stolen && c.card === 'OFFSIDE_TRAP') ? 'danger' : ''} ${c.stolen && c.card !== 'OFFSIDE_TRAP' ? 'stolen-flash' : ''} ${c.card === 'GOAL' || c.card === 'PENALTY' ? 'golden fx-sparks' : ''} ${c.card === 'TACKLE' ? 'fx-slash' : ''} ${c.card === 'SAVE' || c.card === 'MISS' ? 'fx-bounce' : ''} ${c.card === 'YELLOW_CARD' || c.card === 'RED_CARD' ? 'fx-pop' : ''} ${c.stolen && c.card !== 'OFFSIDE_TRAP' ? `fx-fly-${c.flippedBy === 'Home' ? 'left' : 'right'}` : ''}` : ''}`}
                           style={{ borderColor: by.primaryColor }}
                           title={`${c.name} — flipped by ${by.name}${c.stolen ? ` (${owner?.name}'s card — ${c.card === 'OFFSIDE_TRAP' ? 'offside trap!' : 'stolen'})` : ''}`}
                         >
@@ -533,6 +561,7 @@ export default function MatchScreen() {
                       <CardBack
                         key={c.index}
                         aligned={aligned}
+                        marked={c.marked}
                         onHover={() => setHover(c.index)}
                         mark={c.mine ? { color: me.primaryColor, color2: me.secondaryColor, dim: m.ownCardUsed } : null}
                         peeked={c.peeked && c.card ? { code: c.card, name: c.name ?? '', opponent: c.owner != null && c.owner !== human } : null}
@@ -591,7 +620,19 @@ export default function MatchScreen() {
                     </button>
                   )}
                   {m.hand.map((h, i) => (
-                    <button key={h.code + i} className="hand-card" disabled={!myTurn || busy || m.handPlayed || (h.code === 'BURN' && m.opponentCardsLeft === 0)} onClick={() => playHand(h.code)} title={h.description ?? ''}>
+                    <button
+                      key={h.code + i}
+                      className={`hand-card ${flying === h.code + i ? 'flying' : ''}`}
+                      disabled={!myTurn || busy || m.handPlayed || (h.code === 'BURN' && m.opponentCardsLeft === 0)}
+                      onClick={() => {
+                        if (!settings.reduceMotion) {
+                          setFlying(h.code + i)
+                          window.setTimeout(() => setFlying(null), 450)
+                        }
+                        playHand(h.code)
+                      }}
+                      title={h.description ?? ''}
+                    >
                       {iconFor(h.code)} {h.name}
                     </button>
                   ))}

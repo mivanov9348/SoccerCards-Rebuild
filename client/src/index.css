@@ -567,3 +567,48 @@ ul.conditions li::before { content: '☁ '; color: var(--muted); }
 .sound-toggles { position: absolute; top: 12px; right: 16px; display: flex; gap: 4px; }
 .sound-toggles .btn.active { color: var(--accent); }
 .main-menu { position: relative; }
+
+/* ---------------------------------------------------------------- 1.1 new cards in the match */
+.marked-badge { position: absolute; z-index: 2; bottom: 4px; left: 4px; display: grid; place-items: center; width: 1.5em; height: 1.5em; border-radius: 50%; background: #b77cff; color: #fff; font-size: 0.8rem; box-shadow: 0 0 0 2px #fff, 0 2px 4px #0008; }
+.grid-face.pickable { cursor: pointer; outline: 3px dashed var(--accent); outline-offset: 2px; animation: pulse 1.4s ease-in-out infinite; }
+
+/* ---------------------------------------------------------------- 1.1 card-specific flip effects */
+.grid-face.just-flipped.anim.fx-sparks::after { content: ''; position: absolute; inset: -12px; pointer-events: none; border-radius: 14px;
+  background: radial-gradient(circle, rgba(255, 215, 90, 0.9) 0 2px, transparent 3px) 0 0 / 14px 14px; animation: sparks 0.9s ease-out 0.35s both; }
+@keyframes sparks { from { opacity: 1; transform: scale(0.6) rotate(0deg); } to { opacity: 0; transform: scale(1.4) rotate(25deg); } }
+.grid-face.just-flipped.anim.fx-slash::after { content: ''; position: absolute; inset: 0; pointer-events: none; border-radius: 10px;
+  background: repeating-linear-gradient(120deg, transparent 0 10px, rgba(224, 65, 58, 0.85) 10px 13px, transparent 13px 22px); animation: slash 0.6s ease-out 0.4s both; }
+@keyframes slash { from { clip-path: inset(0 100% 0 0); opacity: 1; } 60% { clip-path: inset(0 0 0 0); opacity: 1; } to { opacity: 0; } }
+.grid-face.just-flipped.anim.fx-bounce { animation: bounce 0.55s ease-out 0.4s both; }
+@keyframes bounce { 30% { transform: translateY(-10px); } 55% { transform: translateY(2px); } 75% { transform: translateY(-4px); } }
+.grid-face.just-flipped.anim.fx-pop { animation: pop 0.5s cubic-bezier(0.2, 0.8, 0.3, 1.5) 0.4s both; }
+@keyframes pop { 40% { transform: scale(1.25) rotate(-4deg); } }
+.grid-face.just-flipped.anim.fx-fly-left { animation: flyleft 0.8s ease-in-out 0.4s both; }
+.grid-face.just-flipped.anim.fx-fly-right { animation: flyright 0.8s ease-in-out 0.4s both; }
+@keyframes flyleft { 45% { transform: translate(-40px, -30px) rotate(-10deg) scale(1.1); } }
+@keyframes flyright { 45% { transform: translate(40px, -30px) rotate(10deg) scale(1.1); } }
+
+/* mini-game result banner */
+.match-overlay.ov-result { background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.45), transparent 70%); animation-duration: 1.1s; }
+.ov-result .ov-title { font-size: clamp(2rem, 7vw, 3.4rem); color: #fff; }
+
+/* hand cards lift, and fly up when played */
+.hand-card { transition: transform 0.12s, box-shadow 0.12s; }
+.hand-card:hover:not(:disabled) { transform: translateY(-4px); box-shadow: 0 6px 12px #0007; }
+.hand-card.flying { animation: handfly 0.45s ease-in forwards; }
+@keyframes handfly { to { transform: translateY(-120px) scale(0.6) rotate(-8deg); opacity: 0; } }
+
+/* the scoreboard jolts on the whistle */
+.scoreboard.whistle-shake { animation: shake 0.5s ease-in-out; }
+
+/* thumbnails and holo frames on tactic and collection tiles */
+.card-thumb { width: 2.2em; height: 3.08em; object-fit: cover; object-position: center 25%; border-radius: 4px; box-shadow: 0 1px 3px #0008; display: block; }
+.tb-card.rarity-epic, .tb-card.rarity-rare { position: relative; overflow: hidden; }
+.tb-card.rarity-epic::after, .tb-card.rarity-rare::after { content: ''; position: absolute; inset: 0; pointer-events: none; mix-blend-mode: color-dodge; opacity: 0.18;
+  background: linear-gradient(115deg, transparent 20%, rgba(255, 0, 180, 0.6) 35%, rgba(0, 220, 255, 0.6) 50%, rgba(255, 230, 0, 0.6) 65%, transparent 80%); background-size: 250% 250%; animation: holo 5s linear infinite; }
+.tb-card.rarity-epic::after { opacity: 0.3; }
+
+/* better contrast for my own flags and scout labels on a picture back */
+.card-back-big.art-back .own-mark { width: 30px; height: 30px; }
+.card-back-big.art-back .peek-label { box-shadow: 0 0 0 2px #6cd3ff, 0 2px 6px #000a; }
+@media (prefers-reduced-motion: reduce) { .grid-face.just-flipped.anim::after, .tb-card::after { animation: none !important; } }
