@@ -1,4 +1,4 @@
-# Dugout Deck — v1.0.1
+# Dugout Deck — v1.1.0
 
 Футболна игра с карти за един играч срещу компютъра. Цялата игра е на английски. Вдъхновена е от ретро картовите футболни игри, а отгоре има собствен слой с колекция карти и тактика.
 
@@ -19,7 +19,7 @@
 
 Всички останали мачове се играят на заден план по същите правила.
 
-**Още:** галерия с всички карти, бутон „Rate & review“ към itch.io, мач за обучение, треньор за първата тактика, пауза на полувремето, три нива на трудност, анимации, генерирани звуци и музика, собствени SVG икони, цял екран (F11). Всички отбори, лиги, купи и стадиони са **измислени** (виж „Имената“ по-долу).
+**Още:** картинки на картите с 3D наклон, холо блясък и увеличение (десен клик), бутони Sound/Music в менюто, галерия с всички карти, бутон „Rate & review“ към itch.io, мач за обучение, треньор за първата тактика, пауза на полувремето, три нива на трудност, анимации, генерирани звуци и музика, собствени SVG икони, цял екран (F11). Всички отбори, лиги, купи и стадиони са **измислени** (виж „Имената“ по-долу).
 
 - Пълна документация (Word, на български): [docs/DugoutDeck-Dokumentacia-BG.docx](docs/DugoutDeck-Dokumentacia-BG.docx)
 - Ръководство за играча (Word, на английски): [docs/DugoutDeck-Game-Manual-EN.docx](docs/DugoutDeck-Game-Manual-EN.docx)
@@ -28,7 +28,7 @@
 - **Как да качите играта в itch.io:** [docs/itch-io-guide.md](docs/itch-io-guide.md)
 - **Как пускаме версии (1.0, 1.0.1, 2.0):** [docs/releases.md](docs/releases.md)
 - **План за развитие до 2.0 (Word):** [docs/DugoutDeck-Roadmap-BG.docx](docs/DugoutDeck-Roadmap-BG.docx)
-- **Картинки за картите:** в `client/public/cards/`, имената са в [client/public/cards/README.txt](client/public/cards/README.txt)
+- **Картинки за картите:** в `client/public/cards/`, имената са в [client/public/cards/README.txt](client/public/cards/README.txt). Играта ги намира сама; след нови картинки пуснете отново играта (настолната версия: `scripts\publish-desktop.ps1`).
 
 ## Технологии
 
@@ -83,7 +83,8 @@ powershell -ExecutionPolicy Bypass -File scripts\publish-desktop.ps1
 
 Резултат:
 - `dist\DugoutDeck-win-x64\DugoutDeck.exe` – готовата папка, с `README.txt` за играча и `THIRD-PARTY-NOTICES.txt`;
-- `dist\DugoutDeck-1.0.1-win-x64.zip` – архив от около 50 MB (за itch.io или за пращане).
+- `dist\DugoutDeck-1.1.0-win-x64.zip` – архив от около 50 MB (за itch.io или за пращане);
+- `dist\archive\` – пакетите на всички предишни версии (скриптът мести стария zip там при всеки нов пакет).
 
 Пакетът съдържа .NET, така че на играча не му трябва нищо друго. Записите са в `%LOCALAPPDATA%\DugoutDeck\dugout-deck.db`. Ако нещо се счупи при стартиране, там се появява `error.log`.
 

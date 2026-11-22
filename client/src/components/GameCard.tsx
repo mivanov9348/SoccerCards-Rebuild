@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useRef, useState, type MouseEvent } from 'react'
 import { Icon } from './Icons'
+import { useCardData, zoomCard } from '../cardArt'
+import { loadSettings } from '../settings'
 /** Colour theme of every card face (the icons are in Icons.tsx). */
 export const cardStyles: Record<string, { theme: string }> = {
   PASS: { theme: 'green' },
@@ -42,14 +44,65 @@ interface FaceProps {
   size?: 'mini' | 'small' | 'normal' | 'big'
 }
 
-/** A face-up card. */
+/**
+ * A face-up card. With a picture in public/cards it shows the picture, the name underneath and the icon in a corner
+ * badge; without one, the big icon. Rare and epic cards shine (holo), larger cards tilt in 3D under the mouse, and a
+ * right-click opens the big view.
+ */
 export function CardFace({ code, name, description, size = 'normal' }: FaceProps) {
+  const { art, info } = useCardData()
   const style = cardStyles[code] ?? { theme: 'grey' }
+  const picture = art[code]
+  const rarity = info[code]?.rarity
+  const holo = rarity === 'Rare' || rarity === 'Epic' || rarity === 'Legendary' ? `holo holo-${rarity.toLowerCase()}` : ''
+  const ref = useRef<HTMLDivElement>(null)
+  const tilt = size !== 'mini' && !loadSettings().reduceMotion
+
+  const move = (e: MouseEvent) => {
+    const el = ref.current
+    if (!el || !tilt) return
+    const r = el.getBoundingClientRect()
+    const x = (e.clientX - r.left) / r.width
+    const y = (e.clientY - r.top) / r.height
+    el.style.setProperty('--ry', `${(x - 0.5) * 18}deg`)
+    el.style.setProperty('--rx', `${(0.5 - y) * 18}deg`)
+    el.style.setProperty('--mx', `${x * 100}%`)
+    el.style.setProperty('--my', `${y * 100}%`)
+  }
+  const leave = () => {
+    const el = ref.current
+    if (!el) return
+    el.style.setProperty('--rx', '0deg')
+    el.style.setProperty('--ry', '0deg')
+  }
+  const zoom = (e: MouseEvent) => {
+    e.preventDefault()
+    zoomCard(code)
+  }
+
   return (
-    <div className={`card-face theme-${style.theme} size-${size}`}>
-      <span className="cf-icon">{iconFor(code)}</span>
-      <span className="cf-name">{name}</span>
-      {description && <span className="cf-desc">{description}</span>}
+    <div
+      ref={ref}
+      className={`card-face theme-${style.theme} size-${size} ${picture ? 'has-art' : ''} ${holo} ${tilt ? 'tilt' : ''}`}
+      onMouseMove={move}
+      onMouseLeave={leave}
+      onContextMenu={zoom}
+      title={size === 'mini' ? `${name} (right-click to zoom)` : undefined}
+    >
+      {picture ? (
+        <>
+          <img className="cf-art" src={picture} alt="" draggable={false} loading="lazy" />
+          <span className="cf-badge">{iconFor(code)}</span>
+          <span className="cf-name">{name}</span>
+          {description && size === 'big' && <span className="cf-desc">{description}</span>}
+        </>
+      ) : (
+        <>
+          <span className="cf-icon">{iconFor(code)}</span>
+          <span className="cf-name">{name}</span>
+          {description && <span className="cf-desc">{description}</span>}
+        </>
+      )}
     </div>
   )
 }
@@ -75,9 +128,12 @@ export function CardBack({
   selected?: boolean
   title?: string
 }) {
+  const { art } = useCardData()
+  const back = art.BACK
   return (
     <button
-      className={`card-back-big grey-back ${selected ? 'selected' : ''} ${peeked ? 'peeked' : ''} ${mark?.dim ? 'own-used' : ''} ${aligned ? 'aligned' : ''}`}
+      style={back ? { backgroundImage: `url(${back})` } : undefined}
+      className={`card-back-big grey-back ${back ? 'art-back' : ''} ${selected ? 'selected' : ''} ${peeked ? 'peeked' : ''} ${mark?.dim ? 'own-used' : ''} ${aligned ? 'aligned' : ''}`}
       onMouseEnter={onHover}
       disabled={disabled}
       onClick={onClick}
@@ -92,7 +148,7 @@ export function CardBack({
           <span className="peek-icons"><Icon code="SCOUT" /> {iconFor(peeked.code)}</span>
           <small>{peeked.opponent ? 'Opp: ' : ''}{peeked.name}</small>
         </span>
-      ) : (
+      ) : back ? null : (
         <span className="back-ball"><Icon code="GOAL" /></span>
       )}
     </button>
@@ -122,7 +178,7 @@ export function PackOpening({ cards, onClose, onReveal }: { cards: PackCard[]; o
         {cards.map((c, i) => (
           <button key={i} className={`pack-slot rarity-${c.rarity} ${open[i] ? 'open' : ''}`} onClick={() => reveal(i)}>
             <div className="pack-inner">
-              <div className="pack-back"><Icon code="GOAL" /></div>
+              <PackBack />
               <div className="pack-front">
                 <CardFace code={c.code} name={c.name} description={c.description} size="normal" />
               </div>
@@ -142,4 +198,9 @@ export function PackOpening({ cards, onClose, onReveal }: { cards: PackCard[]; o
       )}
     </div>
   )
+}
+
+function PackBack() {
+  const { art } = useCardData()
+  return art.BACK ? <div className="pack-back art-back" style={{ backgroundImage: `url(${art.BACK})` }} /> : <div className="pack-back"><Icon code="GOAL" /></div>
 }

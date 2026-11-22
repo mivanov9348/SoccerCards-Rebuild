@@ -13,11 +13,16 @@ import SoundManager from './components/SoundManager'
 import Tutorial from './pages/Tutorial'
 import About from './pages/About'
 import CardGallery from './pages/CardGallery'
+import CardZoom from './components/CardZoom'
+import { loadCardData } from './cardArt'
+
+loadCardData()
 
 export default function App() {
   return (
     <BrowserRouter>
       <SoundManager />
+      <CardZoom />
       <Routes>
         <Route path="/" element={<MainMenu />} />
         <Route path="/friendly" element={<FriendlySetup />} />

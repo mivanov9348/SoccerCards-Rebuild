@@ -31,7 +31,11 @@ Copy-Item (Join-Path $root 'docs\player-readme.txt') (Join-Path $out 'README.txt
 
 Write-Host '3/3 Creating the zip...' -ForegroundColor Cyan
 New-Item -ItemType Directory -Force (Join-Path $root 'dist') | Out-Null
-Get-ChildItem (Join-Path $root 'dist') -Filter 'DugoutDeck*win-x64.zip' | Remove-Item -Force
+# older release zips are kept in dist\archive (one per version)
+$archive = Join-Path $root 'dist\archive'
+New-Item -ItemType Directory -Force $archive | Out-Null
+Get-ChildItem (Join-Path $root 'dist') -Filter 'DugoutDeck*win-x64.zip' | Where-Object { $_.FullName -ne $zip } | Move-Item -Destination $archive -Force
+if (Test-Path $zip) { Remove-Item $zip -Force }
 Compress-Archive -Path (Join-Path $out '*') -DestinationPath $zip
 
 $size = [Math]::Round((Get-Item $zip).Length / 1MB, 1)

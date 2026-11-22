@@ -4,6 +4,7 @@ import { useLoad } from '../components/common'
 import { useSettings } from '../settings'
 import { Logo } from '../components/Icons'
 import { ReviewButton } from '../components/ReviewButton'
+import SoundToggles from '../components/SoundToggles'
 
 export default function MainMenu() {
   const { data: careers, error } = useLoad(() => api.careers(), [])
@@ -13,6 +14,7 @@ export default function MainMenu() {
 
   return (
     <div className="main-menu">
+      <SoundToggles />
       <div className="logo">
         <div className="logo-mark">
           <Logo size={150} />

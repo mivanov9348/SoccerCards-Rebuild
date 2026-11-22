@@ -206,6 +206,7 @@ Background matches are not affected. The computer never knows where your team ca
 ## 10. Presentation
 
 - **Tutorial:** a scripted 14-step match (main menu → Tutorial) that shows every rule once.
+- **Card pictures:** images in `client/public/cards/` (file name = card code) replace the icons on the cards; the name is written under the picture and the icon sits in a corner badge. Larger cards tilt in 3D, rare and epic cards shine (holo), right-click zooms any card.
 - **Card gallery:** every card with its picture, effect, type, cost, rarity and store price (main menu → Card gallery).
 - **Rate & review:** opens the game's itch.io page in the browser (main menu, About, after a match).
 - **Fullscreen (F11):** in the desktop app the window covers the whole monitor, taskbar included.
