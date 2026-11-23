@@ -93,6 +93,9 @@ namespace DugoutDeck.Api.Data.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("TacticPlansJson")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("TeamId")
                         .HasColumnType("INTEGER");
 

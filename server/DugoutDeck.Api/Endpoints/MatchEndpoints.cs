@@ -135,24 +135,35 @@ public static class MatchEndpoints
             var (budget, handSize) = MatchService.HumanLimits(state);
             Dictionary<string, int>? collection = null;
             TacticSpec? last = null;
+            object? plans = null;
             if (match.CareerId is { } careerId)
             {
                 collection = await db.CareerCards.Where(c => c.CareerId == careerId).ToDictionaryAsync(c => c.Code, c => c.Count);
-                var json = await db.Careers.Where(c => c.Id == careerId).Select(c => c.LastTacticJson).FirstOrDefaultAsync();
-                if (json != null) last = JsonSerializer.Deserialize<TacticSpec>(json);
+                if (await db.Careers.FindAsync(careerId) is { } career)
+                {
+                    // the active plan of the Tactics tab (or the last tactic played) is loaded; the other plans are one click away
+                    last = TacticPlanSet.Preferred(career);
+                    var set = TacticPlanSet.Load(career);
+                    plans = new { active = set.Active, list = set.Plans.Select(p => new { name = p.Name, tactic = p.Tactic }) };
+                }
             }
             setup = new
             {
                 budget, handSize, maxModifiers = Rules.MaxModifiers, fieldCards = Rules.FieldCardsPerTeam,
                 // a career's first match starts with an empty tactic; friendlies start with a sensible default
                 lastTactic = last ?? (match.CareerId != null ? new TacticSpec() : TacticRules.Default()),
-                cards = catalog.ByCode.Values.Where(c => c.Kind != CardKind.Neutral).OrderBy(c => c.Kind).ThenBy(c => c.Cost).Select(c => new
-                {
-                    c.Code, c.Name, c.Description, kind = c.Kind.ToString(), rarity = c.Rarity.ToString(), c.Cost,
-                    owned = collection == null || c.Code == Cards.SquadPlayer || c.Kind == CardKind.Modifier ? (int?)null : collection.GetValueOrDefault(c.Code)
-                })
+                plans,
+                cards = SetupCards(catalog, collection)
             };
         }
         return MatchService.View(match, state, catalog, setup);
     }
+
+    /// <summary>The cards of the tactic editor, with how many the career owns (null = unlimited).</summary>
+    public static object SetupCards(CardCatalog catalog, Dictionary<string, int>? collection) =>
+        catalog.ByCode.Values.Where(c => c.Kind != CardKind.Neutral).OrderBy(c => c.Kind).ThenBy(c => c.Cost).Select(c => new
+        {
+            c.Code, c.Name, c.Description, kind = c.Kind.ToString(), rarity = c.Rarity.ToString(), c.Cost,
+            owned = collection == null || c.Code == Cards.SquadPlayer || c.Kind == CardKind.Modifier ? (int?)null : collection.GetValueOrDefault(c.Code)
+        }).ToList();
 }

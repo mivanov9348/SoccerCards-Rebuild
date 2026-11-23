@@ -69,7 +69,7 @@ export default function Tables() {
               )}
             </div>
           )}
-          {career && rows && <StandingsTable rows={rows} highlight={career.team.id} />}
+          {career && rows && <StandingsTable rows={rows} highlight={career.team.id} leagueId={shownTableLeague ?? undefined} />}
         </div>
         <div className="panel">
           <h2>Team ratings</h2>

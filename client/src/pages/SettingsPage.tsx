@@ -1,5 +1,5 @@
 import { Screen } from '../components/common'
-import { useSettings } from '../settings'
+import { PACES, useSettings, type Pace } from '../settings'
 import { DIFFICULTIES, setFullscreen, type Difficulty } from '../display'
 
 export default function SettingsPage() {
@@ -8,14 +8,18 @@ export default function SettingsPage() {
     <Screen title="Settings">
       <div className="panel form-grid settings">
         <label>
-          Computer flip speed
-          <select value={s.aiDelay} onChange={(e) => update({ aiDelay: Number(e.target.value) })}>
-            <option value={1600}>Slow</option>
-            <option value={900}>Normal</option>
-            <option value={400}>Fast</option>
-            <option value={100}>Very fast</option>
+          Match pace
+          <select value={s.pace} onChange={(e) => update({ pace: e.target.value as Pace })}>
+            {PACES.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
           </select>
-          <small className="muted">How long the computer waits before flipping each card.</small>
+          <small className="muted">
+            Fast: no pauses. Normal: the computer thinks, raises its card and turns it over; important cards (team cards, goals,
+            penalties, steals, red cards) get a short build-up. Dramatic: a longer build-up. Your own grey cards always turn over at once.
+          </small>
         </label>
         <label>
           Difficulty (friendlies)

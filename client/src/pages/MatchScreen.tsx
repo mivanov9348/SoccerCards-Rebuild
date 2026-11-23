@@ -7,24 +7,17 @@ import { Icon } from '../components/Icons'
 import { ReviewButton } from '../components/ReviewButton'
 import { play, playEvent } from '../sound'
 import { TacticBuilder } from '../components/TacticBuilder'
-import { useSettings } from '../settings'
+import { PACE_TIMES, PACES, useSettings } from '../settings'
+import { ActiveEffects, PlayedCards } from '../components/MatchEffects'
 
 type Targeting = { card: string; free?: boolean; first?: number } | null
 
 function ScoreTeam({ t, align, turn }: { t: MatchTeam; align: 'left' | 'right'; turn: boolean }) {
   const chips: string[] = []
   if (t.passStreak > 0) chips.push(`➜ passes ${t.passStreak}/3`)
-  if (t.captain) chips.push('© captain')
-  if (t.wall) chips.push('🧱 wall')
-  if (t.calm) chips.push('☯ calm')
-  if (t.press) chips.push('⏩ press')
-  if (t.counterFlips > 0) chips.push(`⚡ counter ×${t.counterFlips}`)
-  if (t.goalkeeper) chips.push('🧤 goalkeeper')
-  if (t.targetMan) chips.push('🎯 target man')
-  if (t.sweeper) chips.push('🧹 sweeper')
-  if (t.twelfthMan) chips.push('📣 12th man')
-  if (t.var) chips.push('📺 VAR')
-  if (t.penaltyTaker) chips.push('◎ penalty taker')
+  // the effects themselves are in the "Active effects" panel; the scoreboard only counts them
+  const effects = [t.captain, t.wall, t.calm, t.press, t.counterFlips > 0, t.goalkeeper, t.targetMan, t.sweeper, t.twelfthMan, t.var, t.penaltyTaker, t.marking].filter(Boolean).length
+  if (effects > 0) chips.push(`✦ ${effects} effect${effects === 1 ? '' : 's'}`)
   return (
     <div className={`score-team ${align} ${turn ? 'has-turn' : ''}`}>
       <Badge name={t.name} primary={t.primaryColor} secondary={t.secondaryColor} size={46} />
@@ -89,7 +82,7 @@ function DecisionPanel({ m, d, busy, onDecide }: { m: MatchView; d: Decision; bu
     BigChance: 'BIG CHANCE',
     Penalty: 'Penalty',
     Shootout: 'Penalty shootout',
-    Discard: 'Red card — give up a hand card',
+    Discard: 'Red card — take away a hand card',
   }
   const attacking = d.role === 'attack'
   const homeScore = m.shootout.filter((k) => k.side === 'Home' && k.scored).length
@@ -101,7 +94,7 @@ function DecisionPanel({ m, d, busy, onDecide }: { m: MatchView; d: Decision; bu
       </h2>
       <p className="muted">
         {d.kind === 'Discard'
-          ? 'You are down to ten men. Choose which hand card you lose.'
+          ? `${d.attackerName} are down to ten men. Their hand is revealed — choose which card they lose.`
           : attacking
             ? `Your ${d.source.toLowerCase()} — choose your option.`
             : `${d.attackerName}: ${d.source.toLowerCase()} — choose how to defend.`}
@@ -120,6 +113,16 @@ function DecisionPanel({ m, d, busy, onDecide }: { m: MatchView; d: Decision; bu
           ))}
         </div>
       )}
+      {d.kind === 'Discard' && d.cards ? (
+        <div className="discard-cards">
+          {d.cards.map((code, i) => (
+            <button key={code + i} className="discard-pick" disabled={busy} onClick={() => onDecide(i, null)} title={'Take away ' + d.options[i]}>
+              <CardFace code={code} name={d.options[i]} size="normal" />
+              <span className="btn btn-primary small">Take it</span>
+            </button>
+          ))}
+        </div>
+      ) : (
       <div className="decision-options">
         {d.options.map((o, i) => (
           <button
@@ -132,6 +135,7 @@ function DecisionPanel({ m, d, busy, onDecide }: { m: MatchView; d: Decision; bu
           </button>
         ))}
       </div>
+      )}
       {d.needsTiming && choice !== null && (
         <>
           <p className="small">{attacking ? 'Time your shot — stop the marker in the green zone!' : 'Time your dive — stop the marker in the green zone!'}</p>
@@ -180,12 +184,8 @@ function MatchOverlay({ o, calm }: { o: Overlay; calm: boolean }) {
   )
 }
 
-const SPEEDS: [number, string][] = [
-  [1600, '🐢'],
-  [900, '1×'],
-  [400, '2×'],
-  [100, '⚡'],
-]
+/** Cards that get a build-up before they turn over ("theatre"). */
+const BIG_CARDS = ['GOAL', 'PENALTY', 'RED_CARD']
 
 const TARGET_HINT: Record<string, string> = {
   SCOUT: 'Scout: pick a card to look under',
@@ -271,7 +271,14 @@ export default function MatchScreen() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [settings, updateSettings] = useSettings()
-  const { data: m, error: loadError, setData } = useLoad(() => api.match(Number(id)), [id])
+  const { data: server, error: loadError, setData } = useLoad(() => api.match(Number(id)), [id])
+  // What is on screen. Usually the latest match from the server; during a card's build-up ("lift") the flipped card is
+  // still shown face down and raised, and the score, commentary and sounds wait until it turns over.
+  const [m, setView] = useState<MatchView | null>(null)
+  const [lift, setLift] = useState<{ cell: number; big: boolean; mine: boolean; side: Side } | null>(null)
+  const viewRef = useRef<MatchView | null>(null)
+  const pace = settings.reduceMotion ? 'Fast' : settings.pace
+  const times = PACE_TIMES[pace] ?? PACE_TIMES.Normal
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [targeting, setTargeting] = useState<Targeting>(null)
@@ -286,6 +293,47 @@ export default function MatchScreen() {
   const [halfBreak, setHalfBreak] = useState(false)
   const [whistleKey, setWhistleKey] = useState(0)
   const [flying, setFlying] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!server) return
+    const prev = viewRef.current
+    viewRef.current = server
+    const f = server.lastFlip
+    const human = server.humanSide ?? 'Home'
+    const newFlip =
+      prev != null && f != null && prev.id === server.id && prev.half === server.half && server.phase !== 'Setup' &&
+      (!prev.lastFlip || prev.lastFlip.cell !== f.cell || prev.lastFlip.card !== f.card) && prev.table[f.cell] != null && !prev.table[f.cell].faceUp
+    if (!newFlip || !f || !prev) {
+      setLift(null)
+      setView(server)
+      return
+    }
+    const mine = f.side === human
+    const big = f.owner != null || BIG_CARDS.includes(f.card) || server.home.goals + server.away.goals > prev.home.goals + prev.away.goals ||
+      server.home.stats.redCards + server.away.stats.redCards > prev.home.stats.redCards + prev.away.stats.redCards
+    const wait = mine ? (big ? times.liftMineBig : 0) : big ? times.liftAiBig : times.liftAi
+    if (wait <= 0) {
+      setLift(null)
+      setView(server)
+      return
+    }
+    // the build-up: the new grid, except the flipped card is still face down; nothing else changes yet
+    setView({
+      ...server,
+      table: server.table.map((c) => (c.index === f.cell ? prev.table[f.cell] : c)),
+      lastFlip: prev.lastFlip, events: prev.events, rowHints: prev.rowHints, colHints: prev.colHints, cardsLeft: prev.cardsLeft,
+      home: { ...server.home, goals: prev.home.goals }, away: { ...server.away, goals: prev.away.goals },
+      phase: 'Play', role: null, decision: null,
+    })
+    setLift({ cell: f.cell, big, mine, side: f.side })
+    if (big) play('lift')
+    const t = window.setTimeout(() => {
+      setLift(null)
+      setView(server)
+    }, wait)
+    return () => window.clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [server])
 
   // New events since the last update: sounds, the goal / half-time overlays and the steal messages
   useEffect(() => {
@@ -330,6 +378,8 @@ export default function MatchScreen() {
     if (half || full) setWhistleKey((k) => k + 1)
 
     const steal = [...fresh].reverse().find((e) => e.type === 'steal')
+    const takeAway = fresh.find((e) => e.type === 'info' && e.text.includes(' take away '))
+    if (takeAway) setToast({ text: '🟥 ' + takeAway.text, good: takeAway.side !== human })
     if (steal) {
       const name = m.table.find((c) => c.card === steal.card && c.stolen)?.name ?? 'card'
       setToast(steal.side === human ? { text: `🕵 You stole the opponent's ${name}!`, good: true } : { text: `😱 The opponent stole your ${name}!`, good: false })
@@ -368,7 +418,7 @@ export default function MatchScreen() {
 
   // The computer acts after a short pause (its flips, and decisions only it has to make).
   // (it waits while a GOAL! / HALF TIME banner is on screen)
-  const computerToAct = m != null && !showReveal && !overlay && !halfBreak && m.role === 'wait' && (m.phase === 'Play' || m.phase === 'Decision')
+  const computerToAct = m != null && !lift && !showReveal && !overlay && !halfBreak && m.role === 'wait' && (m.phase === 'Play' || m.phase === 'Decision')
   useEffect(() => {
     if (!m || !computerToAct || aiInFlight.current) return
     const timer = setTimeout(async () => {
@@ -382,9 +432,9 @@ export default function MatchScreen() {
       } finally {
         aiInFlight.current = false
       }
-    }, settings.aiDelay)
+    }, times.think)
     return () => clearTimeout(timer)
-  }, [m, computerToAct, settings.aiDelay, setData])
+  }, [m, computerToAct, times.think, setData])
 
   // Automatic mini-games (setting)
   const autoDecide = m != null && settings.autoMiniGames && m.phase === 'Decision' && (m.role === 'attack' || m.role === 'defend')
@@ -395,7 +445,7 @@ export default function MatchScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [m, autoDecide])
 
-  if (loadError)
+  if (loadError && !m)
     return (
       <div className="screen">
         <ErrorBox error={loadError} />
@@ -488,12 +538,16 @@ export default function MatchScreen() {
                 ? 'The match is over'
                 : halfBreak
                   ? 'Half time — press Start second half when you are ready'
+                : lift
+                  ? lift.mine ? '…' : '⏳ ' + (lift.side === 'Home' ? m.home.name : m.away.name) + ' turn over a card…'
                 : targeting
                   ? targeting.card === 'SWAP'
                     ? targeting.first == null ? '⇄ Swap: pick the first face-down card' : '⇄ Swap: pick the second card'
                     : TARGET_HINT[targeting.card] ?? 'Pick a card'
                   : m.phase === 'Decision'
-                    ? m.role === 'wait' ? '⏳ The computer is deciding…' : '⚠ Your decision!'
+                    ? m.role === 'wait'
+                      ? m.decision?.kind === 'Discard' ? '🟥 Red card! The opponent is choosing which of your hand cards to take…' : '⏳ The computer is deciding…'
+                      : m.role === 'discard' ? '🟥 Red card for the opponent — take away one of their hand cards!' : '⚠ Your decision!'
                     : myTurn
                       ? '👉 Your turn — flip a card (or play a hand card first)'
                       : `⏳ ${m.turn === 'Home' ? m.home.name : m.away.name} (computer) is thinking…`}
@@ -561,6 +615,7 @@ export default function MatchScreen() {
                       <CardBack
                         key={c.index}
                         aligned={aligned}
+                        lifting={lift?.cell === c.index ? (lift.big ? 'big' : 'small') : undefined}
                         marked={c.marked}
                         onHover={() => setHover(c.index)}
                         mark={c.mine ? { color: me.primaryColor, color2: me.secondaryColor, dim: m.ownCardUsed } : null}
@@ -677,10 +732,10 @@ export default function MatchScreen() {
 
             {!finished && (
               <div className="row-buttons secondary">
-                <span className="speed-control" title="Computer speed">
-                  {SPEEDS.map(([v, label]) => (
-                    <button key={v} className={`btn btn-ghost small ${settings.aiDelay === v ? 'active' : ''}`} onClick={() => updateSettings({ aiDelay: v })}>
-                      {label}
+                <span className="speed-control" title="Match pace: how long the build-up before each card is">
+                  {PACES.map((p) => (
+                    <button key={p} className={`btn btn-ghost small ${settings.pace === p ? 'active' : ''}`} onClick={() => updateSettings({ pace: p })}>
+                      {p}
                     </button>
                   ))}
                 </span>
@@ -694,7 +749,10 @@ export default function MatchScreen() {
             )}
           </div>
 
-          <aside className="commentary panel">
+          <aside className="match-side">
+            <ActiveEffects m={m} />
+            <PlayedCards m={m} />
+            <div className="commentary panel">
             <h2>Commentary</h2>
             <ol className="events">
               {events.map((e, i) => (
@@ -704,6 +762,7 @@ export default function MatchScreen() {
                 </li>
               ))}
             </ol>
+            </div>
           </aside>
         </div>
       )}

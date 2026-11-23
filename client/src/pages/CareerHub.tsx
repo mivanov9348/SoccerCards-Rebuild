@@ -4,8 +4,9 @@ import { api, money, seasonLabel, type CareerView, type Fixture } from '../api'
 import { Badge, byCountry, ErrorBox, FixtureRow, Screen, StandingsTable, useLoad } from '../components/common'
 import { CardThumb, PackOpening, type PackCard } from '../components/GameCard'
 import { play } from '../sound'
+import { TacticsTab } from '../components/TacticsTab'
 
-type Tab = 'overview' | 'tables' | 'fixtures' | 'cups' | 'collection' | 'store' | 'news'
+type Tab = 'overview' | 'tactics' | 'tables' | 'fixtures' | 'cups' | 'collection' | 'store' | 'news'
 
 const ordinal = (n: number) => {
   const s = n % 100 >= 11 && n % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'
@@ -62,8 +63,8 @@ function NextMatch({ c, busy, onPlay, onSimulate, onContinue }: {
           <>
             {c.hasTactic ? (
               <>
-                <button className="btn btn-primary" disabled={busy} onClick={() => onPlay(true)} title="Kick off straight away with your last tactic">
-                  Play (last tactic) ▶
+                <button className="btn btn-primary" disabled={busy} onClick={() => onPlay(true)} title="Kick off straight away with your active plan (Tactics tab) or your last tactic">
+                  Play ({c.activePlan ?? 'last tactic'}) ▶
                 </button>
                 <button className="btn" disabled={busy} onClick={() => onPlay(false)}>
                   Change tactic
@@ -202,7 +203,7 @@ function TablesTab({ careerId, c }: { careerId: number; c: CareerView }) {
           ))}
         </select>
       </label>
-      {rows && <StandingsTable rows={rows} highlight={c.team.id} />}
+      {rows && <StandingsTable rows={rows} highlight={c.team.id} leagueId={leagueId} />}
     </div>
   )
 }
@@ -408,6 +409,7 @@ export default function CareerHub() {
         {(
           [
             ['overview', 'Overview'],
+            ['tactics', 'Tactics'],
             ['tables', 'Tables'],
             ['fixtures', 'Fixtures'],
             ['cups', `${c.cupName ?? 'Cup'} & Europe`],
@@ -461,7 +463,7 @@ export default function CareerHub() {
           <div>
             <div className="panel">
               <h2>{c.league.name}</h2>
-              <StandingsTable rows={c.table} highlight={c.team.id} />
+              <StandingsTable rows={c.table} highlight={c.team.id} leagueId={c.league.id} />
             </div>
             <div className="panel">
               <h2>News</h2>
@@ -522,6 +524,7 @@ export default function CareerHub() {
         </>
       )}
 
+      {tab === 'tactics' && <TacticsTab careerId={careerId} onChanged={reload} />}
       {tab === 'collection' && <CollectionTab careerId={careerId} reload={reload} />}
       {tab === 'store' && <StoreTab careerId={careerId} c={c} reload={reload} />}
 

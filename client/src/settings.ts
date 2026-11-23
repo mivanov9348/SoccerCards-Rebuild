@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 
 export interface Settings {
-  /** Delay (ms) before each computer card flip, so you can follow the computer's turn. */
+  /** Delay (ms) before each computer card flip — old setting, replaced by pace. */
   aiDelay: number
+  /** Match pace: Fast (no pauses), Normal, Dramatic (longer build-up before important cards). */
+  pace: Pace
   managerName: string
   /** Mini-games (corners, free kicks, Big Chances, penalties) are decided automatically. */
   autoMiniGames: boolean
@@ -25,9 +27,22 @@ export interface Settings {
   difficulty: 'Easy' | 'Normal' | 'Hard'
 }
 
+export type Pace = 'Fast' | 'Normal' | 'Dramatic'
+export const PACES: Pace[] = ['Fast', 'Normal', 'Dramatic']
+
+/**
+ * Timings for each pace (ms). think = the computer "thinks" before its move; lift = a face-down card is raised before it
+ * turns over (computer: every card; you: only important cards — nobody likes waiting for themself).
+ */
+export const PACE_TIMES: Record<Pace, { think: number; liftAi: number; liftAiBig: number; liftMineBig: number }> = {
+  Fast: { think: 250, liftAi: 0, liftAiBig: 0, liftMineBig: 0 },
+  Normal: { think: 650, liftAi: 280, liftAiBig: 850, liftMineBig: 550 },
+  Dramatic: { think: 1000, liftAi: 450, liftAiBig: 1400, liftMineBig: 1000 },
+}
+
 const KEY = 'dugout-deck-settings'
 const defaults: Settings = {
-  aiDelay: 900, managerName: '', autoMiniGames: false,
+  aiDelay: 900, pace: 'Normal', managerName: '', autoMiniGames: false,
   volume: 0.8, sfxVolume: 0.8, crowdVolume: 0.6, musicVolume: 0.5, musicOn: true, muted: false,
   reduceMotion: false, tutorialDone: false, tacticTutorialDone: false, fullscreen: false, difficulty: 'Normal',
 }

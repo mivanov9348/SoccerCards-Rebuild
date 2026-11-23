@@ -94,19 +94,27 @@ public class MatchEngine(Random rng, CardCatalog catalog)
         PlayHand(s, human, card, cell, cell2);
     }
 
-    /// <summary>The human answers the pending mini-game (choice 0–2, or a hand card index for Discard).</summary>
+    /// <summary>The human answers the pending mini-game (choice 0–2, or — after the computer's red card — the index of
+    /// the computer's hand card the human takes away).</summary>
     public void DecideHuman(MatchState s, int? choice, double? timing, bool auto)
     {
         var human = RequireHuman(s);
         if (s.Phase != MatchPhase.Decision || s.Decision == null) throw new GameRuleException("There is no decision to make.");
         var d = s.Decision;
         var humanAttacks = d.Attacker == human;
-        if (d.Kind == DecisionKind.Discard && !humanAttacks) throw new GameRuleException("The computer is choosing.");
+        if (d.Kind == DecisionKind.Discard)
+        {
+            // the team that was sent off is d.Attacker; its opponent chooses which hand card it loses
+            if (humanAttacks) throw new GameRuleException("The opponent is choosing which of your cards to take.");
+            var pick = auto || choice == null ? _ai.RemoveChoice(s.Team(d.Attacker), catalog) : choice.Value;
+            Resolve(s, pick, 0, 0.5, 0.5);
+            return;
+        }
 
         var c = auto || choice == null ? AutoChoice(s, human) : choice.Value;
         var t = auto || timing == null ? AutoTiming() : Math.Clamp(timing.Value, 0, 1);
         var aiSide = human.Other();
-        var aiChoice = d.Kind == DecisionKind.Discard ? 0 : _ai.MiniChoice();
+        var aiChoice = _ai.MiniChoice();
         var aiTiming = _ai.Timing(s.Team(aiSide).AiLevel);
 
         if (humanAttacks) Resolve(s, c, aiChoice, t, aiTiming);
@@ -117,9 +125,9 @@ public class MatchEngine(Random rng, CardCatalog catalog)
     /// a pending decision that only the computer must make is resolved.</summary>
     public void AiStep(MatchState s)
     {
-        if (s.Phase == MatchPhase.Decision && s.Decision is { Kind: DecisionKind.Discard } dd && !s.Team(dd.Attacker).IsHuman)
+        if (s.Phase == MatchPhase.Decision && s.Decision is { Kind: DecisionKind.Discard } dd && !s.Team(dd.Attacker.Other()).IsHuman)
         {
-            Resolve(s, _ai.DiscardChoice(s.Team(dd.Attacker), catalog), 0, 0.5, 0.5);
+            Resolve(s, _ai.RemoveChoice(s.Team(dd.Attacker), catalog), 0, 0.5, 0.5);
             return;
         }
         if (s.Phase != MatchPhase.Play) throw new GameRuleException("The computer has nothing to do.");
@@ -140,7 +148,7 @@ public class MatchEngine(Random rng, CardCatalog catalog)
                 var d = s.Decision;
                 var a = s.Team(d.Attacker);
                 var def = s.Team(d.Attacker.Other());
-                if (d.Kind == DecisionKind.Discard) Resolve(s, _ai.DiscardChoice(a, catalog), 0, 0.5, 0.5);
+                if (d.Kind == DecisionKind.Discard) Resolve(s, _ai.RemoveChoice(a, catalog), 0, 0.5, 0.5);
                 else Resolve(s, _ai.MiniChoice(), _ai.MiniChoice(), _ai.Timing(a.AiLevel), _ai.Timing(def.AiLevel));
             }
         }
@@ -286,6 +294,7 @@ public class MatchEngine(Random rng, CardCatalog catalog)
                 throw new GameRuleException("Unknown hand card.");
         }
 
+        team.Played.Add(new PlayedCard { Code = card, Half = s.Half, How = "hand" });
         if (freeScout) team.FreeScouts--;
         else
         {
@@ -316,6 +325,7 @@ public class MatchEngine(Random rng, CardCatalog catalog)
             if (cell.Card == Cards.OffsideTrap)
             {
                 AddEvent(s, "lost", side, Text(s, "trap", side), cell.Card);
+                s.Team(side.Other()).Played.Add(new PlayedCard { Code = cell.Card, Half = s.Half, How = "trap" });
                 LoseBall(s, side);
                 return;
             }
@@ -330,10 +340,12 @@ public class MatchEngine(Random rng, CardCatalog catalog)
             if (cell.Card == Cards.Decoy)
             {
                 team.PassStreak = 0;
+                owner.Played.Add(new PlayedCard { Code = cell.Card, Half = s.Half, How = "decoy" });
                 AddEvent(s, "play", side, $"A decoy run by {owner.Name} — {team.Name} gain nothing and their passing move breaks down.", cell.Card);
                 return;
             }
             team.Stats.CardsStolen++;
+            team.Played.Add(new PlayedCard { Code = cell.Card, Half = s.Half, How = "stolen" });
             AddEvent(s, "steal", side, $"{team.Name} steal {s.Team(side.Other()).Name}'s {Cards.Name(cell.Card)}!", cell.Card);
             TeamCard(s, side, cell.Card);
             return;
@@ -344,6 +356,7 @@ public class MatchEngine(Random rng, CardCatalog catalog)
         {
             if (!counter) team.OwnCardUsedThisTurn = true;
             if (team.MarkedCell == index) team.MarkedCell = -1;
+            team.Played.Add(new PlayedCard { Code = cell.Card, Half = s.Half, How = "own" });
             TeamCard(s, side, cell.Card);
             return;
         }
@@ -644,7 +657,7 @@ public class MatchEngine(Random rng, CardCatalog catalog)
     public static bool NeedsTiming(DecisionKind kind) => kind is DecisionKind.Penalty or DecisionKind.Shootout;
 
     private int AutoChoice(MatchState s, Side human) =>
-        s.Decision!.Kind == DecisionKind.Discard ? _ai.DiscardChoice(s.Team(human), catalog) : rng.Next(3);
+        s.Decision!.Kind == DecisionKind.Discard ? _ai.RemoveChoice(s.Team(s.Decision.Attacker), catalog) : rng.Next(3);
 
     /// <summary>Automatic timing for the human: around the middle, but mostly random.</summary>
     private double AutoTiming() => 0.1 + rng.NextDouble() * 0.8;
@@ -674,7 +687,7 @@ public class MatchEngine(Random rng, CardCatalog catalog)
                     var idx = Math.Clamp(attackChoice, 0, team.Hand.Count - 1);
                     var lost = team.Hand[idx];
                     team.Hand.RemoveAt(idx);
-                    AddEvent(s, "info", a, $"{team.Name} lose their {Cards.Name(lost)} hand card.");
+                    AddEvent(s, "info", a, $"{opp.Name} take away {team.Name}'s {Cards.Name(lost)} hand card.", lost);
                 }
                 LoseBall(s, a);
                 break;

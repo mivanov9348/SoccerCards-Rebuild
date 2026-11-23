@@ -315,39 +315,43 @@ public class CareerService(AppDbContext db, MatchService matches)
             });
     }
 
-    /// <summary>Double round robin ("circle" method); small leagues (12 teams or fewer) play each other three times.</summary>
+    /// <summary>
+    /// Balanced round robin: every team plays at most 2 home or 2 away matches in a row. The second half is the first half
+    /// with home and away swapped (shifted by one round, so the turn of the season does not make a third in a row).
+    /// Small leagues (12 teams or fewer) play the first half a third time.
+    /// </summary>
     public static List<List<(int Home, int Away)>> RoundRobin(List<int> teams)
     {
-        var rounds = DoubleRoundRobin(teams);
-        if (teams.Count <= 12 && teams.Count >= 2)
-            rounds.AddRange(rounds.Take(rounds.Count / 2).Select(r => r.ToList()));
+        var first = SingleRoundRobin(teams);
+        var m = first.Count;
+        if (m == 0) return new();
+        var rounds = new List<List<(int Home, int Away)>>(first);
+        for (var i = 0; i < m; i++) rounds.Add(first[(i + 1) % m].Select(p => (p.Away, p.Home)).ToList());
+        if (teams.Count <= 12) rounds.AddRange(first.Select(r => r.ToList()));
         return rounds;
     }
 
-    private static List<List<(int Home, int Away)>> DoubleRoundRobin(List<int> teams)
+    /// <summary>Canonical 1-factorisation: one fixed team plus a rotating circle, venues alternating by pair.</summary>
+    private static List<List<(int Home, int Away)>> SingleRoundRobin(List<int> teams)
     {
-        var list = new List<int>(teams);
-        if (list.Count < 2) return new();
-        if (list.Count % 2 == 1) list.Add(-1);
-        var n = list.Count;
-        var firstHalf = new List<List<(int, int)>>();
-        for (var r = 0; r < n - 1; r++)
+        var count = teams.Count;
+        if (count < 2) return new();
+        var n = count % 2 == 1 ? count + 1 : count;
+        var m = n - 1;
+        var fixedSlot = n - 1;
+        var result = new List<List<(int Home, int Away)>>();
+        for (var r = 0; r < m; r++)
         {
-            var round = new List<(int, int)>();
-            for (var i = 0; i < n / 2; i++)
+            var slots = new List<(int Home, int Away)> { r % 2 == 0 ? (r, fixedSlot) : (fixedSlot, r) };
+            for (var k = 1; k < n / 2; k++)
             {
-                var a = list[i];
-                var b = list[n - 1 - i];
-                if (a == -1 || b == -1) continue;
-                round.Add((r + i) % 2 == 0 ? (a, b) : (b, a));
+                var a = (r + k) % m;
+                var b = (r - k + m) % m;
+                slots.Add(k % 2 == 1 ? (b, a) : (a, b));
             }
-            firstHalf.Add(round);
-            var last = list[n - 1];
-            list.RemoveAt(n - 1);
-            list.Insert(1, last);
+            result.Add(slots.Where(p => p.Home < count && p.Away < count).Select(p => (teams[p.Home], teams[p.Away])).ToList());
         }
-        var secondHalf = firstHalf.Select(r => r.Select(p => (p.Item2, p.Item1)).ToList()).ToList();
-        return firstHalf.Concat(secondHalf).ToList();
+        return result;
     }
 
     // ================================================================== queries
@@ -408,9 +412,8 @@ public class CareerService(AppDbContext db, MatchService matches)
         var match = await matches.CreateAsync(fixture.HomeTeam!, fixture.AwayTeam!, ratings[fixture.HomeTeamId], ratings[fixture.AwayTeamId],
             humanSide, fixture.IsKnockout, $"{fixture.Competition!.Name} – {fixture.Stage}", fixture.Id, career.Id, career.Difficulty);
 
-        if (useLastTactic && career.LastTacticJson != null)
+        if (useLastTactic && TacticPlanSet.Preferred(career) is { } tactic)
         {
-            var tactic = JsonSerializer.Deserialize<TacticSpec>(career.LastTacticJson)!;
             var state = MatchService.Load(match);
             var (budget, handSize) = MatchService.HumanLimits(state);
             var collection = await CollectionAsync(career.Id);

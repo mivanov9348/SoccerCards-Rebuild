@@ -130,8 +130,11 @@ export function CardBack({
   aligned,
   onHover,
   marked,
+  lifting,
 }: {
   marked?: boolean
+  /** the card is raised before it turns over (big = an important card: longer, with a glow) */
+  lifting?: 'big' | 'small'
   aligned?: boolean
   onHover?: () => void
   onClick?: () => void
@@ -147,7 +150,7 @@ export function CardBack({
   return (
     <button
       style={back ? { backgroundImage: `url(${back})` } : undefined}
-      className={`card-back-big grey-back ${back ? 'art-back' : ''} ${selected ? 'selected' : ''} ${peeked ? 'peeked' : ''} ${mark?.dim ? 'own-used' : ''} ${aligned ? 'aligned' : ''}`}
+      className={`card-back-big grey-back ${back ? 'art-back' : ''} ${selected ? 'selected' : ''} ${peeked ? 'peeked' : ''} ${mark?.dim ? 'own-used' : ''} ${aligned ? 'aligned' : ''} ${lifting ? 'lifting lift-' + lifting : ''}`}
       onMouseEnter={onHover}
       disabled={disabled}
       onClick={onClick}

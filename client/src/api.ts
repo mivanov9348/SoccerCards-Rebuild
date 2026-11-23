@@ -88,6 +88,10 @@ export interface MatchTeam {
   twelfthMan: boolean
   var: boolean
   penaltyTaker: boolean
+  /** a Marking shield is on one of my cards (only sent for my team) */
+  marking?: boolean
+  /** cards this team has played: how = hand, own, stolen, trap, decoy */
+  played?: { code: string; name: string; half: number; how: 'hand' | 'own' | 'stolen' | 'trap' | 'decoy' }[]
   fieldCards: string[] | null
   fieldCount: number
   modifiers: string[] | null
@@ -128,6 +132,8 @@ export interface Decision {
   role: string
   options: string[]
   needsTiming: boolean
+  /** Discard (red card): the codes of the sent-off team's hand cards */
+  cards?: string[]
 }
 
 export interface SetupCard {
@@ -140,13 +146,26 @@ export interface SetupCard {
   owned: number | null
 }
 
-export interface MatchSetupInfo {
+/** What the tactic editor needs (pre-match screen and the career's Tactics tab). */
+export interface TacticEditorSetup {
   budget: number
   handSize: number
   maxModifiers: number
   fieldCards: number
   lastTactic: Tactic
   cards: SetupCard[]
+}
+
+export interface MatchSetupInfo extends TacticEditorSetup {
+  /** a career's three plans (Tactics tab) and the active one */
+  plans?: { active: number; list: { name: string; tactic: Tactic | null }[] } | null
+}
+
+/** The career's Tactics tab. */
+export interface CareerTactics {
+  active: number
+  plans: { name: string; tactic: Tactic | null; cost: number; awayErrors: string[] }[]
+  setup: TacticEditorSetup & { awayBudget: number }
 }
 
 export interface MatchView {
@@ -252,6 +271,8 @@ export interface SeasonSummary {
 export interface CareerView {
   id: number
   hasTactic: boolean
+  /** the name of the active plan, when it has a tactic */
+  activePlan: string | null
   saveName: string
   managerName: string
   reputation: number
@@ -357,9 +378,18 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
   return (text ? JSON.parse(text) : undefined) as T
 }
 
+/** A coloured band of a league table (positions from..to). */
+export interface TableZone {
+  from: number
+  to: number
+  kind: 'champion' | 'ucl' | 'uel' | 'uecl' | 'promotion' | 'relegation'
+  label: string
+}
+
 export const api = {
   info: () => request<{ saveFile: string; version: string; desktop: boolean }>('GET', '/info'),
   leagues: () => request<League[]>('GET', '/leagues'),
+  leagueZones: (id: number) => request<TableZone[]>('GET', `/leagues/${id}/zones`),
   createLeague: (l: Omit<League, 'id' | 'teamCount'>) => request<{ id: number }>('POST', '/leagues', l),
   updateLeague: (id: number, l: Omit<League, 'id' | 'teamCount'>) => request<void>('PUT', `/leagues/${id}`, l),
   deleteLeague: (id: number) => request<void>('DELETE', `/leagues/${id}`),
@@ -400,6 +430,10 @@ export const api = {
   deleteCareer: (id: number) => request<void>('DELETE', `/careers/${id}`),
   careerFixtures: (id: number) => request<Fixture[]>('GET', `/careers/${id}/fixtures`),
   careerLeagues: (id: number) => request<{ id: number; name: string; country: string; tier: number }[]>('GET', `/careers/${id}/leagues`),
+  careerTactics: (id: number) => request<CareerTactics>('GET', `/careers/${id}/tactics`),
+  saveCareerPlan: (id: number, slot: number, plan: { name?: string; tactic?: Tactic }) =>
+    request<CareerTactics>('PUT', `/careers/${id}/tactics/${slot}`, plan),
+  setActivePlan: (id: number, slot: number) => request<CareerTactics>('POST', `/careers/${id}/tactics/active`, { slot }),
   careerStandings: (id: number, leagueId: number) => request<StandingRow[]>('GET', `/careers/${id}/standings/${leagueId}`),
   playCareer: (id: number, useLastTactic: boolean) => request<{ matchId: number }>('POST', `/careers/${id}/play`, { useLastTactic }),
   simulateCareer: (id: number) => request<void>('POST', `/careers/${id}/simulate`),

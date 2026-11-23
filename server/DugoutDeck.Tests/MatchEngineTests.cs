@@ -221,8 +221,10 @@ public class MatchEngineTests(ITestOutputHelper output)
         Put(s, 1, Cards.YellowCard);
         engine.FlipHuman(s, 1);
         Assert.Equal(DecisionKind.Discard, s.Decision!.Kind);
-        engine.DecideHuman(s, 0, null, false);
+        Assert.Throws<GameRuleException>(() => engine.DecideHuman(s, 0, null, false)); // the computer chooses
+        engine.AiStep(s);
         Assert.Single(s.Home.Hand);
+        Assert.Equal(Cards.Scout, s.Home.Hand[0]); // Calm (2 points) is taken, Scout (1) stays
         Assert.Equal(1, s.Home.Stats.RedCards);
         s.Turn = Side.Home;
         Put(s, 2, Cards.Pass); Put(s, 3, Cards.Pass); Put(s, 4, Cards.Pass);
@@ -282,7 +284,7 @@ public class MatchEngineTests(ITestOutputHelper output)
         {
             if (s.Phase == MatchPhase.Decision)
             {
-                if (s.Decision!.Kind == DecisionKind.Discard && s.Decision.Attacker != Side.Away) engine.AiStep(s);
+                if (s.Decision!.Kind == DecisionKind.Discard && s.Decision.Attacker == Side.Away) engine.AiStep(s);
                 else engine.DecideHuman(s, null, null, true);
             }
             else if (s.Turn == Side.Away)

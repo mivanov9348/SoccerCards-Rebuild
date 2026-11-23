@@ -128,12 +128,15 @@ public static class Rules
     public const int PenaltySaveCenter = 70;
     public const int ShootoutKicks = 5;
 
-    /// <summary>Limits for neutral card counts after conditions and modifiers.</summary>
+    /// <summary>
+    /// Limits for neutral card counts after conditions and modifiers. Every grid always keeps at least one of each grey
+    /// card (a Goal and a Penalty can always come "out of nowhere"); "−" modifiers only cancel extra copies.
+    /// </summary>
     public static readonly Dictionary<string, (int Min, int Max)> NeutralLimits = new()
     {
-        [Cards.Pass] = (1, 16), [Cards.Goal] = (0, 5), [Cards.Corner] = (0, 4),
-        [Cards.Tackle] = (0, 6), [Cards.Penalty] = (0, 3), [Cards.Miss] = (0, 4), [Cards.YellowCard] = (0, 3),
-        [Cards.FreeKick] = (0, 3), [Cards.Save] = (0, 3),
+        [Cards.Pass] = (1, 16), [Cards.Goal] = (1, 5), [Cards.Corner] = (1, 4),
+        [Cards.Tackle] = (1, 6), [Cards.Penalty] = (1, 3), [Cards.Miss] = (1, 4), [Cards.YellowCard] = (1, 3),
+        [Cards.FreeKick] = (1, 3), [Cards.Save] = (1, 3),
     };
 
     /// <summary>Extra tactic points from the team rating (0–3).</summary>

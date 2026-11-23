@@ -201,11 +201,12 @@ public class MatchAi(Random rng)
         return 0.5 + (rng.NextDouble() * 2 - 1) * spread;
     }
 
-    /// <summary>After a red card: give up the cheapest hand card.</summary>
-    public int DiscardChoice(TeamMatchState team, CardCatalog catalog)
+    /// <summary>After the opponent's red card: take away its most valuable hand card (ties: a random one of them).</summary>
+    public int RemoveChoice(TeamMatchState victim, CardCatalog catalog)
     {
-        if (team.Hand.Count == 0) return 0;
-        var cheapest = team.Hand.Select((c, i) => (i, catalog.Cost(c))).OrderBy(x => x.Item2).First();
-        return cheapest.i;
+        if (victim.Hand.Count == 0) return 0;
+        var best = victim.Hand.Max(c => catalog.Cost(c));
+        var top = victim.Hand.Select((c, i) => (i, c)).Where(x => catalog.Cost(x.c) == best).ToList();
+        return top[rng.Next(top.Count)].i;
     }
 }

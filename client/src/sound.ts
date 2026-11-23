@@ -7,7 +7,7 @@ import { loadSettings } from './settings'
 
 export type Sfx =
   | 'flip' | 'pass' | 'keep' | 'tackle' | 'whistle' | 'whistleLong' | 'goal' | 'goalAgainst' | 'miss' | 'save'
-  | 'yellow' | 'red' | 'steal' | 'stolen' | 'trap' | 'chance' | 'heartbeat' | 'click' | 'pack' | 'packEpic' | 'burn' | 'error'
+  | 'yellow' | 'red' | 'steal' | 'stolen' | 'trap' | 'chance' | 'heartbeat' | 'click' | 'pack' | 'packEpic' | 'burn' | 'error' | 'lift'
 
 let ctx: AudioContext | null = null
 let master: GainNode, sfxBus: GainNode, crowdBus: GainNode, musicBus: GainNode
@@ -196,6 +196,11 @@ export function play(s: Sfx) {
       break
     case 'error':
       tone(200, 0.15, { type: 'square', gain: 0.06 })
+      break
+    case 'lift':
+      // a card is raised before an important flip: the crowd holds its breath
+      hiss(0.9, { filter: 'lowpass', freq: 400, to: 1100, gain: 0.22, attack: 0.5, bus: crowdBus })
+      tone(note(50), 0.7, { type: 'triangle', gain: 0.09, to: note(57), attack: 0.3 })
       break
   }
 }

@@ -72,7 +72,7 @@ public class MatchService(AppDbContext db)
         {
             MatchPhase.Play => s.Turn == human ? "flip" : "wait",
             MatchPhase.Decision when s.Decision != null =>
-                s.Decision.Kind == DecisionKind.Discard ? (s.Decision.Attacker == human ? "discard" : "wait")
+                s.Decision.Kind == DecisionKind.Discard ? (s.Decision.Attacker == human ? "wait" : "discard")
                 : s.Decision.Attacker == human ? "attack" : "defend",
             _ => null
         };
@@ -87,7 +87,8 @@ public class MatchService(AppDbContext db)
             decision = new
             {
                 kind = d.Kind.ToString(), source = d.Source, attacker = d.Attacker.ToString(),
-                attackerName = s.Team(d.Attacker).Name, role, options, needsTiming = MatchEngine.NeedsTiming(d.Kind)
+                attackerName = s.Team(d.Attacker).Name, role, options, needsTiming = MatchEngine.NeedsTiming(d.Kind),
+                cards = d.Kind == DecisionKind.Discard ? s.Team(d.Attacker).Hand.ToArray() : Array.Empty<string>()
             };
         }
 
@@ -162,7 +163,8 @@ public class MatchService(AppDbContext db)
             passStreak = t.PassStreak, captain = t.CaptainShield, wall = t.WallActive, calm = t.CalmActive,
             press = t.PressActive, counterFlips = t.CounterFlips,
             goalkeeper = t.GoalkeeperActive, targetMan = t.TargetManActive, sweeper = t.SweeperActive, twelfthMan = t.TwelfthManActive,
-            var = t.VarActive, penaltyTaker = t.PenaltyTakerActive,
+            var = t.VarActive, penaltyTaker = t.PenaltyTakerActive, marking = t.MarkedCell >= 0 && isMe,
+            played = t.Played.Select(p => new { code = p.Code, name = Cards.Name(p.Code), half = p.Half, how = p.How }),
             // the opponent's field cards stay secret; modifiers are revealed when the match starts
             fieldCards = started && (isMe || finished) ? t.Tactic.Field.Select(Cards.Name) : null,
             fieldCount = started ? t.Tactic.Field.Count : 0,

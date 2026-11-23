@@ -166,13 +166,16 @@ label.checkbox { flex-direction: row; align-items: center; gap: 8px; }
 .table .points { font-weight: 800; color: var(--accent); }
 .team-cell { display: flex; align-items: center; gap: 6px; }
 .standings tr.highlight td { background: rgba(242, 193, 78, 0.16); font-weight: 700; }
-.standings tr.zone-champion td:first-child { box-shadow: inset 3px 0 0 #3a7bd5; }
-.standings tr.zone-europe td:first-child { box-shadow: inset 3px 0 0 #e08a2e; }
-.standings tr.zone-bottom td:first-child { box-shadow: inset 3px 0 0 var(--bad); }
-.legend .lg { display: inline-block; width: 10px; height: 10px; margin: 0 4px 0 10px; border-radius: 2px; }
-.lg.champion { background: #3a7bd5; }
-.lg.europe { background: #e08a2e; }
-.lg.bottom { background: var(--bad); }
+/* table zones, from each league's rules (TableZones.cs) */
+.standings tr[class*='zone-'] td:first-child { box-shadow: inset 4px 0 0 var(--zone); }
+.standings tr.zone-champion, .lg.champion { --zone: #f2c14e; }
+.standings tr.zone-ucl, .lg.ucl { --zone: #3a7bd5; }
+.standings tr.zone-uel, .lg.uel { --zone: #e08a2e; }
+.standings tr.zone-uecl, .lg.uecl { --zone: #2bb3a3; }
+.standings tr.zone-promotion, .lg.promotion { --zone: #3fbf5a; }
+.standings tr.zone-relegation, .lg.relegation { --zone: var(--bad); }
+.legend { margin-top: 0.4rem; display: flex; flex-wrap: wrap; gap: 2px 0; }
+.legend .lg { display: inline-block; width: 10px; height: 10px; margin: 0 4px 0 10px; border-radius: 2px; background: var(--zone); }
 .table.actions td.actions, td.actions { white-space: nowrap; display: flex; gap: 4px; justify-content: flex-end; }
 
 /* ---------- fixtures ---------- */
@@ -612,3 +615,60 @@ ul.conditions li::before { content: '☁ '; color: var(--muted); }
 .card-back-big.art-back .own-mark { width: 30px; height: 30px; }
 .card-back-big.art-back .peek-label { box-shadow: 0 0 0 2px #6cd3ff, 0 2px 6px #000a; }
 @media (prefers-reduced-motion: reduce) { .grid-face.just-flipped.anim::after, .tb-card::after { animation: none !important; } }
+
+/* ---------------------------------------------------------------- 1.1: pace, effects, played cards, red card */
+/* a card is raised before it turns over */
+.card-back-big.lifting { position: relative; z-index: 5; opacity: 1 !important; transition: transform 0.25s ease-out, box-shadow 0.25s; transform: translateY(-9px) scale(1.06); box-shadow: 0 16px 22px #000c; }
+.card-back-big.lift-big { animation: lift-glow 0.7s ease-in-out infinite alternate; box-shadow: 0 0 0 3px var(--accent), 0 18px 26px #000d; }
+@keyframes lift-glow {
+  from { transform: translateY(-9px) scale(1.07) rotate(-1.5deg); }
+  to { transform: translateY(-13px) scale(1.1) rotate(1.5deg); }
+}
+@media (prefers-reduced-motion: reduce) { .card-back-big.lift-big { animation: none; } }
+
+/* the right column of the match: active effects, cards played, commentary */
+.match-side { position: sticky; top: 1rem; display: flex; flex-direction: column; gap: 0.7rem; max-height: calc(100vh - 2rem); }
+.match-side .commentary { position: static; flex: 1; min-height: 180px; max-height: none; }
+.match-side .panel h2 { font-size: 1rem; margin: 0 0 0.4rem; }
+.effects-panel, .played-panel { padding: 0.7rem 0.8rem; }
+.effects-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.effect-row { display: flex; gap: 8px; align-items: flex-start; font-size: 0.82rem; background: rgba(255, 255, 255, 0.04); border-left: 4px solid var(--accent); border-radius: 6px; padding: 4px 6px; }
+.effect-row .effect-icon { font-size: 1.05rem; line-height: 1; color: var(--accent); flex: none; }
+.effect-row.spent { animation: effect-spent 1.8s ease-out forwards; text-decoration: line-through; }
+@keyframes effect-spent {
+  0% { background: rgba(242, 193, 78, 0.65); transform: scale(1.04); }
+  30% { background: rgba(242, 193, 78, 0.35); transform: scale(1); }
+  100% { background: rgba(255, 255, 255, 0.02); opacity: 0.4; }
+}
+.played-panel .clickable { cursor: pointer; user-select: none; }
+.played-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; font-size: 0.78rem; }
+.played-cols ul { list-style: none; margin: 0; padding: 0; }
+.played-cols li { padding: 2px 0; display: flex; gap: 4px; align-items: center; }
+.played-cols li small { margin-left: auto; }
+.played-team { font-weight: 700; border-bottom: 3px solid; margin-bottom: 3px; }
+.played-stolen small, .played-trap small { color: var(--accent); }
+@media (max-width: 960px) {
+  .match-side { position: static; max-height: none; }
+  .match-side .commentary { max-height: 420px; }
+}
+
+/* red card: the opponent's hand is revealed and you take one card away */
+.discard-cards { display: flex; flex-wrap: wrap; gap: 0.8rem; justify-content: center; margin: 0.6rem 0; }
+.discard-pick { background: none; border: none; padding: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; width: 140px; transition: transform 0.15s; }
+.discard-pick:hover:not(:disabled) { transform: translateY(-6px) rotate(-1deg); }
+.discard-pick .card-face { width: 140px; }
+
+/* career Tactics tab: three plans */
+.plan-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem; }
+.plan-slot { text-align: left; background: rgba(255, 255, 255, 0.04); border: 2px solid var(--panel-border); border-radius: var(--radius); padding: 0.6rem 0.8rem; color: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 4px; font: inherit; }
+.plan-slot:hover { border-color: rgba(242, 193, 78, 0.5); }
+.plan-slot.selected { border-color: var(--accent); background: rgba(242, 193, 78, 0.1); }
+.plan-name { font-weight: 700; }
+.plan-star { color: var(--accent); font-size: 0.75rem; margin-left: 6px; }
+.plan-cards { display: flex; align-items: center; gap: 3px; font-size: 1.05rem; flex-wrap: wrap; }
+.plan-warn { color: var(--bad); }
+.plan-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding: 0.6rem 0.9rem; }
+.tactics-tab .form-row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-top: 0.4rem; }
+.good { color: var(--good); }
+.bad { color: var(--bad); }
+@media (max-width: 700px) { .plan-slots { grid-template-columns: 1fr; } }

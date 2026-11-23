@@ -106,6 +106,8 @@ public class Career
     public long Money { get; set; }
     /// <summary>The last tactic used (JSON) — loaded automatically for the next match.</summary>
     public string? LastTacticJson { get; set; }
+    /// <summary>The three tactic plans of the Tactics tab and the active one (JSON, see Careers/TacticPlans.cs).</summary>
+    public string? TacticPlansJson { get; set; }
     public CareerStatus Status { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

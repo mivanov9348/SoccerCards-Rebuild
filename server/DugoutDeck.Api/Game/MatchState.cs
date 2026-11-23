@@ -76,8 +76,18 @@ public class TeamMatchState
     public int MarkedCell { get; set; } = -1;
     /// <summary>Cells this team has looked under (current half).</summary>
     public List<int> Peeks { get; set; } = new();
+    /// <summary>Cards this team has played in the match (hand cards and team cards that took effect), for the match screen.</summary>
+    public List<PlayedCard> Played { get; set; } = new();
 
     public TeamStats Stats { get; set; } = new();
+}
+
+/// <summary>A card a team played: How = hand, own, stolen (taken from the opponent), trap or decoy (sprung against the opponent).</summary>
+public class PlayedCard
+{
+    public string Code { get; set; } = "";
+    public int Half { get; set; } = 1;
+    public string How { get; set; } = "own";
 }
 
 /// <summary>One spot of the grid.</summary>

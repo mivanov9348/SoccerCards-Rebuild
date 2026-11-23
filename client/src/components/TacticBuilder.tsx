@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { api, type MatchView, type SetupCard, type Tactic } from '../api'
+import { useMemo, useState, type ReactNode } from 'react'
+import { api, type MatchView, type SetupCard, type Tactic, type TacticEditorSetup } from '../api'
 import { ErrorBox, useLoad } from './common'
 import { CardThumb, iconFor } from './GameCard'
 import { TacticCoach } from './TacticCoach'
@@ -7,24 +7,12 @@ import { saveSettings, useSettings } from '../settings'
 
 const rarityClass = (r: string) => `rarity-${r.toLowerCase()}`
 
-/** Pre-match screen: conditions, tactic points, field cards, hand cards and secret neutral modifiers. */
-export function TacticBuilder({ m, onStart }: { m: MatchView; onStart: (t: Tactic, saveAs?: string) => Promise<void> }) {
-  const setup = m.setup!
-  const human = m.humanSide ?? 'Home'
-  const me = human === 'Home' ? m.home : m.away
-  const opp = human === 'Home' ? m.away : m.home
-  const [tactic, setTactic] = useState<Tactic>(() => ({
-    field: [...setup.lastTactic.field],
-    hand: setup.lastTactic.hand.slice(0, setup.handSize),
-    modifiers: [...setup.lastTactic.modifiers],
-  }))
-  const [saveAs, setSaveAs] = useState('')
-  const [settings, updateSettings] = useSettings()
-  const coaching = !settings.tacticTutorialDone
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const { data: saved } = useLoad(() => api.tactics(m.careerId), [m.careerId])
+const copy = (t: Tactic, handSize: number): Tactic => ({ field: [...t.field], hand: t.hand.slice(0, handSize), modifiers: [...t.modifiers] })
 
+/** The state of a tactic being built: points, owned copies, adding and removing cards. */
+export function useTacticEditor(setup: TacticEditorSetup, initial: Tactic) {
+  const [tactic, setTactic] = useState<Tactic>(() => copy(initial, setup.handSize))
+  const [error, setError] = useState<string | null>(null)
   const byCode = useMemo(() => Object.fromEntries(setup.cards.map((c) => [c.code, c])), [setup.cards])
   const cost = [...tactic.field, ...tactic.hand, ...tactic.modifiers].reduce((s, c) => s + (byCode[c]?.cost ?? 0), 0)
   const left = setup.budget - cost
@@ -43,6 +31,121 @@ export function TacticBuilder({ m, onStart }: { m: MatchView; onStart: (t: Tacti
     })
   }
   const remove = (list: keyof Tactic, i: number) => setTactic((t) => ({ ...t, [list]: t[list].filter((_, j) => j !== i) }))
+  const load = (t: Tactic) => {
+    setError(null)
+    setTactic(copy(t, setup.handSize))
+  }
+  return { setup, tactic, load, byCode, cost, left, used, available, add, remove, error, setError }
+}
+
+type Editor = ReturnType<typeof useTacticEditor>
+
+/** Points left (with an optional note, e.g. the away budget). */
+export function TacticBudget({ ed, note }: { ed: Editor; note?: ReactNode }) {
+  return (
+    <div className={`tb-budget ${ed.left < 0 ? 'over' : ''}`}>
+      <span className="muted small">Tactic points left</span>
+      <b>
+        {ed.left} / {ed.setup.budget}
+      </b>
+      <span className="muted small">Hand cards: up to {ed.setup.handSize}</span>
+      {note}
+    </div>
+  )
+}
+
+/** The chosen cards (click to remove). */
+export function TacticChosen({ ed }: { ed: Editor }) {
+  const { tactic, setup, byCode, remove } = ed
+  return (
+    <div className="panel tb-chosen">
+      <div>
+        <h3>
+          Field cards ({tactic.field.length}/{setup.fieldCards})
+        </h3>
+        <div className="chips">
+          {tactic.field.map((c, i) => (
+            <button key={i} className="chip" onClick={() => remove('field', i)} title="Remove">
+              {iconFor(c)} {byCode[c]?.name ?? c} ✕
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <h3>
+          Hand ({tactic.hand.length}/{setup.handSize})
+        </h3>
+        <div className="chips">
+          {tactic.hand.map((c, i) => (
+            <button key={i} className="chip" onClick={() => remove('hand', i)} title="Remove">
+              {iconFor(c)} {byCode[c]?.name ?? c} ✕
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <h3>
+          Modifiers ({tactic.modifiers.length}/{setup.maxModifiers}) — secret
+        </h3>
+        <div className="chips">
+          {tactic.modifiers.map((c, i) => (
+            <button key={i} className="chip" onClick={() => remove('modifiers', i)} title="Remove">
+              {byCode[c]?.name ?? c} ✕
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** All cards to choose from, by kind. */
+export function TacticCards({ ed, busy, focus }: { ed: Editor; busy?: boolean; focus?: 'Field' | 'Hand' | 'Modifier' | null }) {
+  const section = (kind: 'Field' | 'Hand' | 'Modifier', title: string, hint: string) => (
+    <div className={`tb-section ${focus === kind ? 'coach-focus' : ''}`}>
+      <h3>
+        {title} <span className="muted small">{hint}</span>
+      </h3>
+      <div className="tb-cards">
+        {ed.setup.cards
+          .filter((c) => c.kind === kind)
+          .map((c) => (
+            <button key={c.code} className={`tb-card ${rarityClass(c.rarity)}`} disabled={busy || !ed.available(c)} onClick={() => ed.add(c)} title={c.description}>
+              <span className="tb-icon">
+                <CardThumb code={c.code} />
+              </span>
+              <span className="tb-name">{c.name}</span>
+              <span className="tb-cost">{c.cost} pt</span>
+              {c.owned != null && <span className="tb-owned">×{c.owned - ed.used(c.code)}</span>}
+              <span className="tb-desc">{c.description}</span>
+            </button>
+          ))}
+      </div>
+    </div>
+  )
+  return (
+    <div className="panel">
+      {section('Field', 'Field cards', '— hidden in the grid (only you know where); if the opponent flips one, they steal it — except the Offside Trap')}
+      {section('Hand', 'Hand cards', '— played before a flip, one per flip')}
+      {section('Modifier', 'Neutral modifiers', '— secretly change the grey cards; both teams’ choices are added up')}
+    </div>
+  )
+}
+
+/** Pre-match screen: conditions, tactic points, field cards, hand cards and secret neutral modifiers. */
+export function TacticBuilder({ m, onStart }: { m: MatchView; onStart: (t: Tactic, saveAs?: string) => Promise<void> }) {
+  const setup = m.setup!
+  const human = m.humanSide ?? 'Home'
+  const me = human === 'Home' ? m.home : m.away
+  const opp = human === 'Home' ? m.away : m.home
+  const ed = useTacticEditor(setup, setup.lastTactic)
+  const { tactic, left, setError } = ed
+  const [saveAs, setSaveAs] = useState('')
+  const [settings, updateSettings] = useSettings()
+  const coaching = !settings.tacticTutorialDone
+  const [busy, setBusy] = useState(false)
+  const { data: saved } = useLoad(() => api.tactics(m.careerId), [m.careerId])
+  const [plan, setPlan] = useState<number | null>(setup.plans?.list[setup.plans.active]?.tactic ? setup.plans.active : null)
 
   const start = async () => {
     if (tactic.field.length !== setup.fieldCards) return setError(`Pick ${setup.fieldCards} field cards (Squad Player is free).`)
@@ -59,26 +162,6 @@ export function TacticBuilder({ m, onStart }: { m: MatchView; onStart: (t: Tacti
   }
 
   const coachStep = tactic.field.length < setup.fieldCards ? 'Field' : tactic.hand.length === 0 ? 'Hand' : 'Modifier'
-  const section = (kind: 'Field' | 'Hand' | 'Modifier', title: string, hint: string) => (
-    <div className={`tb-section ${coaching && coachStep === kind ? 'coach-focus' : ''}`}>
-      <h3>
-        {title} <span className="muted small">{hint}</span>
-      </h3>
-      <div className="tb-cards">
-        {setup.cards
-          .filter((c) => c.kind === kind)
-          .map((c) => (
-            <button key={c.code} className={`tb-card ${rarityClass(c.rarity)}`} disabled={busy || !available(c)} onClick={() => add(c)} title={c.description}>
-              <span className="tb-icon"><CardThumb code={c.code} /></span>
-              <span className="tb-name">{c.name}</span>
-              <span className="tb-cost">{c.cost} pt</span>
-              {c.owned != null && <span className="tb-owned">×{c.owned - used(c.code)}</span>}
-              <span className="tb-desc">{c.description}</span>
-            </button>
-          ))}
-      </div>
-    </div>
-  )
 
   return (
     <div className="tactic-builder">
@@ -94,14 +177,30 @@ export function TacticBuilder({ m, onStart }: { m: MatchView; onStart: (t: Tacti
             ))}
           </ul>
         </div>
-        <div className={`tb-budget ${left < 0 ? 'over' : ''}`}>
-          <span className="muted small">Tactic points left</span>
-          <b>
-            {left} / {setup.budget}
-          </b>
-          <span className="muted small">Hand cards: up to {setup.handSize}</span>
-        </div>
+        <TacticBudget ed={ed} />
       </div>
+
+      {setup.plans && setup.plans.list.some((p) => p.tactic) && (
+        <div className="panel plan-picker">
+          <span className="muted small">Your plans (Tactics tab):</span>
+          {setup.plans.list.map((p, i) => (
+            <button
+              key={i}
+              className={`btn small ${plan === i ? 'btn-primary' : ''}`}
+              disabled={!p.tactic || busy}
+              onClick={() => {
+                if (!p.tactic) return
+                ed.load(p.tactic)
+                setPlan(i)
+              }}
+              title={p.tactic ? `Load ${p.name}` : 'This plan is empty — build it in the Tactics tab'}
+            >
+              {p.name}
+              {i === setup.plans!.active ? ' ★' : ''}
+            </button>
+          ))}
+        </div>
+      )}
 
       {coaching && (
         <TacticCoach
@@ -114,40 +213,9 @@ export function TacticBuilder({ m, onStart }: { m: MatchView; onStart: (t: Tacti
         />
       )}
 
-      <div className="panel tb-chosen">
-        <div>
-          <h3>Field cards ({tactic.field.length}/{setup.fieldCards})</h3>
-          <div className="chips">
-            {tactic.field.map((c, i) => (
-              <button key={i} className="chip" onClick={() => remove('field', i)} title="Remove">
-                {iconFor(c)} {byCode[c]?.name ?? c} ✕
-              </button>
-            ))}
-          </div>
-        </div>
-        <div>
-          <h3>Hand ({tactic.hand.length}/{setup.handSize})</h3>
-          <div className="chips">
-            {tactic.hand.map((c, i) => (
-              <button key={i} className="chip" onClick={() => remove('hand', i)} title="Remove">
-                {iconFor(c)} {byCode[c]?.name ?? c} ✕
-              </button>
-            ))}
-          </div>
-        </div>
-        <div>
-          <h3>Modifiers ({tactic.modifiers.length}/{setup.maxModifiers}) — secret</h3>
-          <div className="chips">
-            {tactic.modifiers.map((c, i) => (
-              <button key={i} className="chip" onClick={() => remove('modifiers', i)} title="Remove">
-                {byCode[c]?.name ?? c} ✕
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+      <TacticChosen ed={ed} />
 
-      <ErrorBox error={error} />
+      <ErrorBox error={ed.error} />
 
       <div className="panel tb-actions">
         {saved && saved.length > 0 && (
@@ -157,7 +225,10 @@ export function TacticBuilder({ m, onStart }: { m: MatchView; onStart: (t: Tacti
               defaultValue=""
               onChange={(e) => {
                 const t = saved.find((x) => String(x.id) === e.target.value)
-                if (t) setTactic({ field: [...t.tactic.field], hand: t.tactic.hand.slice(0, setup.handSize), modifiers: [...t.tactic.modifiers] })
+                if (t) {
+                  ed.load(t.tactic)
+                  setPlan(null)
+                }
               }}
             >
               <option value="">—</option>
@@ -178,11 +249,7 @@ export function TacticBuilder({ m, onStart }: { m: MatchView; onStart: (t: Tacti
         </button>
       </div>
 
-      <div className="panel">
-        {section('Field', 'Field cards', '— hidden in the grid (only you know where); if the opponent flips one, they steal it — except the Offside Trap')}
-        {section('Hand', 'Hand cards', '— played before a flip, one per flip')}
-        {section('Modifier', 'Neutral modifiers', '— secretly change the grey cards; both teams’ choices are added up')}
-      </div>
+      <TacticCards ed={ed} busy={busy} focus={coaching ? coachStep : null} />
     </div>
   )
 }

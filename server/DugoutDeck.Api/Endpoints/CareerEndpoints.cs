@@ -11,6 +11,8 @@ public record RenameCareerRequest(string SaveName);
 public record PlayCareerRequest(bool UseLastTactic);
 public record NextSeasonRequest(int? AcceptTeamId);
 public record CardRequest(string Code);
+public record TacticPlanRequest(string? Name, TacticSpec? Tactic);
+public record ActivePlanRequest(int Slot);
 
 public static class CareerEndpoints
 {
@@ -67,7 +69,8 @@ public static class CareerEndpoints
             return Results.Ok(new
             {
                 career.Id, career.SaveName, career.ManagerName, career.Reputation, career.Money,
-                hasTactic = career.LastTacticJson != null,
+                hasTactic = TacticPlanSet.Preferred(career) != null,
+                activePlan = TacticPlanSet.Load(career) is var ps && ps.Plans[ps.Active].Tactic != null ? ps.Plans[ps.Active].Name : null,
                 status = career.Status.ToString(),
                 team = new
                 {
@@ -224,6 +227,88 @@ public static class CareerEndpoints
             var career = await careers.LoadAsync(id) ?? throw new GameRuleException("Career not found.");
             return Results.Ok(new { level = await careers.UpgradeClubAsync(career) });
         });
+
+        // ---- tactic plans (the Tactics tab): three plans, one of them is loaded before every match
+        api.MapGet("/{id:int}/tactics", async (int id, AppDbContext db, CareerService careers, MatchService matches) =>
+        {
+            var career = await careers.LoadAsync(id);
+            return career is null ? Results.NotFound() : Results.Ok(await PlansView(career, db, careers, matches));
+        });
+
+        api.MapPut("/{id:int}/tactics/{slot:int}", async (int id, int slot, TacticPlanRequest req, AppDbContext db, CareerService careers, MatchService matches) =>
+        {
+            var career = await careers.LoadAsync(id);
+            if (career is null) return Results.NotFound();
+            if (slot < 0 || slot >= TacticPlanSet.Slots) throw new GameRuleException("Unknown plan.");
+            var set = TacticPlanSet.Load(career);
+            var plan = set.Plans[slot];
+            if (req.Name != null)
+            {
+                var name = req.Name.Trim();
+                if (name.Length == 0) name = TacticPlanSet.DefaultNames[slot];
+                plan.Name = name.Length > 24 ? name[..24] : name;
+            }
+            if (req.Tactic != null)
+            {
+                var season = await careers.CurrentSeasonAsync(id);
+                var rating = (await careers.RatingsAsync(id))[season.TeamId];
+                var catalog = await matches.CatalogAsync();
+                var collection = await careers.CollectionAsync(id);
+                // checked against the home budget (one point more); away the pre-match screen asks to drop a card if needed
+                var budget = Rules.TacticPoints(rating, true) + Rules.DifficultyPoints(career.Difficulty);
+                var empty = req.Tactic.Field.Count == 0 && req.Tactic.Hand.Count == 0 && req.Tactic.Modifiers.Count == 0;
+                if (!empty)
+                {
+                    var errors = TacticRules.Validate(req.Tactic, catalog, budget, Rules.HandSize(rating), c => collection.GetValueOrDefault(c));
+                    if (errors.Count > 0) throw new GameRuleException(string.Join(" ", errors));
+                }
+                plan.Tactic = empty ? null : req.Tactic;
+            }
+            set.Save(career);
+            await db.SaveChangesAsync();
+            return Results.Ok(await PlansView(career, db, careers, matches));
+        });
+
+        api.MapPost("/{id:int}/tactics/active", async (int id, ActivePlanRequest req, AppDbContext db, CareerService careers, MatchService matches) =>
+        {
+            var career = await careers.LoadAsync(id);
+            if (career is null) return Results.NotFound();
+            var set = TacticPlanSet.Load(career);
+            set.Active = Math.Clamp(req.Slot, 0, TacticPlanSet.Slots - 1);
+            set.Save(career);
+            await db.SaveChangesAsync();
+            return Results.Ok(await PlansView(career, db, careers, matches));
+        });
+    }
+
+    /// <summary>The Tactics tab: three plans, the active one, and everything the tactic editor needs.</summary>
+    private static async Task<object> PlansView(Career career, AppDbContext db, CareerService careers, MatchService matches)
+    {
+        var season = await careers.CurrentSeasonAsync(career.Id);
+        var rating = (await careers.RatingsAsync(career.Id))[season.TeamId];
+        var catalog = await matches.CatalogAsync();
+        var collection = await careers.CollectionAsync(career.Id);
+        var extra = Rules.DifficultyPoints(career.Difficulty);
+        var away = Rules.TacticPoints(rating, false) + extra;
+        var handSize = Rules.HandSize(rating);
+        var set = TacticPlanSet.Load(career);
+        return new
+        {
+            active = set.Active,
+            plans = set.Plans.Select(p => new
+            {
+                name = p.Name, tactic = p.Tactic,
+                cost = p.Tactic == null ? 0 : TacticRules.Cost(p.Tactic, catalog),
+                // a plan that is fine at home may cost one point too many away
+                awayErrors = p.Tactic == null ? new List<string>() : TacticRules.Validate(p.Tactic, catalog, away, handSize, c => collection.GetValueOrDefault(c))
+            }),
+            setup = new
+            {
+                budget = away + 1, awayBudget = away, handSize, maxModifiers = Rules.MaxModifiers, fieldCards = Rules.FieldCardsPerTeam,
+                lastTactic = new TacticSpec(),
+                cards = MatchEndpoints.SetupCards(catalog, collection)
+            }
+        };
     }
 
     private static object FixtureDto(Fixture f) => new

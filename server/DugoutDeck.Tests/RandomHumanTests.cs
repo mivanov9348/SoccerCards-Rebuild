@@ -27,7 +27,7 @@ public class RandomHumanTests(ITestOutputHelper output)
                 while (s.Phase != MatchPhase.Finished && guard++ < 1500)
                 {
                     var role = s.Phase == MatchPhase.Decision && s.Decision != null
-                        ? (s.Decision.Kind == DecisionKind.Discard ? (s.Decision.Attacker == human ? "human" : "ai") : "human")
+                        ? (s.Decision.Kind == DecisionKind.Discard ? (s.Decision.Attacker == human ? "ai" : "human") : "human")
                         : s.Turn == human ? "human" : "ai";
                     if (role == "ai") { engine.AiStep(s); continue; }
                     if (s.Phase == MatchPhase.Decision) { engine.DecideHuman(s, rng.Next(3), rng.NextDouble(), false); continue; }

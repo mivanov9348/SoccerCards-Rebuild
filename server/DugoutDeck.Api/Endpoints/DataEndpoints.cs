@@ -26,6 +26,16 @@ public static partial class DataEndpoints
                 .Select(l => new { l.Id, l.Name, l.Country, l.Tier, l.IsPlayable, teamCount = l.Teams.Count })
                 .ToListAsync());
 
+        // the coloured places of a league table (champion, Europe, promotion, relegation)
+        api.MapGet("/leagues/{id:int}/zones", async (int id, AppDbContext db) =>
+        {
+            var all = await db.Leagues.AsNoTracking().ToListAsync();
+            var league = all.FirstOrDefault(l => l.Id == id);
+            if (league is null) return Results.NotFound();
+            var count = await db.Teams.CountAsync(t => t.LeagueId == id);
+            return Results.Ok(Careers.TableZones.For(league, all, count));
+        });
+
         api.MapPost("/leagues", async (LeagueInput input, AppDbContext db) =>
         {
             ValidateLeague(input);

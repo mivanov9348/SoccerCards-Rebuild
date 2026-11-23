@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import type { Fixture, StandingRow } from '../api'
+import { api, type Fixture, type StandingRow, type TableZone } from '../api'
 
 /** Generated badge: a shield in the club colors with its initials (no real crests). */
 export function Badge({ name, primary, secondary, size = 40 }: { name: string; primary: string; secondary: string; size?: number }) {
@@ -78,9 +78,32 @@ export function useLoad<T>(loader: () => Promise<T>, deps: unknown[]) {
   return { data, error, loading, reload, setData, setError }
 }
 
-export function StandingsTable({ rows, highlight }: { rows: StandingRow[]; highlight?: number }) {
-  const n = rows.length
+/** Zones of a league table, by league id (cached: they only change with seed.json). */
+const zoneCache = new Map<number, Promise<TableZone[]>>()
+function useZones(leagueId?: number) {
+  const [zones, setZones] = useState<TableZone[]>([])
+  useEffect(() => {
+    if (!leagueId) return setZones([])
+    let alive = true
+    if (!zoneCache.has(leagueId)) zoneCache.set(leagueId, api.leagueZones(leagueId).catch(() => []))
+    void zoneCache.get(leagueId)!.then((z) => alive && setZones(z))
+    return () => {
+      alive = false
+    }
+  }, [leagueId])
+  return zones
+}
+
+/**
+ * A league table. With leagueId the places are coloured by that league's own rules — champion, European places,
+ * promotion and relegation (as many as really go up or down) — with a legend underneath.
+ */
+export function StandingsTable({ rows, highlight, leagueId }: { rows: StandingRow[]; highlight?: number; leagueId?: number }) {
+  const zones = useZones(leagueId)
+  const zoneOf = (pos: number) => zones.find((z) => pos >= z.from && pos <= z.to)?.kind ?? ''
+  const kinds = zones.filter((z, i) => zones.findIndex((x) => x.kind === z.kind) === i)
   return (
+    <>
     <table className="table standings">
       <thead>
         <tr>
@@ -101,7 +124,7 @@ export function StandingsTable({ rows, highlight }: { rows: StandingRow[]; highl
             key={r.teamId}
             className={[
               r.teamId === highlight ? 'highlight' : '',
-              r.position === 1 ? 'zone-champion' : r.position <= 3 ? 'zone-europe' : r.position === n ? 'zone-bottom' : '',
+              zoneOf(r.position) ? `zone-${zoneOf(r.position)}` : '',
             ].join(' ')}
           >
             <td>{r.position}</td>
@@ -122,6 +145,18 @@ export function StandingsTable({ rows, highlight }: { rows: StandingRow[]; highl
         ))}
       </tbody>
     </table>
+    {kinds.length > 0 && (
+      <div className="legend small muted">
+        {kinds.map((z) => (
+          <span key={z.kind}>
+            <i className={`lg ${z.kind}`} />
+            {z.label}
+          </span>
+        ))}
+        {zones.every((z) => z.kind !== 'relegation' && z.kind !== 'promotion') && <span> · no relegation (one division only)</span>}
+      </div>
+    )}
+    </>
   )
 }
 
