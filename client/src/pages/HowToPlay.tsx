@@ -59,8 +59,9 @@ export default function HowToPlay() {
             attacks (or switch on automatic mini-games in Settings).
           </li>
           <li>
-            <b>Hand cards</b> are played before a flip, one per flip. Second yellow card = red; a red card costs you a hand card and your
-            passes no longer give Big Chances.
+            <b>Hand cards</b> are played before a flip, one per flip. Second yellow card = red. After a red card the <b>opponent</b> chooses which of
+            your hand cards you lose (when the computer is sent off, its hand is shown and you take one away), and your passes no
+            longer give Big Chances.
           </li>
           <li>Knockout matches that end level go to a penalty shootout (5 each, then sudden death).</li>
         </ul>
@@ -71,12 +72,23 @@ export default function HowToPlay() {
           Both teams&apos; modifiers are revealed together and added up. The home team gets +1 tactic point.
           The rating never changes the odds of a card — it gives more points, more hand cards and a smarter computer.
         </p>
+        <p>
+          In a career, prepare up to <b>three plans</b> in the <b>Tactics</b> tab between matches. The ★ active plan is loaded before
+          every match; you can still change it or pick another plan on the pre-match screen.
+        </p>
+        <h2>During the match</h2>
+        <p>
+          The <b>Active effects</b> panel next to the grid says in words what is running for both teams (an effect lights up when it is
+          used up), and <b>Cards played</b> lists every card played so far. The match <b>pace</b> (Fast / Normal / Dramatic, buttons
+          under the grid or in Settings) sets how long the build-up before important cards is.
+        </p>
         <h2>Career</h2>
         <p>
           Manage a club in one of 35 leagues from 25 countries: England, Spain, Germany, Italy, France, the Netherlands, Portugal,
           Turkey, Scotland and Bulgaria with two divisions each (promotion and relegation, a national cup), plus the top divisions of
           Belgium, Greece, Austria, Switzerland, Denmark, Czechia, Croatia, Serbia, Romania, Poland, Ukraine, Cyprus, Hungary, Norway and
-          Sweden. Leagues of 12 teams or fewer play each other three times. Three European cups of 32 teams. Every other match is played in the background with exactly the same
+          Sweden. Leagues of 12 teams or fewer play each other three times; nobody plays more than two home or two away matches in a
+          row. The table colours follow each league: champion, European places, promotion and relegation. Three European cups of 32 teams. Every other match is played in the background with exactly the same
           rules. Win money and cards, buy packs, single cards and club upgrades in the Store, meet the board&apos;s target and get job
           offers from bigger clubs. Your card collection stays with you when you move.
         </p>

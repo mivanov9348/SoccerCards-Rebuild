@@ -48,6 +48,10 @@ back (a card burned in the first half returns in the second). There is no clock 
 *Balance change vs. the design draft: 4 Pass / 1 Goal instead of 3 Pass / 2 Goal — with team cards in both halves the draft
 produced ~10 goals per match.*
 
+**Always at least one of each (1.1):** whatever the modifiers, every grid keeps at least one of each grey card — at least one
+Goal, one Penalty, one Corner, one Free Kick, one Tackle, one Save, one Miss, one Offside, one Yellow and one Red card. A goal can
+always come "out of nowhere"; the "−" modifiers only cancel extra copies.
+
 ### Hints
 
 Next to every row and under every column is the number of **dangerous neutral cards** (Tackle, Offside, Save, Miss, Yellow,
@@ -133,7 +137,9 @@ choose when to play each card — the longer it waits, the bigger the risk that 
 ## 5. Discipline
 
 - Yellow card: recorded. A **second yellow** for the same team in a match is a red.
-- Red card: the team gives up one hand card (the human chooses) and its pass streak no longer gives Big Chances.
+- Red card *(changed in 1.1)*: the **opponent** chooses which hand card the sent-off team loses. When the computer is sent off,
+  its hand is revealed and you take away the card you want; when you are sent off, the computer takes your most valuable hand
+  card (the highest tactic cost). The sent-off team's pass streak no longer gives Big Chances.
 
 ## 6. Tactics
 
@@ -141,6 +147,10 @@ choose when to play each card — the longer it waits, the bigger the risk that 
 - Budget: **10 tactic points** + 0–3 by rating (64+ → 1, 72+ → 2, 80+ → 3) + 1 for the home team.
 - Hand cards: 1 (rating < 66), 2 (66+), 3 (78+).
 - Tactics can be saved; in a career the last tactic is used automatically ("Play (last tactic)").
+- **Tactics tab (1.1):** a career has three plans (Plan A / B / C, renameable) that you prepare calmly between matches. One plan is
+  **★ active**: it is loaded before every match and used by "Play (plan name)". On the pre-match screen you can still change it or
+  switch to another plan with one click. A plan is checked against the home budget; if it costs one point too many for an away
+  match, the Tactics tab says so and the pre-match screen asks you to drop a card.
 - Every career starts with an **empty tactic**: the first match asks you to build one. The first time ever, a coach panel explains
   each step (field cards → hand cards → modifiers) while you pick.
 - The computer builds its tactic from its rating and the opponent (attacking / balanced / defensive). Rare cards from rating 66,
@@ -150,22 +160,22 @@ choose when to play each card — the longer it waits, the bigger the risk that 
 
 Both teams secretly pick up to 2 modifiers; they are revealed together and **added up** (e.g. +2 Goal and −1 Goal = +1 Goal).
 Removals are applied first, then additions in a fixed order (Goal, Penalty, Corner, Tackle), so the result does not depend on who
-chose what.
+chose what. A "−" modifier never removes the last card of its kind (see 1).
 
 | Modifier | Points | Effect |
 |---|---|---|
 | +1 / +2 Goal | 2 / 4 | Pass cards become Goals |
-| −1 / −2 Goal | 2 / 4 | Goals become Pass cards |
+| −1 / −2 Goal | 1 / 2 | Extra Goals become Pass cards (at least 1 Goal stays) |
 | +1 / +2 Corner | 1 / 2 | Pass cards become Corners |
-| −1 / −2 Corner | 1 / 2 | Corners become Pass cards |
+| −1 / −2 Corner | 1 / 1 | Extra Corners become Pass cards (at least 1 Corner stays) |
 | +1 Tackle | 1 | A Pass becomes a Tackle |
 | +1 Penalty | 3 | A Pass becomes a Penalty |
 | +1 Free Kick *(1.1)* | 1 | A Pass becomes a Free Kick |
-| −1 Tackle *(1.1)* | 1 | A Tackle becomes a Pass |
+| −1 Tackle *(1.1)* | 1 | A Tackle becomes a Pass (at least 1 Tackle stays) |
 | +1 Save *(1.1)* | 1 | A Pass becomes a Save |
 | Wet pitch *(1.1)* | 1 | A Pass becomes a Miss |
 
-Limits: Pass ≥ 1, Goal 0–5, Corner 0–4, Tackle 0–6, Penalty 0–3, Miss 0–4, Yellow 0–3, Free Kick 0–3, Save 0–3. Modifiers apply to both halves.
+Limits: Pass ≥ 1, Goal 1–5, Corner 1–4, Tackle 1–6, Penalty 1–3, Miss 1–4, Yellow 1–3, Free Kick 1–3, Save 1–3. Modifiers apply to both halves.
 
 ## 7. Ratings, difficulty and the computer
 
@@ -193,6 +203,12 @@ Background matches are not affected. The computer never knows where your team ca
   cup: England, Spain, Germany, Italy, France, Netherlands, Portugal, Turkey, Scotland, Bulgaria. Top division only: Belgium,
   Greece, Austria, Switzerland, Denmark, Czechia, Croatia, Serbia, Romania, Poland, Ukraine, Cyprus, Hungary, Norway, Sweden.
   Leagues of 12 teams or fewer play each other three times.
+- **Fixtures (1.1):** a balanced schedule — no team plays more than **2 home or 2 away matches in a row**. The second half of the
+  season is the first half with home and away swapped. New careers get it at once; a career started before 1.1 gets it from its
+  next season.
+- **Table colours (1.1):** every league table is coloured by that league's own rules, with a legend underneath: gold = champion,
+  blue = Champions Cup, orange = Continental Cup, teal = Challenge Cup, green = promotion (second divisions), red = relegation
+  (as many teams as really go down: 3, 2 or 1 in Scotland). Countries with only one division have no relegation.
 - **Calendar:** one weekly calendar for everything (the longest league has 46 rounds; leagues with fewer rounds have rest weeks)
   plus 5 cup weeks and 5 European weeks — 56 weeks. After your match every other match of the week is played in the background
   with the same rules. "Continue" skips weeks in which your team has no match.
@@ -226,9 +242,16 @@ Background matches are not affected. The computer never knows where your team ca
 - **Card gallery:** every card with its picture, effect, type, cost, rarity and store price (main menu → Card gallery).
 - **Rate & review:** opens the game's itch.io page in the browser (main menu, About, after a match).
 - **Fullscreen (F11):** in the desktop app the window covers the whole monitor, taskbar included.
+- **Match pace (1.1):** Settings → *Match pace* and the buttons under the grid: **Fast** (no pauses), **Normal**, **Dramatic**.
+  The computer "thinks", raises its card and turns it over. Important cards — team cards, Goal, Penalty, Red Card, steals and
+  goals — get a build-up: the card is raised and glows, the crowd holds its breath, then it turns over with its sound and effect.
+  Your own grey cards always turn over at once (nobody likes waiting for themself). *Reduce animations* works like Fast.
+- **Active effects (1.1):** a panel next to the grid lists everything running for both teams in words (e.g. "Captain: the next
+  Tackle is ignored"). When an effect is used up it lights up for a moment and is crossed out. Below it, **Cards played** lists the
+  cards each team has played (hand, own, stolen, trap, decoy).
 - **Animations:** 3D card flips, red shake for dangerous cards, purple glow for steals, gold for goals and penalties, a GOAL! / HALF
   TIME / FULL TIME banner (confetti for your own goals; the computer waits while it is shown), the second-half grid is dealt card by
-  card, row/column highlight with the danger count on hover, speed buttons in the match, animated pack opening. Settings →
+  card, row/column highlight with the danger count on hover, pace buttons in the match, animated pack opening. Settings →
   *Reduce animations* turns off confetti and shaking.
 - **Sound:** every effect and the menu music are generated in code (`client/src/sound.ts`, Web Audio API) — no recordings, nothing
   copyrighted. Crowd ambience during matches, music in the menus, volume sliders in Settings, **M** mutes everywhere.
