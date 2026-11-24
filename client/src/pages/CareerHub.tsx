@@ -326,7 +326,7 @@ export default function CareerHub() {
             <SeasonEnd c={c} busy={busy} onNext={(teamId) => run(() => api.nextSeason(careerId, teamId))} />
             <NextMatch
               c={c}
-              busy={busy}
+              busy={busy || !!c.draft}
               onPlay={play}
               onSimulate={() => run(() => api.simulateCareer(careerId))}
               onContinue={() => run(() => api.continueCareer(careerId))}
