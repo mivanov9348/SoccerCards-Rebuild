@@ -76,6 +76,13 @@ export default function HowToPlay() {
           In a career, prepare up to <b>three plans</b> in the <b>Tactics</b> tab between matches. The ★ active plan is loaded before
           every match; you can still change it or pick another plan on the pre-match screen.
         </p>
+        <h2>Card tiers</h2>
+        <p>
+          Every copy of a card is <b>Normal</b>, <b>Rare</b>, <b>Ultra Rare</b> or <b>Legendary</b>. Cards with a chance get +4 / +8 /
+          +12% (a Legendary Striker scores 47% instead of 35%); the others get an extra use or a quick play on Ultra Rare and
+          Legendary (a Legendary Captain ignores 3 Tackles). The bonus goes with the card — steal a Legendary Striker and it shoots for
+          you. Packs of 3, 5 or 10 cards are in the Store; selling is cheap and always possible.
+        </p>
         <h2>During the match</h2>
         <p>
           The <b>Active effects</b> panel next to the grid says in words what is running for both teams (an effect lights up when it is
@@ -90,7 +97,8 @@ export default function HowToPlay() {
           Sweden. Leagues of 12 teams or fewer play each other three times; nobody plays more than two home or two away matches in a
           row. The table colours follow each league: champion, European places, promotion and relegation. Three European cups of 32 teams. Every other match is played in the background with exactly the same
           rules. Win money and cards, buy packs, single cards and club upgrades in the Store, meet the board&apos;s target and get job
-          offers from bigger clubs. Your card collection stays with you when you move.
+          offers from bigger clubs. The cards belong to the club: a new career starts with a draft (pick 1 of 3, ten times), and if you
+          move to another club you leave the cards behind and get the new club&apos;s squad cards.
         </p>
       </div>
       {cards && (

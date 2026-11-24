@@ -223,7 +223,12 @@ Background matches are not affected. The computer never knows where your team ca
 - **Board target** by rating rank in the league: title (top 2) / top 4 (3rd–5th) / top half (6th–10th) / avoid the drop.
   Review: target − actual position, +2 for the cup, +1 per European knockout win. ≤ −4 or last place = sacked.
 - **Reputation** 0–100. **Offers:** a good season brings offers from stronger clubs in any league; a sacked manager gets offers
-  from weaker clubs. The card collection stays with the manager.
+  from weaker clubs.
+- **The cards belong to the club (1.2):** the manager has no personal collection. Taking a job at another club means leaving the
+  cards behind; the new club's own squad cards (6 field + 4 hand cards that the club can use, with tiers by its rating) become
+  yours. Tactic plans stay and are checked against the new cards before the next match.
+- **Draft (1.2):** a new career starts with a "pick 1 of 3" draft instead of a starter collection: 10 rounds, field cards in
+  rounds 1–6 and hand cards in rounds 7–10. Each card comes with a tier (pack odds). Matches can be played once the draft is done.
 
 ## 9. Money, rewards and the Store
 
@@ -231,15 +236,72 @@ Background matches are not affected. The computer never knows where your team ca
   final position. Top-five leagues pay ×2; Netherlands, Portugal, Turkey, Belgium ×1.5; Scotland, Greece, Austria, Switzerland,
   Denmark, Czechia, Norway, Sweden ×1.2; the rest ×1. Second divisions ×0.4.
 - **Card rewards:** a win gives a card 30% of the time (European knockout wins always); meeting the board target gives a pack;
-  every trophy and a league title give a pack with an epic card.
-- **Store** (in-game money only, no pay-to-win): packs (3 cards, at least one rare), single cards, selling duplicates (⅓ of the
-  price), club upgrades (+2 rating per level, up to 10 levels — more points, more hand cards, smarter play, more income).
+  every trophy and a league title give a pack with an epic card; **every new season starts with a free pack from the board (1.2)**.
+  Every card from a reward comes with a tier.
+- **Store** (in-game money only, no pay-to-win) *(changed in 1.2)*:
+
+  | Pack | Price | Guarantee |
+  |---|---|---|
+  | 3 cards | €500K | — |
+  | 5 cards | €800K | at least one Rare or better |
+  | 10 cards | €1.5M | at least one Rare or better |
+
+  Opening: the sealed pack shakes until you tear it open; the cards come out face down and their backs glow silver / gold /
+  rainbow for Rare / Ultra Rare / Legendary before you flip them (click one by one, or "Reveal all").
+  Single cards are Normal copies at the card's store price. Club upgrades: +2 rating per level, up to 10 levels.
+- **Market, always open (1.2):** any copy can be sold at any time, cheaply — Normal €15K, Rare €60K, Ultra Rare €250K,
+  Legendary €1M. "Sell all duplicates" sells every Normal copy beyond the first of each card.
+
+## 9a. Card tiers (1.2)
+
+Every copy of a field or hand card is **Normal**, **Rare**, **Ultra Rare** or **Legendary** (the free Squad Player has no
+tiers). Pack odds per card: Normal 80%, Rare 16%, Ultra Rare 3.2%, Legendary 0.8%. The card's old rarity (common / rare / epic)
+now only means how often the card itself turns up in packs ("common / uncommon / scarce" in the gallery). The tactic cost is the
+same for every tier. **The bonus travels with the card: a thief who steals a Legendary Striker shoots with the Legendary chance.**
+
+**Cards with a chance:** +4 / +8 / +12 percentage points for Rare / Ultra Rare / Legendary.
+
+| Card | Normal | Rare | Ultra Rare | Legendary |
+|---|---|---|---|---|
+| Striker | 35% | 39% | 43% | 47% |
+| Long Shot | 12% | 16% | 20% | 24% |
+| Super Sub (2nd half) | 60% | 64% | 68% | 72% |
+| Big Chance card | +0 | +4 | +8 | +12 to the Big Chance shot |
+| Winger | +0 | +4 | +8 | +12 to the corner shot |
+| Target Man | +20 | +24 | +28 | +32 to the next cross |
+| Goalkeeper | −20 | −24 | −28 | −32 for the next shot against you |
+| VAR | 40% | 44% | 48% | 52% to disallow the goal |
+| Penalty Taker | +10 | +14 | +18 | +22 to the next penalty |
+
+**Cards without a chance:** the same on Normal and Rare (a Rare copy looks better and sells for more); Ultra Rare and Legendary
+add an extra:
+
+| Card | Ultra Rare | Legendary |
+|---|---|---|
+| Captain | ignores 2 Tackles | ignores 3 Tackles |
+| Wall | stops 2 goals | stops 3 goals |
+| Sweeper | ignores 2 Offside/Save cards | ignores 3 |
+| 12th Man | ignores 2 dangerous cards | ignores 3 |
+| Calm | lasts 2 cards | lasts 3 cards |
+| Press | works 2 times | works 3 times |
+| Counter Attack | 3 extra cards | 4 extra cards |
+| Playmaker | +1 free Scout (2 in all) | +2 free Scouts (3 in all) |
+| Scout | +1 free Scout | +2 free Scouts |
+| Offside Trap, Decoy | a free Scout for the owner when it springs | two free Scouts |
+| Swap, Analysis, Substitution, Marking | quick play: it does not use your one hand card for the flip | the same |
+| Burn | quick play | quick play, burns 2 cards |
+
+**The computer** has tiers too in careers (not in friendlies): weak clubs mostly Normal, average clubs some Rare, strong clubs
+often Rare, sometimes Ultra Rare and now and then Legendary. Background matches use the same tiers.
+
+Balance with tiers (2,000 career-style matches): 5.2 goals per match (5.1 without tiers); strong (85) vs weak (58) 63% / 18%.
 
 ## 10. Presentation
 
 - **Tutorial:** a scripted 14-step match (main menu → Tutorial) that shows every rule once.
 - **Card pictures:** images in `client/public/cards/` (file name = card code) replace the icons on the cards; the name is written under the picture and the icon sits in a corner badge. Larger cards tilt in 3D, rare and epic cards shine (holo), right-click zooms any card.
-- **Card gallery:** every card with its picture, effect, type, cost, rarity and store price (main menu → Card gallery).
+- **Card gallery:** every card with its picture, effect, type, cost, how often it turns up in packs, store price and what each
+  tier adds; the tier buttons under the big card show its frame (main menu → Card gallery).
 - **Rate & review:** opens the game's itch.io page in the browser (main menu, About, after a match).
 - **Fullscreen (F11):** in the desktop app the window covers the whole monitor, taskbar included.
 - **Match pace (1.1):** Settings → *Match pace* and the buttons under the grid: **Fast** (no pauses), **Normal**, **Dramatic**.
