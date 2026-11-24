@@ -1,41 +1,87 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { api, type MatchView, type SetupCard, type Tactic, type TacticEditorSetup } from '../api'
+import { api, TIER_NAMES, TIER_SHORT, type MatchView, type SetupCard, type Tactic, type TacticEditorSetup } from '../api'
 import { ErrorBox, useLoad } from './common'
-import { CardThumb, iconFor } from './GameCard'
+import { CardThumb, iconFor, TierBadge } from './GameCard'
 import { TacticCoach } from './TacticCoach'
 import { saveSettings, useSettings } from '../settings'
 
-const rarityClass = (r: string) => `rarity-${r.toLowerCase()}`
+const tierOf = (tiers: number[] | undefined, i: number) => tiers?.[i] ?? 0
 
-const copy = (t: Tactic, handSize: number): Tactic => ({ field: [...t.field], hand: t.hand.slice(0, handSize), modifiers: [...t.modifiers] })
-
-/** The state of a tactic being built: points, owned copies, adding and removing cards. */
+/**
+ * The state of a tactic being built: points, owned copies per tier, adding and removing cards. Each field and hand card
+ * remembers the tier of the copy it uses (1.2); a click on a card takes the best copy still free.
+ */
 export function useTacticEditor(setup: TacticEditorSetup, initial: Tactic) {
-  const [tactic, setTactic] = useState<Tactic>(() => copy(initial, setup.handSize))
-  const [error, setError] = useState<string | null>(null)
   const byCode = useMemo(() => Object.fromEntries(setup.cards.map((c) => [c.code, c])), [setup.cards])
+
+  /** Copies of a card in a tier that the club owns (Infinity for friendlies and free cards — they are all Normal). */
+  const ownedIn = (code: string, tier: number) => {
+    const c = byCode[code]
+    if (!c || c.tiers == null) return tier === 0 ? Infinity : 0
+    return c.tiers[tier] ?? 0
+  }
+
+  /** A loaded tactic (plan, saved tactic, last tactic) may ask for copies the club no longer has in that tier: each card
+   * then takes the best copy that is free — so an old Normal Striker becomes your Rare Striker if that is what you own. */
+  const normalise = (t: Tactic): Tactic => {
+    const taken = new Map<string, number>()
+    const pick = (code: string, wanted: number) => {
+      const free = (tier: number) => ownedIn(code, tier) - (taken.get(`${code}|${tier}`) ?? 0) > 0
+      let tier = free(wanted) ? wanted : [3, 2, 1, 0].find(free)
+      if (tier == null) tier = wanted // not owned at all: validation explains it
+      taken.set(`${code}|${tier}`, (taken.get(`${code}|${tier}`) ?? 0) + 1)
+      return tier
+    }
+    const field = [...t.field]
+    const hand = t.hand.slice(0, setup.handSize)
+    return {
+      field,
+      hand,
+      modifiers: [...t.modifiers],
+      fieldTiers: field.map((c, i) => pick(c, tierOf(t.fieldTiers, i))),
+      handTiers: hand.map((c, i) => pick(c, tierOf(t.handTiers, i))),
+    }
+  }
+
+  const [tactic, setTactic] = useState<Tactic>(() => normalise(initial))
+  const [error, setError] = useState<string | null>(null)
   const cost = [...tactic.field, ...tactic.hand, ...tactic.modifiers].reduce((s, c) => s + (byCode[c]?.cost ?? 0), 0)
   const left = setup.budget - cost
+  const usedIn = (code: string, tier: number) =>
+    tactic.field.filter((c, i) => c === code && tierOf(tactic.fieldTiers, i) === tier).length +
+    tactic.hand.filter((c, i) => c === code && tierOf(tactic.handTiers, i) === tier).length
   const used = (code: string) => [...tactic.field, ...tactic.hand].filter((c) => c === code).length
-  const available = (c: SetupCard) => c.owned == null || used(c.code) < c.owned
+  const freeIn = (code: string, tier: number) => ownedIn(code, tier) - usedIn(code, tier)
+  const bestFree = (code: string) => [3, 2, 1, 0].find((t) => freeIn(code, t) > 0)
+  const available = (c: SetupCard) => c.kind === 'Modifier' || bestFree(c.code) != null
 
-  const add = (c: SetupCard) => {
+  /** Adds a card: the given tier, or the best free copy. */
+  const add = (c: SetupCard, tier?: number) => {
     setError(null)
     if (c.cost > left) return setError(`Not enough tactic points for ${c.name}.`)
-    if (!available(c)) return setError(`You don't own more ${c.name} cards.`)
+    if (c.kind === 'Modifier') {
+      return setTactic((t) => (t.modifiers.length >= setup.maxModifiers || t.modifiers.includes(c.code) ? t : { ...t, modifiers: [...t.modifiers, c.code] }))
+    }
+    const use = tier ?? bestFree(c.code)
+    if (use == null || freeIn(c.code, use) <= 0) return setError(`You don't own more ${tier != null ? TIER_NAMES[tier] + ' ' : ''}${c.name} cards.`)
     setTactic((t) => {
-      if (c.kind === 'Field') return t.field.length >= setup.fieldCards ? t : { ...t, field: [...t.field, c.code] }
-      if (c.kind === 'Hand') return t.hand.length >= setup.handSize ? t : { ...t, hand: [...t.hand, c.code] }
-      if (t.modifiers.length >= setup.maxModifiers || t.modifiers.includes(c.code)) return t
-      return { ...t, modifiers: [...t.modifiers, c.code] }
+      if (c.kind === 'Field')
+        return t.field.length >= setup.fieldCards ? t : { ...t, field: [...t.field, c.code], fieldTiers: [...(t.fieldTiers ?? t.field.map(() => 0)), use] }
+      return t.hand.length >= setup.handSize ? t : { ...t, hand: [...t.hand, c.code], handTiers: [...(t.handTiers ?? t.hand.map(() => 0)), use] }
     })
   }
-  const remove = (list: keyof Tactic, i: number) => setTactic((t) => ({ ...t, [list]: t[list].filter((_, j) => j !== i) }))
+  const remove = (list: 'field' | 'hand' | 'modifiers', i: number) =>
+    setTactic((t) => {
+      const next = { ...t, [list]: t[list].filter((_, j) => j !== i) }
+      if (list === 'field') next.fieldTiers = (t.fieldTiers ?? []).filter((_, j) => j !== i)
+      if (list === 'hand') next.handTiers = (t.handTiers ?? []).filter((_, j) => j !== i)
+      return next
+    })
   const load = (t: Tactic) => {
     setError(null)
-    setTactic(copy(t, setup.handSize))
+    setTactic(normalise(t))
   }
-  return { setup, tactic, load, byCode, cost, left, used, available, add, remove, error, setError }
+  return { setup, tactic, load, byCode, cost, left, used, freeIn, available, add, remove, error, setError }
 }
 
 type Editor = ReturnType<typeof useTacticEditor>
@@ -54,34 +100,27 @@ export function TacticBudget({ ed, note }: { ed: Editor; note?: ReactNode }) {
   )
 }
 
-/** The chosen cards (click to remove). */
+/** The chosen cards (click to remove), with the tier of each copy. */
 export function TacticChosen({ ed }: { ed: Editor }) {
   const { tactic, setup, byCode, remove } = ed
+  const chip = (list: 'field' | 'hand', c: string, i: number, tier: number) => (
+    <button key={i} className={`chip tier-chip-${tier}`} onClick={() => remove(list, i)} title={`Remove${tier ? ` (${TIER_NAMES[tier]}: ${byCode[c]?.bonuses?.[tier] || 'better copy'})` : ''}`}>
+      {iconFor(c)} {byCode[c]?.name ?? c} <TierBadge tier={tier} /> ✕
+    </button>
+  )
   return (
     <div className="panel tb-chosen">
       <div>
         <h3>
           Field cards ({tactic.field.length}/{setup.fieldCards})
         </h3>
-        <div className="chips">
-          {tactic.field.map((c, i) => (
-            <button key={i} className="chip" onClick={() => remove('field', i)} title="Remove">
-              {iconFor(c)} {byCode[c]?.name ?? c} ✕
-            </button>
-          ))}
-        </div>
+        <div className="chips">{tactic.field.map((c, i) => chip('field', c, i, tierOf(tactic.fieldTiers, i)))}</div>
       </div>
       <div>
         <h3>
           Hand ({tactic.hand.length}/{setup.handSize})
         </h3>
-        <div className="chips">
-          {tactic.hand.map((c, i) => (
-            <button key={i} className="chip" onClick={() => remove('hand', i)} title="Remove">
-              {iconFor(c)} {byCode[c]?.name ?? c} ✕
-            </button>
-          ))}
-        </div>
+        <div className="chips">{tactic.hand.map((c, i) => chip('hand', c, i, tierOf(tactic.handTiers, i)))}</div>
       </div>
       <div>
         <h3>
@@ -99,7 +138,7 @@ export function TacticChosen({ ed }: { ed: Editor }) {
   )
 }
 
-/** All cards to choose from, by kind. */
+/** All cards to choose from, by kind. In a career each card shows its free copies per tier; click a tier to use that copy. */
 export function TacticCards({ ed, busy, focus }: { ed: Editor; busy?: boolean; focus?: 'Field' | 'Hand' | 'Modifier' | null }) {
   const section = (kind: 'Field' | 'Hand' | 'Modifier', title: string, hint: string) => (
     <div className={`tb-section ${focus === kind ? 'coach-focus' : ''}`}>
@@ -109,17 +148,48 @@ export function TacticCards({ ed, busy, focus }: { ed: Editor; busy?: boolean; f
       <div className="tb-cards">
         {ed.setup.cards
           .filter((c) => c.kind === kind)
-          .map((c) => (
-            <button key={c.code} className={`tb-card ${rarityClass(c.rarity)}`} disabled={busy || !ed.available(c)} onClick={() => ed.add(c)} title={c.description}>
-              <span className="tb-icon">
-                <CardThumb code={c.code} />
-              </span>
-              <span className="tb-name">{c.name}</span>
-              <span className="tb-cost">{c.cost} pt</span>
-              {c.owned != null && <span className="tb-owned">×{c.owned - ed.used(c.code)}</span>}
-              <span className="tb-desc">{c.description}</span>
-            </button>
-          ))}
+          .map((c) => {
+            const best = c.tiers ? [3, 2, 1, 0].find((t) => (c.tiers?.[t] ?? 0) > 0) ?? 0 : 0
+            return (
+              <div
+                key={c.code}
+                role="button"
+                tabIndex={0}
+                className={`tb-card tier-edge-${best} ${busy || !ed.available(c) ? 'disabled' : ''}`}
+                onClick={() => !busy && ed.available(c) && ed.add(c)}
+                onKeyDown={(e) => e.key === 'Enter' && !busy && ed.available(c) && ed.add(c)}
+                title={c.description}
+              >
+                <span className="tb-icon">
+                  <CardThumb code={c.code} />
+                </span>
+                <span className="tb-name">{c.name}</span>
+                <span className="tb-cost">{c.cost} pt</span>
+                {c.owned != null && <span className="tb-owned">×{c.owned - ed.used(c.code)}</span>}
+                <span className="tb-desc">{c.description}</span>
+                {c.tiers && c.tiers.some((n, t) => t > 0 && n > 0) && (
+                  <span className="tb-tiers">
+                    {c.tiers.map((n, t) =>
+                      n > 0 ? (
+                        <button
+                          key={t}
+                          className={`tier-pill tier-${t}`}
+                          disabled={busy || ed.freeIn(c.code, t) <= 0}
+                          title={`${TIER_NAMES[t]}${c.bonuses?.[t] ? ': ' + c.bonuses[t] : ''} — ${ed.freeIn(c.code, t)} free`}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            ed.add(c, t)
+                          }}
+                        >
+                          {TIER_SHORT[t]} ×{ed.freeIn(c.code, t)}
+                        </button>
+                      ) : null,
+                    )}
+                  </span>
+                )}
+              </div>
+            )
+          })}
       </div>
     </div>
   )

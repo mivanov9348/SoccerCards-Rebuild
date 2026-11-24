@@ -1,24 +1,30 @@
 import { useEffect, useRef, useState } from 'react'
 import type { MatchTeam, MatchView } from '../api'
 import { Icon } from './Icons'
+import { TierBadge } from './GameCard'
 
-/** Every running effect a team can have, with the full text shown in the "Active effects" panel. */
-const EFFECTS: { key: keyof MatchTeam; code: string; name: string; text: string }[] = [
-  { key: 'captain', code: 'CAPTAIN', name: 'Captain', text: 'the next Tackle is ignored' },
-  { key: 'wall', code: 'WALL', name: 'Wall', text: 'the next goal against them this half becomes a Save' },
-  { key: 'calm', code: 'CALM', name: 'Calm', text: 'if the next card is a Tackle, they keep the ball' },
-  { key: 'press', code: 'PRESS', name: 'Press', text: 'when they next lose the ball, they flip one more card' },
-  { key: 'goalkeeper', code: 'GOALKEEPER', name: 'Goalkeeper', text: 'the next shot or penalty against them is 20% less likely to go in' },
-  { key: 'targetMan', code: 'TARGET_MAN', name: 'Target Man', text: 'the next corner or free kick cross is 20% more likely to go in' },
-  { key: 'sweeper', code: 'SWEEPER', name: 'Sweeper', text: 'the next Offside or Save is ignored' },
-  { key: 'twelfthMan', code: 'TWELFTH_MAN', name: '12th Man', text: 'the next dangerous card is ignored' },
-  { key: 'var', code: 'VAR', name: 'VAR', text: "the opponent's next goal is checked — 40% chance it is disallowed" },
-  { key: 'penaltyTaker', code: 'PENALTY_TAKER', name: 'Penalty Taker', text: 'the next penalty is 10% more likely to go in' },
-  { key: 'marking', code: 'MARKING', name: 'Marking', text: 'one of your cards is marked — if the opponent flips it, they lose the ball' },
+const n = (k: number | undefined) => 1 + (k ?? 0)
+const times = (count: number, one: string, many: string) => (count === 1 ? one : many.replace('#', String(count)))
+
+/** Every running effect a team can have, with the full text shown in the "Active effects" panel (with the extra uses and
+ * percentages of higher card tiers). */
+const EFFECTS: { key: keyof MatchTeam; code: string; name: string; uses?: (t: MatchTeam) => number; text: (t: MatchTeam) => string }[] = [
+  { key: 'captain', code: 'CAPTAIN', name: 'Captain', uses: (t) => n(t.captainExtra), text: (t) => times(n(t.captainExtra), 'the next Tackle is ignored', 'the next # Tackles are ignored') },
+  { key: 'wall', code: 'WALL', name: 'Wall', uses: (t) => n(t.wallExtra), text: (t) => times(n(t.wallExtra), 'the next goal against them this half becomes a Save', 'the next # goals against them this half become Saves') },
+  { key: 'calm', code: 'CALM', name: 'Calm', uses: (t) => n(t.calmExtra), text: (t) => times(n(t.calmExtra), 'if the next card is a Tackle, they keep the ball', 'a Tackle in the next # cards does not lose the ball') },
+  { key: 'press', code: 'PRESS', name: 'Press', uses: (t) => n(t.pressExtra), text: (t) => times(n(t.pressExtra), 'when they next lose the ball, they flip one more card', 'the next # times they lose the ball, they flip one more card') },
+  { key: 'goalkeeper', code: 'GOALKEEPER', name: 'Goalkeeper', text: (t) => `the next shot or penalty against them is ${20 + (t.goalkeeperBonus ?? 0)}% less likely to go in` },
+  { key: 'targetMan', code: 'TARGET_MAN', name: 'Target Man', text: (t) => `the next corner or free kick cross is ${20 + (t.targetManBonus ?? 0)}% more likely to go in` },
+  { key: 'sweeper', code: 'SWEEPER', name: 'Sweeper', uses: (t) => n(t.sweeperExtra), text: (t) => times(n(t.sweeperExtra), 'the next Offside or Save is ignored', 'the next # Offside or Save cards are ignored') },
+  { key: 'twelfthMan', code: 'TWELFTH_MAN', name: '12th Man', uses: (t) => n(t.twelfthManExtra), text: (t) => times(n(t.twelfthManExtra), 'the next dangerous card is ignored', 'the next # dangerous cards are ignored') },
+  { key: 'var', code: 'VAR', name: 'VAR', text: (t) => `the opponent's next goal is checked — ${40 + (t.varBonus ?? 0)}% chance it is disallowed` },
+  { key: 'penaltyTaker', code: 'PENALTY_TAKER', name: 'Penalty Taker', text: (t) => `the next penalty is ${10 + (t.penaltyTakerBonus ?? 0)}% more likely to go in` },
+  { key: 'marking', code: 'MARKING', name: 'Marking', text: () => 'one of your cards is marked — if the opponent flips it, they lose the ball' },
 ]
 
 interface Row {
   id: string
+  base: string
   side: 'Home' | 'Away'
   code: string
   name: string
@@ -27,11 +33,15 @@ interface Row {
 }
 
 function activeRows(t: MatchTeam, side: 'Home' | 'Away'): Row[] {
-  const rows: Row[] = EFFECTS.filter((e) => Boolean(t[e.key])).map((e) => ({ id: `${side}-${e.code}`, side, code: e.code, name: e.name, text: e.text }))
+  // the id includes the number of uses left: when one of several uses is spent the old row flashes ("one used")
+  const rows: Row[] = EFFECTS.filter((e) => Boolean(t[e.key])).map((e) => {
+    const uses = e.uses?.(t) ?? 1
+    return { id: `${side}-${e.code}-${uses}`, base: `${side}-${e.code}`, side, code: e.code, name: uses > 1 ? `${e.name} ×${uses}` : e.name, text: e.text(t) }
+  })
   if (t.counterFlips > 0)
-    rows.push({ id: `${side}-COUNTER`, side, code: 'COUNTER_ATTACK', name: 'Counter Attack', text: `${t.counterFlips} more card${t.counterFlips === 1 ? '' : 's'} — dangerous ones don't count` })
+    rows.push({ id: `${side}-COUNTER`, base: `${side}-COUNTER`, side, code: 'COUNTER_ATTACK', name: 'Counter Attack', text: `${t.counterFlips} more card${t.counterFlips === 1 ? '' : 's'} — dangerous ones don't count` })
   if (t.passStreak > 0)
-    rows.push({ id: `${side}-PASS`, side, code: 'PASS', name: `Passes ${t.passStreak}/3`, text: t.passStreak >= 2 ? 'one more Pass = Big Chance!' : 'three in a row = Big Chance' })
+    rows.push({ id: `${side}-PASS`, base: `${side}-PASS`, side, code: 'PASS', name: `Passes ${t.passStreak}/3`, text: t.passStreak >= 2 ? 'one more Pass = Big Chance!' : 'three in a row = Big Chance' })
   return rows
 }
 
@@ -77,7 +87,7 @@ export function ActiveEffects({ m }: { m: MatchView }) {
                 </span>
                 <span>
                   <b>{t.isHuman ? 'You' : t.shortName}</b> · <b>{r.name}</b>
-                  {r.spent ? ' — used up' : `: ${r.text}`}
+                  {r.spent ? (now.some((x) => x.base === r.base) ? ' — one used' : ' — used up') : `: ${r.text}`}
                 </span>
               </li>
             )
@@ -109,7 +119,7 @@ export function PlayedCards({ m }: { m: MatchView }) {
               <ul>
                 {(t.played ?? []).map((p, i) => (
                   <li key={i} className={`played-${p.how}`} title={`${p.half === 1 ? '1st' : '2nd'} half`}>
-                    <Icon code={p.code} /> {p.name} <small className="muted">{HOW[p.how]}</small>
+                    <Icon code={p.code} /> {p.name} <TierBadge tier={p.tier} /> <small className="muted">{HOW[p.how]}</small>
                   </li>
                 ))}
               </ul>

@@ -108,6 +108,8 @@ public class Career
     public string? LastTacticJson { get; set; }
     /// <summary>The three tactic plans of the Tactics tab and the active one (JSON, see Careers/TacticPlans.cs).</summary>
     public string? TacticPlansJson { get; set; }
+    /// <summary>The "pick 1 of 3" draft at the start of a career while it is running (JSON, see CareerService.Cards.cs).</summary>
+    public string? DraftJson { get; set; }
     public CareerStatus Status { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
@@ -197,6 +199,8 @@ public class CareerCard
     public int Id { get; set; }
     public int CareerId { get; set; }
     public string Code { get; set; } = "";
+    /// <summary>Tier of these copies: 0 Normal, 1 Rare, 2 Ultra Rare, 3 Legendary (version 1.2).</summary>
+    public int Tier { get; set; }
     public int Count { get; set; }
 }
 

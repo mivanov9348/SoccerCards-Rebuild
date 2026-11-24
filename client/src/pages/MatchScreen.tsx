@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, type Decision, type MatchTeam, type MatchView, type Side, type Tactic } from '../api'
 import { Badge, ErrorBox, useLoad } from '../components/common'
-import { CardBack, CardFace, iconFor } from '../components/GameCard'
+import { CardBack, CardFace, iconFor, TierBadge } from '../components/GameCard'
 import { Icon } from '../components/Icons'
 import { ReviewButton } from '../components/ReviewButton'
 import { play, playEvent } from '../sound'
@@ -117,7 +117,7 @@ function DecisionPanel({ m, d, busy, onDecide }: { m: MatchView; d: Decision; bu
         <div className="discard-cards">
           {d.cards.map((code, i) => (
             <button key={code + i} className="discard-pick" disabled={busy} onClick={() => onDecide(i, null)} title={'Take away ' + d.options[i]}>
-              <CardFace code={code} name={d.options[i]} size="normal" />
+              <CardFace code={code} name={d.options[i]} size="normal" tier={d.tiers?.[i]} />
               <span className="btn btn-primary small">Take it</span>
             </button>
           ))}
@@ -590,7 +590,7 @@ export default function MatchScreen() {
                           style={{ borderColor: by.primaryColor }}
                           title={`${c.name} — flipped by ${by.name}${c.stolen ? ` (${owner?.name}'s card — ${c.card === 'OFFSIDE_TRAP' ? 'offside trap!' : 'stolen'})` : ''}`}
                         >
-                          <CardFace code={c.card} name={c.name ?? ''} size="mini" />
+                          <CardFace code={c.card} name={c.name ?? ''} size="mini" tier={c.tier} />
                           <span className="grid-owner" style={{ background: by.primaryColor }}>
                             {c.stolen ? <Icon code={c.card === 'OFFSIDE_TRAP' ? 'OFFSIDE_TRAP' : 'SWAP'} /> : null}
                             {by.shortName}
@@ -652,7 +652,7 @@ export default function MatchScreen() {
                 <span className="muted small">Last card</span>
                 {last ? (
                   <>
-                    <CardFace key={`${m.events.length}`} code={last.card} name={last.name} description={last.description} size="big" />
+                    <CardFace key={`${m.events.length}`} code={last.card} name={last.name} description={last.description} size="big" tier={last.tier} />
                     <span className="reveal-by">
                       flipped by {teamOf(last.side)?.isHuman ? 'you' : teamOf(last.side)?.name}
                       {last.owner && last.owner !== last.side ? (last.card === 'OFFSIDE_TRAP' ? ' — offside trap!' : ' — stolen!') : ''}
@@ -686,9 +686,9 @@ export default function MatchScreen() {
                         }
                         playHand(h.code)
                       }}
-                      title={h.description ?? ''}
+                      title={(h.description ?? '') + (h.bonus ? ` — ${h.bonus}` : '')}
                     >
-                      {iconFor(h.code)} {h.name}
+                      {iconFor(h.code)} {h.name} <TierBadge tier={h.tier} />
                     </button>
                   ))}
                   {m.hand.length === 0 && m.freeScouts === 0 && <span className="muted small">No hand cards left.</span>}

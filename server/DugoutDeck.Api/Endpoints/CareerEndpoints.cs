@@ -10,7 +10,9 @@ public record CreateCareerRequest(string SaveName, string ManagerName, int TeamI
 public record RenameCareerRequest(string SaveName);
 public record PlayCareerRequest(bool UseLastTactic);
 public record NextSeasonRequest(int? AcceptTeamId);
-public record CardRequest(string Code);
+public record CardRequest(string Code, int Tier = 0);
+public record PackRequest(int Size = 3);
+public record DraftRequest(int Pick);
 public record TacticPlanRequest(string? Name, TacticSpec? Tactic);
 public record ActivePlanRequest(int Slot);
 
@@ -43,7 +45,7 @@ public static class CareerEndpoints
             return Results.Ok(new { c.Id });
         });
 
-        api.MapGet("/{id:int}", async (int id, AppDbContext db, CareerService careers) =>
+        api.MapGet("/{id:int}", async (int id, AppDbContext db, CareerService careers, MatchService matches) =>
         {
             var career = await careers.LoadAsync(id);
             if (career is null) return Results.NotFound();
@@ -70,6 +72,7 @@ public static class CareerEndpoints
             {
                 career.Id, career.SaveName, career.ManagerName, career.Reputation, career.Money,
                 hasTactic = TacticPlanSet.Preferred(career) != null,
+                draft = await DraftView(career, matches),
                 activePlan = TacticPlanSet.Load(career) is var ps && ps.Plans[ps.Active].Tactic != null ? ps.Plans[ps.Active].Name : null,
                 status = career.Status.ToString(),
                 team = new
@@ -176,7 +179,15 @@ public static class CareerEndpoints
             return Results.NoContent();
         });
 
-        // ---------------- collection & store
+        // ---------------- the draft ("pick 1 of 3") at the start of a career
+        api.MapPost("/{id:int}/draft", async (int id, DraftRequest req, CareerService careers, MatchService matches) =>
+        {
+            var career = await careers.LoadAsync(id) ?? throw new GameRuleException("Career not found.");
+            await careers.DraftPickAsync(career, req.Pick);
+            return Results.Ok(new { draft = await DraftView(career, matches) });
+        });
+
+        // ---------------- collection & market (the cards belong to the club; the market is always open)
         api.MapGet("/{id:int}/collection", async (int id, CareerService careers, MatchService matches) =>
         {
             var catalog = await matches.CatalogAsync();
@@ -186,7 +197,12 @@ public static class CareerEndpoints
                 .Select(c => new
                 {
                     c.Code, c.Name, c.Description, kind = c.Kind.ToString(), rarity = c.Rarity.ToString(), c.Cost, c.Price,
-                    sellPrice = c.Price / 3, owned = owned.GetValueOrDefault(c.Code)
+                    owned = Enumerable.Range(0, 4).Sum(t => owned.GetValueOrDefault((c.Code, t))),
+                    tiers = Enumerable.Range(0, 4).Select(t => new
+                    {
+                        tier = t, name = Tiers.Name(t), count = owned.GetValueOrDefault((c.Code, t)),
+                        sellPrice = Tiers.SellPrice(t), bonus = Tiers.Bonus(c.Code, t)
+                    })
                 });
         });
 
@@ -196,16 +212,32 @@ public static class CareerEndpoints
             var level = await careers.UpgradeLevelAsync(id, career.TeamId);
             return Results.Ok(new
             {
-                money = career.Money, packPrice = CareerService.PackPrice,
+                money = career.Money,
+                packs = CareerService.Packs.Select(p => new { size = p.Size, price = p.Price, rarePlus = p.GuaranteedRarePlus }),
+                sellPrices = Enumerable.Range(0, 4).Select(t => new { tier = t, name = Tiers.Name(t), price = Tiers.SellPrice(t) }),
                 upgradeLevel = level, upgradeCost = level >= 10 ? (long?)null : CareerService.UpgradeCost(level)
             });
         });
 
-        api.MapPost("/{id:int}/store/pack", async (int id, CareerService careers) =>
+        api.MapPost("/{id:int}/store/pack", async (int id, PackRequest req, CareerService careers) =>
         {
             var career = await careers.LoadAsync(id) ?? throw new GameRuleException("Career not found.");
-            var cards = await careers.BuyPackAsync(career);
-            return Results.Ok(new { cards = cards.Select(c => new { c.Code, c.Name, rarity = c.Rarity.ToString(), c.Description }) });
+            var cards = await careers.BuyPackAsync(career, req.Size);
+            return Results.Ok(new
+            {
+                cards = cards.Select(c => new
+                {
+                    c.Card.Code, c.Card.Name, rarity = c.Card.Rarity.ToString(), c.Card.Description,
+                    tier = c.Tier, tierName = Tiers.Name(c.Tier), bonus = Tiers.Bonus(c.Card.Code, c.Tier)
+                })
+            });
+        });
+
+        api.MapPost("/{id:int}/store/sell-duplicates", async (int id, CareerService careers) =>
+        {
+            var career = await careers.LoadAsync(id) ?? throw new GameRuleException("Career not found.");
+            var (n, money) = await careers.SellDuplicatesAsync(career);
+            return Results.Ok(new { cards = n, money });
         });
 
         api.MapPost("/{id:int}/store/buy", async (int id, CardRequest req, CareerService careers) =>
@@ -218,8 +250,8 @@ public static class CareerEndpoints
         api.MapPost("/{id:int}/store/sell", async (int id, CardRequest req, CareerService careers) =>
         {
             var career = await careers.LoadAsync(id) ?? throw new GameRuleException("Career not found.");
-            await careers.SellCardAsync(career, req.Code);
-            return Results.NoContent();
+            var price = await careers.SellCardAsync(career, req.Code, req.Tier);
+            return Results.Ok(new { money = price });
         });
 
         api.MapPost("/{id:int}/store/upgrade", async (int id, CareerService careers) =>
@@ -259,7 +291,7 @@ public static class CareerEndpoints
                 var empty = req.Tactic.Field.Count == 0 && req.Tactic.Hand.Count == 0 && req.Tactic.Modifiers.Count == 0;
                 if (!empty)
                 {
-                    var errors = TacticRules.Validate(req.Tactic, catalog, budget, Rules.HandSize(rating), c => collection.GetValueOrDefault(c));
+                    var errors = TacticRules.Validate(req.Tactic, catalog, budget, Rules.HandSize(rating), CareerService.Owned(collection));
                     if (errors.Count > 0) throw new GameRuleException(string.Join(" ", errors));
                 }
                 plan.Tactic = empty ? null : req.Tactic;
@@ -300,7 +332,7 @@ public static class CareerEndpoints
                 name = p.Name, tactic = p.Tactic,
                 cost = p.Tactic == null ? 0 : TacticRules.Cost(p.Tactic, catalog),
                 // a plan that is fine at home may cost one point too many away
-                awayErrors = p.Tactic == null ? new List<string>() : TacticRules.Validate(p.Tactic, catalog, away, handSize, c => collection.GetValueOrDefault(c))
+                awayErrors = p.Tactic == null ? new List<string>() : TacticRules.Validate(p.Tactic, catalog, away, handSize, CareerService.Owned(collection))
             }),
             setup = new
             {
@@ -308,6 +340,26 @@ public static class CareerEndpoints
                 lastTactic = new TacticSpec(),
                 cards = MatchEndpoints.SetupCards(catalog, collection)
             }
+        };
+    }
+
+    /// <summary>The running draft (null when there is none): round, the three cards to choose from and the picks so far.</summary>
+    private static async Task<object?> DraftView(Career career, MatchService matches)
+    {
+        var draft = CareerService.Draft(career);
+        if (draft == null) return null;
+        var catalog = await matches.CatalogAsync();
+        object Card(DraftOption o) => new
+        {
+            code = o.Code, name = catalog.Get(o.Code)?.Name ?? o.Code, description = catalog.Get(o.Code)?.Description,
+            kind = catalog.Get(o.Code)?.Kind.ToString(), cost = catalog.Cost(o.Code),
+            tier = o.Tier, tierName = Tiers.Name(o.Tier), bonus = Tiers.Bonus(o.Code, o.Tier)
+        };
+        return new
+        {
+            round = draft.Round, total = draft.Total,
+            kind = draft.Round <= CareerService.DraftFieldRounds ? "Field" : "Hand",
+            options = draft.Options.Select(Card), picked = draft.Picked.Select(Card)
         };
     }
 

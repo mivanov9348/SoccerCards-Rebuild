@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { api, money, type CardInfo } from '../api'
+import { api, money, TIER_NAMES, type CardInfo } from '../api'
 import { Screen, useLoad } from '../components/common'
 import { CardFace } from '../components/GameCard'
 
@@ -16,19 +16,33 @@ const FILTERS: [Filter, string, string][] = [
 const KIND_LABEL: Record<string, string> = { Neutral: 'Grey card', Field: 'Field card', Hand: 'Hand card', Modifier: 'Modifier' }
 const DANGEROUS = ['TACKLE', 'OFFSIDE', 'SAVE', 'MISS', 'YELLOW_CARD', 'RED_CARD']
 
+const SCARCITY: Record<string, string> = { Common: 'common', Rare: 'uncommon', Epic: 'scarce' }
+
 function Details({ c }: { c: CardInfo }) {
+  const [tier, setTier] = useState(0)
   const facts: [string, string][] = [['Type', KIND_LABEL[c.kind] ?? c.kind]]
   if (c.kind === 'Neutral') {
     facts.push(['In the grid', c.copiesInDeck > 0 ? `${c.copiesInDeck} per half (before modifiers)` : 'one per half (Half Time in the 1st, Full Time in the 2nd)'])
     facts.push(['Hints', DANGEROUS.includes(c.code) ? 'counted — it is a dangerous card' : 'not counted'])
   } else {
     facts.push(['Tactic points', String(c.cost)])
-    if (c.kind !== 'Modifier') facts.push(['Rarity', c.rarity === 'None' ? 'free filler' : c.rarity])
+    if (c.kind !== 'Modifier') facts.push(['In packs', c.rarity === 'None' ? 'free filler (not in packs)' : SCARCITY[c.rarity] ?? c.rarity])
     if (c.price > 0) facts.push(['Store price', money(c.price)])
   }
   return (
     <div className="gallery-details panel">
-      <CardFace code={c.code} name={c.name} description={c.description} size="big" />
+      <div>
+        <CardFace key={c.code + tier} code={c.code} name={c.name} description={c.description} size="big" tier={tier} />
+        {c.bonuses && (
+          <div className="tier-preview">
+            {TIER_NAMES.map((n, t) => (
+              <button key={t} className={`tier-pill tier-${t} ${tier === t ? 'active' : ''}`} onClick={() => setTier(t)}>
+                {n}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       <div>
         <h2>{c.name}</h2>
         <p>{c.description}</p>
@@ -42,6 +56,21 @@ function Details({ c }: { c: CardInfo }) {
             ))}
           </tbody>
         </table>
+        {c.bonuses && (
+          <>
+            <h3>Tiers</h3>
+            <table className="table">
+              <tbody>
+                {TIER_NAMES.map((n, t) => (
+                  <tr key={t}>
+                    <td className={`left tier-text-${t}`}>{n}</td>
+                    <td className="left">{c.bonuses?.[t] || (t === 0 ? 'the card as described' : 'same effect — a better-looking copy, worth more when sold')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
       </div>
     </div>
   )

@@ -41,13 +41,22 @@ export interface CardInfo {
   copiesInDeck: number
   cost: number
   price: number
+  /** what each tier adds (Field and Hand cards) */
+  bonuses?: string[] | null
 }
 
 export interface Tactic {
   field: string[]
   hand: string[]
   modifiers: string[]
+  /** tier of each field / hand card (0 Normal, 1 Rare, 2 Ultra Rare, 3 Legendary); missing = Normal */
+  fieldTiers?: number[]
+  handTiers?: number[]
 }
+
+/** Card tiers (1.2). */
+export const TIER_NAMES = ['Normal', 'Rare', 'Ultra Rare', 'Legendary']
+export const TIER_SHORT = ['N', 'R', 'UR', 'L']
 
 export interface TeamStats {
   flips: number
@@ -91,7 +100,17 @@ export interface MatchTeam {
   /** a Marking shield is on one of my cards (only sent for my team) */
   marking?: boolean
   /** cards this team has played: how = hand, own, stolen, trap, decoy */
-  played?: { code: string; name: string; half: number; how: 'hand' | 'own' | 'stolen' | 'trap' | 'decoy' }[]
+  played?: { code: string; name: string; half: number; how: 'hand' | 'own' | 'stolen' | 'trap' | 'decoy'; tier?: number }[]
+  captainExtra?: number
+  wallExtra?: number
+  sweeperExtra?: number
+  twelfthManExtra?: number
+  calmExtra?: number
+  pressExtra?: number
+  goalkeeperBonus?: number
+  targetManBonus?: number
+  varBonus?: number
+  penaltyTakerBonus?: number
   fieldCards: string[] | null
   fieldCount: number
   modifiers: string[] | null
@@ -122,6 +141,8 @@ export interface GridCell {
   marked?: boolean
   /** a team card flipped by the other team */
   stolen: boolean
+  /** tier of a team card (when known) */
+  tier?: number
 }
 
 export interface Decision {
@@ -134,6 +155,7 @@ export interface Decision {
   needsTiming: boolean
   /** Discard (red card): the codes of the sent-off team's hand cards */
   cards?: string[]
+  tiers?: number[]
 }
 
 export interface SetupCard {
@@ -144,6 +166,10 @@ export interface SetupCard {
   rarity: string
   cost: number
   owned: number | null
+  /** copies per tier [Normal, Rare, Ultra Rare, Legendary] (null = unlimited, friendlies) */
+  tiers?: number[] | null
+  /** what each tier adds to this card */
+  bonuses?: string[]
 }
 
 /** What the tactic editor needs (pre-match screen and the career's Tactics tab). */
@@ -191,8 +217,8 @@ export interface MatchView {
   cardsLeft: number
   /** the finished first half, revealed (second half only) */
   firstHalfTable: GridCell[] | null
-  lastFlip: { cell: number; card: string; name: string; side: Side; owner: Side | null; description: string | null } | null
-  hand: { code: string; name: string; description: string | null }[]
+  lastFlip: { cell: number; card: string; name: string; side: Side; owner: Side | null; description: string | null; tier?: number } | null
+  hand: { code: string; name: string; description: string | null; tier?: number; bonus?: string }[]
   freeScouts: number
   handPlayed: boolean
   /** I already flipped one of my own team cards this turn */
@@ -273,6 +299,8 @@ export interface CareerView {
   hasTactic: boolean
   /** the name of the active plan, when it has a tactic */
   activePlan: string | null
+  /** the "pick 1 of 3" draft at the start of a career (null when done) */
+  draft: DraftView | null
   saveName: string
   managerName: string
   reputation: number
@@ -339,15 +367,37 @@ export interface CollectionCard {
   rarity: string
   cost: number
   price: number
-  sellPrice: number
   owned: number
+  tiers: { tier: number; name: string; count: number; sellPrice: number; bonus: string }[]
 }
 
 export interface StoreInfo {
   money: number
-  packPrice: number
+  packs: { size: number; price: number; rarePlus: boolean }[]
+  sellPrices: { tier: number; name: string; price: number }[]
   upgradeLevel: number
   upgradeCost: number | null
+}
+
+/** A card from a pack or the draft. */
+export interface TieredCard {
+  code: string
+  name: string
+  description?: string | null
+  rarity?: string
+  kind?: string
+  cost?: number
+  tier: number
+  tierName: string
+  bonus: string
+}
+
+export interface DraftView {
+  round: number
+  total: number
+  kind: 'Field' | 'Hand'
+  options: TieredCard[]
+  picked: TieredCard[]
 }
 
 export class ApiError extends Error {}
@@ -442,9 +492,11 @@ export const api = {
     request<void>('POST', `/careers/${id}/next-season`, { acceptTeamId: acceptTeamId ?? null }),
   collection: (id: number) => request<CollectionCard[]>('GET', `/careers/${id}/collection`),
   store: (id: number) => request<StoreInfo>('GET', `/careers/${id}/store`),
-  buyPack: (id: number) => request<{ cards: { code: string; name: string; rarity: string; description: string | null }[] }>('POST', `/careers/${id}/store/pack`),
+  buyPack: (id: number, size: number) => request<{ cards: TieredCard[] }>('POST', `/careers/${id}/store/pack`, { size }),
   buyCard: (id: number, code: string) => request<void>('POST', `/careers/${id}/store/buy`, { code }),
-  sellCard: (id: number, code: string) => request<void>('POST', `/careers/${id}/store/sell`, { code }),
+  sellCard: (id: number, code: string, tier: number) => request<{ money: number }>('POST', `/careers/${id}/store/sell`, { code, tier }),
+  sellDuplicates: (id: number) => request<{ cards: number; money: number }>('POST', `/careers/${id}/store/sell-duplicates`),
+  draftPick: (id: number, pick: number) => request<{ draft: DraftView | null }>('POST', `/careers/${id}/draft`, { pick }),
   upgradeClub: (id: number) => request<{ level: number }>('POST', `/careers/${id}/store/upgrade`),
 }
 

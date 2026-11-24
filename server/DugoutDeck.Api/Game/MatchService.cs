@@ -22,7 +22,7 @@ public class MatchService(AppDbContext db)
         string competition, int? fixtureId = null, int? careerId = null, Difficulty difficulty = Difficulty.Normal)
     {
         var engine = await EngineAsync();
-        var state = engine.Create(new MatchSetup(home, away, homeRating, awayRating, humanSide, knockout, competition, difficulty));
+        var state = engine.Create(new MatchSetup(home, away, homeRating, awayRating, humanSide, knockout, competition, difficulty, careerId != null));
         var match = new Match
         {
             HomeTeamId = home.Id, AwayTeamId = away.Id, FixtureId = fixtureId, CareerId = careerId,
@@ -36,7 +36,7 @@ public class MatchService(AppDbContext db)
     /// <summary>Computer vs computer match (career fixtures you do not play) — same rules, tactics and AI.</summary>
     public static MatchState SimulateQuick(MatchEngine engine, Team home, Team away, int homeRating, int awayRating, bool knockout)
     {
-        var state = engine.Create(new MatchSetup(home, away, homeRating, awayRating, null, knockout, ""));
+        var state = engine.Create(new MatchSetup(home, away, homeRating, awayRating, null, knockout, "", UseTiers: true));
         engine.SimulateToEnd(state);
         return state;
     }
@@ -88,7 +88,8 @@ public class MatchService(AppDbContext db)
             {
                 kind = d.Kind.ToString(), source = d.Source, attacker = d.Attacker.ToString(),
                 attackerName = s.Team(d.Attacker).Name, role, options, needsTiming = MatchEngine.NeedsTiming(d.Kind),
-                cards = d.Kind == DecisionKind.Discard ? s.Team(d.Attacker).Hand.ToArray() : Array.Empty<string>()
+                cards = d.Kind == DecisionKind.Discard ? s.Team(d.Attacker).Hand.ToArray() : Array.Empty<string>(),
+                tiers = d.Kind == DecisionKind.Discard ? s.Team(d.Attacker).Hand.Select((_, i) => Tiers.At(s.Team(d.Attacker).HandTiers, i)).ToArray() : Array.Empty<int>()
             };
         }
 
@@ -118,7 +119,7 @@ public class MatchService(AppDbContext db)
                     owner = know ? c.Owner?.ToString() : null, flippedBy = c.FlippedBy?.ToString(),
                     card = know ? c.Card : null,
                     name = know ? Cards.Name(c.Card) : null,
-                    peeked, mine, marked = mine && me.MarkedCell == i,
+                    peeked, mine, marked = mine && me.MarkedCell == i, tier = know && c.Owner != null ? c.Tier : 0,
                     stolen = c.FaceUp && c.Owner != null && c.Owner != c.FlippedBy
                 };
             }),
@@ -128,17 +129,17 @@ public class MatchService(AppDbContext db)
                 ? s.FirstHalfTable.Select((c, i) => new
                 {
                     index = i, faceUp = c.FaceUp, burned = c.Burned, owner = c.Owner?.ToString(), flippedBy = c.FlippedBy?.ToString(),
-                    card = c.Card, name = Cards.Name(c.Card), peeked = false, mine = c.Owner == human,
+                    card = c.Card, name = Cards.Name(c.Card), peeked = false, mine = c.Owner == human, tier = c.Owner != null ? c.Tier : 0,
                     stolen = c.FaceUp && c.Owner != null && c.Owner != c.FlippedBy
                 })
                 : null,
             lastFlip = s.LastFlip == null ? null : new
             {
                 cell = s.LastFlip.Cell, card = s.LastFlip.Card, name = Cards.Name(s.LastFlip.Card),
-                side = s.LastFlip.Side.ToString(), owner = s.LastFlip.Owner?.ToString(),
+                side = s.LastFlip.Side.ToString(), owner = s.LastFlip.Owner?.ToString(), tier = s.LastFlip.Tier,
                 description = catalog.Get(s.LastFlip.Card)?.Description
             },
-            hand = me.Hand.Select(c => new { code = c, name = Cards.Name(c), description = catalog.Get(c)?.Description }),
+            hand = me.Hand.Select((c, i) => new { code = c, name = Cards.Name(c), description = catalog.Get(c)?.Description, tier = Tiers.At(me.HandTiers, i), bonus = Tiers.Bonus(c, Tiers.At(me.HandTiers, i)) }),
             freeScouts = me.FreeScouts,
             handPlayed = me.HandPlayedThisTurn,
             ownCardUsed = me.OwnCardUsedThisTurn && me.CounterFlips == 0,
@@ -164,7 +165,11 @@ public class MatchService(AppDbContext db)
             press = t.PressActive, counterFlips = t.CounterFlips,
             goalkeeper = t.GoalkeeperActive, targetMan = t.TargetManActive, sweeper = t.SweeperActive, twelfthMan = t.TwelfthManActive,
             var = t.VarActive, penaltyTaker = t.PenaltyTakerActive, marking = t.MarkedCell >= 0 && isMe,
-            played = t.Played.Select(p => new { code = p.Code, name = Cards.Name(p.Code), half = p.Half, how = p.How }),
+            played = t.Played.Select(p => new { code = p.Code, name = Cards.Name(p.Code), half = p.Half, how = p.How, tier = p.Tier }),
+            // tiers (1.2): extra uses of shield effects and the extra percentage of chance effects
+            captainExtra = t.CaptainExtra, wallExtra = t.WallExtra, sweeperExtra = t.SweeperExtra, twelfthManExtra = t.TwelfthManExtra,
+            calmExtra = t.CalmExtra, pressExtra = t.PressExtra,
+            goalkeeperBonus = t.GoalkeeperBonus, targetManBonus = t.TargetManBonus, varBonus = t.VarBonus, penaltyTakerBonus = t.PenaltyTakerBonus,
             // the opponent's field cards stay secret; modifiers are revealed when the match starts
             fieldCards = started && (isMe || finished) ? t.Tactic.Field.Select(Cards.Name) : null,
             fieldCount = started ? t.Tactic.Field.Count : 0,

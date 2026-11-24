@@ -672,3 +672,100 @@ ul.conditions li::before { content: '☁ '; color: var(--muted); }
 .good { color: var(--good); }
 .bad { color: var(--bad); }
 @media (max-width: 700px) { .plan-slots { grid-template-columns: 1fr; } }
+
+/* ---------------------------------------------------------------- 1.2: card tiers, packs, draft, market */
+:root { --t1: #c9d3de; --t2: #f2c14e; --t3: #ff7ad9; }
+.tier-badge { position: absolute; top: 4px; right: 4px; z-index: 3; font-size: 0.62rem; font-weight: 900; letter-spacing: 0.5px; padding: 1px 5px; border-radius: 6px; color: #111; line-height: 1.4; box-shadow: 0 1px 3px #0008; }
+.chip .tier-badge, .hand-card .tier-badge, .played-cols .tier-badge, .tier-row .tier-badge, .draft-picked .tier-badge { position: static; display: inline-block; margin-left: 4px; }
+.tier-badge.tier-0 { background: #8a8f96; color: #fff; }
+.tier-badge.tier-1 { background: linear-gradient(135deg, #f4f7fa, #9aa7b4); }
+.tier-badge.tier-2 { background: linear-gradient(135deg, #fff0b3, #e0a526); }
+.tier-badge.tier-3 { background: linear-gradient(135deg, #ff7ad9, #ffd36e, #6ee7ff); background-size: 200% 200%; animation: legend-shift 3s linear infinite; }
+.card-face.size-big .tier-badge { font-size: 0.8rem; top: 8px; right: 8px; }
+/* frames */
+.card-face.tier-frame { position: relative; }
+.card-face.tier-1 { border-color: var(--t1) !important; box-shadow: 0 0 0 2px #ffffff55, 0 6px 14px #0008; }
+.card-face.tier-2 { border-color: var(--t2) !important; box-shadow: 0 0 0 2px #fff3, 0 0 16px rgba(242, 193, 78, 0.65), 0 6px 14px #0008; }
+.card-face.tier-3 { border-color: #ff7ad9 !important; box-shadow: 0 0 0 3px #ff7ad9, 0 0 22px rgba(255, 122, 217, 0.7), 0 0 34px rgba(110, 231, 255, 0.45), 0 6px 14px #0008; animation: legend-glow 2.4s ease-in-out infinite; }
+.grid-face .card-face.tier-3 { animation: none; }
+@keyframes legend-shift { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
+@keyframes legend-glow { 50% { box-shadow: 0 0 0 3px #6ee7ff, 0 0 26px rgba(110, 231, 255, 0.8), 0 0 40px rgba(255, 122, 217, 0.5), 0 6px 14px #0008; } }
+.tier-text-0 { color: #d8d8d8; }
+.tier-text-1 { color: var(--t1); }
+.tier-text-2 { color: var(--t2); }
+.tier-text-3 { background: linear-gradient(90deg, #ff7ad9, #ffd36e, #6ee7ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+/* tiles: the edge shows the best copy the club owns */
+.tier-edge-0 { border-color: #8a8f96; }
+.tier-edge-1 { border-color: var(--t1); }
+.tier-edge-2 { border-color: var(--t2); box-shadow: 0 0 10px rgba(242, 193, 78, 0.45); }
+.tier-edge-3 { border-color: #ff7ad9; box-shadow: 0 0 12px rgba(255, 122, 217, 0.55); }
+.tb-card.disabled { opacity: 0.45; cursor: default; }
+.tb-card.disabled:hover { transform: none; }
+.tb-tiers { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 2px; }
+.tier-pill { font: inherit; font-size: 0.66rem; font-weight: 800; border: 0; border-radius: 6px; padding: 1px 6px; cursor: pointer; color: #111; }
+.tier-pill.tier-0 { background: #b8bcc2; }
+.tier-pill.tier-1 { background: linear-gradient(135deg, #f4f7fa, #9aa7b4); }
+.tier-pill.tier-2 { background: linear-gradient(135deg, #fff0b3, #e0a526); }
+.tier-pill.tier-3 { background: linear-gradient(135deg, #ff7ad9, #ffd36e, #6ee7ff); }
+.tier-pill:disabled { opacity: 0.4; cursor: default; }
+.chip.tier-chip-1 { border-color: var(--t1); }
+.chip.tier-chip-2 { border-color: var(--t2); }
+.chip.tier-chip-3 { border-color: #ff7ad9; }
+/* collection */
+.coll-head { display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: space-between; align-items: center; }
+.coll-head .row-buttons { align-items: center; }
+.tier-rows { display: flex; flex-direction: column; gap: 3px; width: 100%; margin-top: 3px; }
+.tier-row { display: flex; align-items: center; gap: 4px; font-size: 0.8rem; }
+.tier-row .btn { margin-left: auto; }
+.sell-prices { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 1rem; }
+.sell-prices li span { font-weight: 800; margin-right: 6px; }
+/* store: packs of 3 / 5 / 10 */
+.pack-offers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.8rem; margin-top: 0.6rem; }
+.pack-offer { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 0.8rem; border-radius: var(--radius); background: rgba(255, 255, 255, 0.04); border: 2px solid var(--panel-border); text-align: center; }
+.pack-offer.size-10 { border-color: rgba(242, 193, 78, 0.6); }
+.pack-offer-cards { position: relative; height: 70px; width: 90px; display: block; }
+.pack-offer-cards i { position: absolute; left: 30px; top: 4px; width: 34px; height: 50px; border-radius: 5px; border: 2px solid #f4ecd8; background: repeating-linear-gradient(45deg, #1d5530 0 5px, #2e7d46 5px 10px); transform-origin: 50% 120%; box-shadow: 0 3px 6px #0008; }
+@media (max-width: 700px) { .pack-offers { grid-template-columns: 1fr; } }
+/* the sealed pack */
+.sealed-pack { position: relative; width: 190px; height: 270px; border: 0; padding: 0; cursor: pointer; border-radius: 14px; background: linear-gradient(160deg, #1f6b3d, #0e3a20 60%, #0a2a17); box-shadow: 0 14px 30px #000c, inset 0 0 0 3px #f4ecd8; color: #f6efdc; display: flex; flex-direction: column; align-items: center; justify-content: center; animation: pack-shake 1.4s ease-in-out infinite; overflow: hidden; }
+.sealed-pack::after { content: ""; position: absolute; inset: 0; background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.25) 45%, transparent 60%); background-size: 250% 250%; animation: holo 3s linear infinite; pointer-events: none; }
+.sealed-pack.glow-1 { box-shadow: 0 14px 30px #000c, inset 0 0 0 3px #f4ecd8, 0 0 24px rgba(201, 211, 222, 0.6); }
+.sealed-pack.glow-2 { box-shadow: 0 14px 30px #000c, inset 0 0 0 3px #f4ecd8, 0 0 30px rgba(242, 193, 78, 0.8); }
+.sealed-pack.glow-3 { box-shadow: 0 14px 30px #000c, inset 0 0 0 3px #f4ecd8, 0 0 36px rgba(255, 122, 217, 0.9); }
+.sealed-top { position: absolute; top: 0; left: 0; right: 0; height: 34px; background: repeating-linear-gradient(90deg, #f4ecd8 0 6px, #d9cfb4 6px 12px); clip-path: polygon(0 0, 100% 0, 100% 70%, 95% 100%, 90% 70%, 85% 100%, 80% 70%, 75% 100%, 70% 70%, 65% 100%, 60% 70%, 55% 100%, 50% 70%, 45% 100%, 40% 70%, 35% 100%, 30% 70%, 25% 100%, 20% 70%, 15% 100%, 10% 70%, 5% 100%, 0 70%); transition: transform 0.6s ease-in; }
+.sealed-body { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 2.6rem; }
+.sealed-body b { font-size: 1rem; letter-spacing: 2px; }
+.sealed-body small { font-size: 0.8rem; opacity: 0.8; }
+.sealed-hint { position: absolute; bottom: 12px; font-size: 0.75rem; opacity: 0.8; }
+.sealed-pack.tearing { animation: pack-burst 0.65s ease-in forwards; }
+.sealed-pack.tearing .sealed-top { transform: translateY(-60px) rotate(-12deg); }
+@keyframes pack-shake { 0%, 100% { transform: rotate(0); } 10% { transform: rotate(-3deg); } 20% { transform: rotate(3deg); } 30% { transform: rotate(-2deg); } 40% { transform: rotate(0); } }
+@keyframes pack-burst { 40% { transform: scale(1.08); filter: brightness(1.4); } 100% { transform: scale(0.6); opacity: 0; filter: brightness(2.5); } }
+.pack-cards .pack-slot { animation: pack-deal 0.45s ease-out backwards; }
+@keyframes pack-deal { from { transform: translateY(-60px) scale(0.6); opacity: 0; } }
+.pack-cards.size-10 { max-width: 720px; }
+.pack-cards.size-10 .pack-slot { width: 128px; }
+/* the back glows by tier before the flip */
+.pack-slot.tier-hint-1:not(.open) .pack-back, .draft-pick.tier-hint-1 { box-shadow: 0 0 0 3px var(--t1), 0 0 18px rgba(201, 211, 222, 0.7); }
+.pack-slot.tier-hint-2:not(.open) .pack-back, .draft-pick.tier-hint-2 { box-shadow: 0 0 0 3px var(--t2), 0 0 24px rgba(242, 193, 78, 0.85); }
+.pack-slot.tier-hint-3:not(.open) .pack-back, .draft-pick.tier-hint-3 { box-shadow: 0 0 0 3px #ff7ad9, 0 0 30px rgba(255, 122, 217, 0.9); animation: legend-glow 1.6s ease-in-out infinite; }
+.pack-rarity small { font-weight: 600; opacity: 0.85; }
+/* the draft */
+.draft-panel { border: 2px solid var(--accent); }
+.draft-head { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.draft-progress { display: flex; gap: 4px; align-items: center; }
+.draft-progress i { width: 14px; height: 14px; border-radius: 50%; background: rgba(255, 255, 255, 0.15); }
+.draft-progress i.done { background: var(--good); }
+.draft-progress i.now { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.draft-options { display: flex; gap: 1.2rem; justify-content: center; flex-wrap: wrap; margin: 0.8rem 0; }
+.draft-pick { background: none; border: 0; padding: 6px; border-radius: 12px; cursor: pointer; width: 170px; display: flex; flex-direction: column; align-items: center; gap: 4px; color: inherit; font: inherit; animation: pack-deal 0.45s ease-out backwards; transition: transform 0.15s; }
+.draft-pick:hover:not(:disabled) { transform: translateY(-6px); }
+.draft-pick .card-face { width: 158px; }
+.draft-tier { font-weight: 800; font-size: 0.85rem; text-align: center; }
+.draft-tier small { font-weight: 600; opacity: 0.85; }
+.draft-picked { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.draft-picked .chip { display: inline-flex; align-items: center; gap: 4px; }
+.draft-picked .card-thumb { width: 18px; height: 25px; }
+@media (prefers-reduced-motion: reduce) { .sealed-pack, .sealed-pack::after, .tier-badge.tier-3, .card-face.tier-3 { animation: none !important; } }
+.tier-preview { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin-top: 8px; }
+.tier-preview .tier-pill.active { outline: 2px solid #fff; }

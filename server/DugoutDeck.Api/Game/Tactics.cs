@@ -31,8 +31,9 @@ public static class TacticRules
     public static int Cost(TacticSpec t, CardCatalog catalog) =>
         t.Field.Sum(catalog.Cost) + t.Hand.Sum(catalog.Cost) + t.Modifiers.Sum(catalog.Cost);
 
-    /// <summary>Validates a tactic. <paramref name="owned"/> returns how many copies of a card the player owns (null = unlimited).</summary>
-    public static List<string> Validate(TacticSpec t, CardCatalog catalog, int budget, int handSize, Func<string, int>? owned)
+    /// <summary>Validates a tactic. <paramref name="owned"/> returns how many copies of a card in a tier the player owns
+    /// (null = unlimited, e.g. friendlies — then every card is Normal).</summary>
+    public static List<string> Validate(TacticSpec t, CardCatalog catalog, int budget, int handSize, Func<string, int, int>? owned)
     {
         var errors = new List<string>();
         if (t.Field.Count != Rules.FieldCardsPerTeam) errors.Add($"Pick exactly {Rules.FieldCardsPerTeam} field cards.");
@@ -45,10 +46,20 @@ public static class TacticRules
         if (cost > budget) errors.Add($"The tactic costs {cost} points but you only have {budget}.");
         if (owned != null)
         {
-            foreach (var g in t.Field.Concat(t.Hand).Where(c => c != Cards.SquadPlayer).GroupBy(c => c))
-                if (g.Count() > owned(g.Key))
-                    errors.Add($"You only own {owned(g.Key)} × {Cards.Name(g.Key)}.");
+            var copies = t.Field.Select((c, i) => (Code: c, Tier: Tiers.At(t.FieldTiers, i)))
+                .Concat(t.Hand.Select((c, i) => (Code: c, Tier: Tiers.At(t.HandTiers, i))))
+                .Where(x => x.Code != Cards.SquadPlayer);
+            foreach (var g in copies.GroupBy(x => x))
+                if (g.Count() > owned(g.Key.Code, g.Key.Tier))
+                {
+                    var have = owned(g.Key.Code, g.Key.Tier);
+                    errors.Add(have == 0
+                        ? $"You don't own a {Tiers.Name(g.Key.Tier)} {Cards.Name(g.Key.Code)}."
+                        : $"You only own {have} × {Tiers.Name(g.Key.Tier)} {Cards.Name(g.Key.Code)}.");
+                }
         }
+        else if (t.FieldTiers.Any(x => x != 0) || t.HandTiers.Any(x => x != 0))
+            errors.Add("Card tiers are only used in a career.");
         return errors;
     }
 
@@ -114,7 +125,7 @@ public static class TacticRules
     };
 
     /// <summary>The computer builds a tactic from its rating, the opponent and the conditions.</summary>
-    public static TacticSpec BuildAi(CardCatalog catalog, int rating, int opponentRating, bool home, Random rng, int budgetDelta = 0)
+    public static TacticSpec BuildAi(CardCatalog catalog, int rating, int opponentRating, bool home, Random rng, int budgetDelta = 0, bool useTiers = false)
     {
         var budget = Rules.TacticPoints(rating, home) + budgetDelta;
         var handSize = Rules.HandSize(rating);
@@ -174,6 +185,12 @@ public static class TacticRules
             if (catalog.Get(code) == null || catalog.Cost(code) > left) continue;
             t.Modifiers.Add(code);
             left -= catalog.Cost(code);
+        }
+        if (useTiers)
+        {
+            // career: the computer's copies have tiers by rating, like a club's own cards
+            t.FieldTiers = t.Field.Select(c => Tiers.HasTiers(c) ? Tiers.RollForRating(rating, rng) : 0).ToList();
+            t.HandTiers = t.Hand.Select(_ => Tiers.RollForRating(rating, rng)).ToList();
         }
         return t;
     }

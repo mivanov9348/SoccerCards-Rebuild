@@ -70,6 +70,9 @@ namespace DugoutDeck.Api.Data.Migrations
                     b.Property<int>("Difficulty")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("DraftJson")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("LastTacticJson")
                         .HasColumnType("TEXT");
 
@@ -125,9 +128,12 @@ namespace DugoutDeck.Api.Data.Migrations
                     b.Property<int>("Count")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("Tier")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("CareerId", "Code")
+                    b.HasIndex("CareerId", "Code", "Tier")
                         .IsUnique();
 
                     b.ToTable("CareerCards");

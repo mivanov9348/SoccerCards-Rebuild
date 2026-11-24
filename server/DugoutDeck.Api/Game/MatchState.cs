@@ -17,6 +17,9 @@ public class TacticSpec
     public List<string> Field { get; set; } = new();
     public List<string> Hand { get; set; } = new();
     public List<string> Modifiers { get; set; } = new();
+    /// <summary>Tier of each field / hand card (Tiers.Normal … Tiers.Legendary), in the same order; missing = Normal.</summary>
+    public List<int> FieldTiers { get; set; } = new();
+    public List<int> HandTiers { get; set; } = new();
 }
 
 public class TeamStats
@@ -53,6 +56,8 @@ public class TeamMatchState
 
     public TacticSpec Tactic { get; set; } = new();
     public List<string> Hand { get; set; } = new();
+    /// <summary>Tier of each hand card, in the same order as Hand.</summary>
+    public List<int> HandTiers { get; set; } = new();
 
     // running effects
     public int PassStreak { get; set; }
@@ -74,6 +79,17 @@ public class TeamMatchState
     public bool PenaltyTakerActive { get; set; }
     /// <summary>Marking: the cell of an own face-down card that cannot be stolen (current half), or -1.</summary>
     public int MarkedCell { get; set; } = -1;
+    // version 1.2 tiers: extra uses of shield-like effects and the bonus of chance effects
+    public int CaptainExtra { get; set; }
+    public int WallExtra { get; set; }
+    public int SweeperExtra { get; set; }
+    public int TwelfthManExtra { get; set; }
+    public int CalmExtra { get; set; }
+    public int PressExtra { get; set; }
+    public int GoalkeeperBonus { get; set; }
+    public int TargetManBonus { get; set; }
+    public int VarBonus { get; set; }
+    public int PenaltyTakerBonus { get; set; }
     /// <summary>Cells this team has looked under (current half).</summary>
     public List<int> Peeks { get; set; } = new();
     /// <summary>Cards this team has played in the match (hand cards and team cards that took effect), for the match screen.</summary>
@@ -88,6 +104,7 @@ public class PlayedCard
     public string Code { get; set; } = "";
     public int Half { get; set; } = 1;
     public string How { get; set; } = "own";
+    public int Tier { get; set; }
 }
 
 /// <summary>One spot of the grid.</summary>
@@ -96,6 +113,8 @@ public class TableCell
     public string Card { get; set; } = "";
     /// <summary>null = neutral; otherwise the team whose tactic the card comes from. All backs are grey — only the owner knows.</summary>
     public Side? Owner { get; set; }
+    /// <summary>Tier of a team card (Normal … Legendary).</summary>
+    public int Tier { get; set; }
     /// <summary>Who flipped it (null = still face down).</summary>
     public Side? FlippedBy { get; set; }
     /// <summary>Removed by a Burn hand card without being flipped.</summary>
@@ -118,6 +137,7 @@ public class Flip
 {
     public int Cell { get; set; }
     public string Card { get; set; } = "";
+    public int Tier { get; set; }
     public Side Side { get; set; }
     public Side? Owner { get; set; }
 }
@@ -128,6 +148,8 @@ public class PendingDecision
     /// <summary>The team that attacks (or, for Discard, the team that must give up a hand card).</summary>
     public Side Attacker { get; set; }
     public string Source { get; set; } = "";
+    /// <summary>Extra goal chance of a tiered card that started this mini-game (Big Chance card, Winger).</summary>
+    public int Bonus { get; set; }
 }
 
 public class ShootoutKick
@@ -146,6 +168,8 @@ public class MatchState
     public TeamMatchState Away { get; set; } = new();
     public string CompetitionName { get; set; } = "Friendly";
     public DugoutDeck.Api.Data.Entities.Difficulty Difficulty { get; set; }
+    /// <summary>Career match: the computer's cards have tiers (version 1.2).</summary>
+    public bool UseTiers { get; set; }
     public string Stadium { get; set; } = "";
     public bool IsKnockout { get; set; }
 

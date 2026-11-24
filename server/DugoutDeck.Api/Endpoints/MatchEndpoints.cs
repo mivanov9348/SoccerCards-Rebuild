@@ -94,12 +94,8 @@ public static class MatchEndpoints
     {
         var catalog = await matches.CatalogAsync();
         var (budget, handSize) = MatchService.HumanLimits(state);
-        Func<string, int>? owned = null;
-        if (match.CareerId is { } careerId)
-        {
-            var collection = await careers.CollectionAsync(careerId);
-            owned = code => collection.GetValueOrDefault(code);
-        }
+        Func<string, int, int>? owned = null;
+        if (match.CareerId is { } careerId) owned = CareerService.Owned(await careers.CollectionAsync(careerId));
         var errors = TacticRules.Validate(tactic, catalog, budget, handSize, owned);
         if (errors.Count > 0) throw new GameRuleException(string.Join(" ", errors));
 
@@ -133,12 +129,12 @@ public static class MatchEndpoints
         if (state.Phase == MatchPhase.Setup)
         {
             var (budget, handSize) = MatchService.HumanLimits(state);
-            Dictionary<string, int>? collection = null;
+            Dictionary<(string Code, int Tier), int>? collection = null;
             TacticSpec? last = null;
             object? plans = null;
             if (match.CareerId is { } careerId)
             {
-                collection = await db.CareerCards.Where(c => c.CareerId == careerId).ToDictionaryAsync(c => c.Code, c => c.Count);
+                collection = (await db.CareerCards.Where(c => c.CareerId == careerId && c.Count > 0).ToListAsync()).ToDictionary(c => (c.Code, c.Tier), c => c.Count);
                 if (await db.Careers.FindAsync(careerId) is { } career)
                 {
                     // the active plan of the Tactics tab (or the last tactic played) is loaded; the other plans are one click away
@@ -160,10 +156,18 @@ public static class MatchEndpoints
     }
 
     /// <summary>The cards of the tactic editor, with how many the career owns (null = unlimited).</summary>
-    public static object SetupCards(CardCatalog catalog, Dictionary<string, int>? collection) =>
-        catalog.ByCode.Values.Where(c => c.Kind != CardKind.Neutral).OrderBy(c => c.Kind).ThenBy(c => c.Cost).Select(c => new
+    /// <summary>The cards of the tactic editor, with how many copies the career owns in each tier (null = unlimited, all Normal).</summary>
+    public static object SetupCards(CardCatalog catalog, Dictionary<(string Code, int Tier), int>? collection) =>
+        catalog.ByCode.Values.Where(c => c.Kind != CardKind.Neutral).OrderBy(c => c.Kind).ThenBy(c => c.Cost).Select(c =>
         {
-            c.Code, c.Name, c.Description, kind = c.Kind.ToString(), rarity = c.Rarity.ToString(), c.Cost,
-            owned = collection == null || c.Code == Cards.SquadPlayer || c.Kind == CardKind.Modifier ? (int?)null : collection.GetValueOrDefault(c.Code)
+            var unlimited = collection == null || c.Code == Cards.SquadPlayer || c.Kind == CardKind.Modifier;
+            return new
+            {
+                c.Code, c.Name, c.Description, kind = c.Kind.ToString(), rarity = c.Rarity.ToString(), c.Cost,
+                owned = unlimited ? (int?)null : Enumerable.Range(0, 4).Sum(t => collection!.GetValueOrDefault((c.Code, t))),
+                // copies per tier: [Normal, Rare, Ultra Rare, Legendary]
+                tiers = unlimited ? null : Enumerable.Range(0, 4).Select(t => collection!.GetValueOrDefault((c.Code, t))).ToArray(),
+                bonuses = Enumerable.Range(0, 4).Select(t => Tiers.Bonus(c.Code, t)).ToArray()
+            };
         }).ToList();
 }

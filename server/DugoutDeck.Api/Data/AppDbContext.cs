@@ -41,7 +41,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         b.Entity<Career>().HasMany(c => c.Cards).WithOne()
             .HasForeignKey(c => c.CareerId).OnDelete(DeleteBehavior.Cascade);
-        b.Entity<CareerCard>().HasIndex(c => new { c.CareerId, c.Code }).IsUnique();
+        b.Entity<CareerCard>().HasIndex(c => new { c.CareerId, c.Code, c.Tier }).IsUnique();
         b.Entity<CareerClubUpgrade>().HasOne<Career>().WithMany()
             .HasForeignKey(u => u.CareerId).OnDelete(DeleteBehavior.Cascade);
         b.Entity<SavedTactic>().HasOne<Career>().WithMany()

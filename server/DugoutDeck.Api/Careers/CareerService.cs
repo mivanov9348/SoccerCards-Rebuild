@@ -40,7 +40,7 @@ public class SeasonSummary
 }
 
 /// <summary>Career mode: all leagues, cups and European cups in one weekly calendar, board, money, cards and the store.</summary>
-public class CareerService(AppDbContext db, MatchService matches)
+public partial class CareerService(AppDbContext db, MatchService matches)
 {
     public static readonly string[] KnockoutStages = ["Round of 32", "Round of 16", "Quarter-final", "Semi-final", "Final"];
     public static readonly string[] EuropeCodes = ["UCL", "UEL", "UECL"];
@@ -48,7 +48,6 @@ public class CareerService(AppDbContext db, MatchService matches)
     private static readonly double[] EuroFractions = [0.2, 0.4, 0.6, 0.78, 0.95];
     private const int StartYear = 2026;
     private const int MaxUpgradeLevel = 10;
-    public const long PackPrice = 600_000;
 
     public static string ExpectationText(BoardExpectation e) => e switch
     {
@@ -84,44 +83,6 @@ public class CareerService(AppDbContext db, MatchService matches)
         return teams.ToDictionary(t => t.Id, t => Math.Min(99, t.Overall + 2 * upgrades.GetValueOrDefault(t.Id)));
     }
 
-    public async Task<Dictionary<string, int>> CollectionAsync(int careerId) =>
-        await db.CareerCards.Where(c => c.CareerId == careerId).ToDictionaryAsync(c => c.Code, c => c.Count);
-
-    private async Task AddCardAsync(int careerId, string code, int n = 1)
-    {
-        var card = db.CareerCards.Local.FirstOrDefault(c => c.CareerId == careerId && c.Code == code)
-                   ?? await db.CareerCards.FirstOrDefaultAsync(c => c.CareerId == careerId && c.Code == code);
-        if (card == null) db.CareerCards.Add(new CareerCard { CareerId = careerId, Code = code, Count = n });
-        else card.Count += n;
-    }
-
-    /// <summary>A random collectable card: common 65%, rare 28%, epic 7%.</summary>
-    private async Task<CardDefinition> RandomCardAsync(CardRarity? atLeast = null)
-    {
-        var pool = (await matches.CatalogAsync()).ByCode.Values
-            .Where(c => c.Kind is CardKind.Field or CardKind.Hand && c.Rarity != CardRarity.None).ToList();
-        var roll = Random.Shared.Next(100);
-        var rarity = roll < 65 ? CardRarity.Common : roll < 93 ? CardRarity.Rare : CardRarity.Epic;
-        if (atLeast is { } min && rarity < min) rarity = min;
-        var options = pool.Where(c => c.Rarity == rarity).ToList();
-        return options[Random.Shared.Next(options.Count)];
-    }
-
-    private async Task<List<string>> OpenPackAsync(int careerId, CardRarity guaranteed = CardRarity.Rare) =>
-        (await OpenPackCardsAsync(careerId, guaranteed)).Select(c => c.Name).ToList();
-
-    private async Task<List<CardDefinition>> OpenPackCardsAsync(int careerId, CardRarity guaranteed = CardRarity.Rare)
-    {
-        var names = new List<CardDefinition>();
-        for (var i = 0; i < 3; i++)
-        {
-            var c = await RandomCardAsync(i == 2 ? guaranteed : null);
-            await AddCardAsync(careerId, c.Code);
-            names.Add(c);
-        }
-        return names;
-    }
-
     // ================================================================== create
 
     public async Task<Career> CreateAsync(string saveName, string managerName, int teamId, Difficulty difficulty = Difficulty.Normal)
@@ -145,9 +106,8 @@ public class CareerService(AppDbContext db, MatchService matches)
         db.Careers.Add(career);
         await db.SaveChangesAsync();
 
-        // starter collection
-        foreach (var (code, n) in new[] { (Cards.Striker, 2), (Cards.BigChanceCard, 2), (Cards.LongShot, 3), (Cards.Captain, 1), (Cards.Scout, 2), (Cards.Calm, 1) })
-            await AddCardAsync(career.Id, code, n);
+        // version 1.2: no starter collection — the manager drafts the club's first cards ("pick 1 of 3", see CareerService.Cards.cs)
+        await StartDraftAsync(career);
 
         var leagues = await db.Leagues.Where(l => l.IsPlayable).ToListAsync();
         var leagueIds = leagues.Select(l => l.Id).ToHashSet();
@@ -401,6 +361,7 @@ public class CareerService(AppDbContext db, MatchService matches)
     /// <summary>Creates (or resumes) the match of this week. With <paramref name="useLastTactic"/> it kicks off at once.</summary>
     public async Task<Match> StartUserMatchAsync(Career career, bool useLastTactic)
     {
+        EnsureDrafted(career);
         var season = await CurrentSeasonAsync(career.Id);
         if (season.Finished) throw new GameRuleException("The season is over. Start the next season.");
         var fixture = await UserFixtureThisWeekAsync(season) ?? throw new GameRuleException("Your team does not play this week.");
@@ -417,7 +378,7 @@ public class CareerService(AppDbContext db, MatchService matches)
             var state = MatchService.Load(match);
             var (budget, handSize) = MatchService.HumanLimits(state);
             var collection = await CollectionAsync(career.Id);
-            if (TacticRules.Validate(tactic, await matches.CatalogAsync(), budget, handSize, c => collection.GetValueOrDefault(c)).Count == 0)
+            if (TacticRules.Validate(tactic, await matches.CatalogAsync(), budget, handSize, Owned(collection)).Count == 0)
             {
                 (await matches.EngineAsync()).Start(state, humanSide == Side.Home ? tactic : null, humanSide == Side.Away ? tactic : null);
                 MatchService.Save(match, state);
@@ -430,6 +391,7 @@ public class CareerService(AppDbContext db, MatchService matches)
     /// <summary>Simulates your match (or finishes a started one) and the rest of the week.</summary>
     public async Task SimulateUserWeekAsync(Career career)
     {
+        EnsureDrafted(career);
         var season = await CurrentSeasonAsync(career.Id);
         if (season.Finished) throw new GameRuleException("The season is over. Start the next season.");
         var fixture = await UserFixtureThisWeekAsync(season);
@@ -450,6 +412,7 @@ public class CareerService(AppDbContext db, MatchService matches)
     /// <summary>Plays the weeks in which your team has no match, up to your next match (or the end of the season).</summary>
     public async Task ContinueAsync(Career career)
     {
+        EnsureDrafted(career);
         for (var i = 0; i < 80; i++)
         {
             var season = await CurrentSeasonAsync(career.Id);
@@ -526,8 +489,9 @@ public class CareerService(AppDbContext db, MatchService matches)
         if (won && (Random.Shared.Next(100) < 30 || (mine.IsKnockout && comp.Type == CompetitionType.European)))
         {
             var card = await RandomCardAsync();
-            await AddCardAsync(career.Id, card.Code);
-            body += $" New card: {card.Name} ({card.Rarity})!";
+            var tier = Tiers.RollPack(Random.Shared);
+            await AddCardAsync(career.Id, card.Code, tier);
+            body += $" New card: {CardLabel(card.Name, tier)}!";
         }
         AddMessage(career, season, $"{comp.Name}, {mine.Stage}", body);
 
@@ -718,12 +682,21 @@ public class CareerService(AppDbContext db, MatchService matches)
                 ? "You were sacked and have no offers — your career is over."
                 : "You were sacked — you must accept one of the offers.");
 
+        // the cards belong to the club: a new club means its own squad cards (the old ones stay behind)
+        var newClub = teamId != season.TeamId;
         career.TeamId = teamId;
         career.Status = CareerStatus.Active;
         var ratings = await RatingsAsync(career.Id);
         var newSeason = await CreateSeasonAsync(career, season.Year + 1, summary.NextMembership, summary.NextEurope, ratings);
         var team = await db.Teams.FindAsync(teamId);
         var league = await db.Leagues.FindAsync(newSeason.LeagueId);
+        if (newClub)
+        {
+            var squad = await GiveClubCardsAsync(career, ratings[teamId]);
+            AddMessage(career, newSeason, "Your new squad cards", $"The cards stay with the club you left. {team!.Name}'s squad cards are now yours: {string.Join(", ", squad)}.");
+        }
+        var seasonPack = await OpenPackAsync(career.Id);
+        AddMessage(career, newSeason, "Season pack from the board", $"A free pack for the new season: {string.Join(", ", seasonPack)}.");
         AddMessage(career, newSeason, $"Season {newSeason.Year}/{(newSeason.Year + 1) % 100:00}",
             $"A new season in charge of {team!.Name} ({league!.Name}). Board target: {ExpectationText(newSeason.Expectation)}." +
             (newSeason.EuropeanCode != null ? $" You will play in the {await CompetitionName(newSeason.EuropeanCode)}." : ""));
@@ -734,35 +707,6 @@ public class CareerService(AppDbContext db, MatchService matches)
     // ================================================================== store
 
     public static long UpgradeCost(int level) => 3_000_000L * (level + 1);
-
-    public async Task<List<CardDefinition>> BuyPackAsync(Career career)
-    {
-        if (career.Money < PackPrice) throw new GameRuleException("Not enough money for a pack.");
-        career.Money -= PackPrice;
-        var cards = await OpenPackCardsAsync(career.Id);
-        await db.SaveChangesAsync();
-        return cards;
-    }
-
-    public async Task BuyCardAsync(Career career, string code)
-    {
-        var card = (await matches.CatalogAsync()).Get(code);
-        if (card == null || card.Price <= 0) throw new GameRuleException("This card is not sold.");
-        if (career.Money < card.Price) throw new GameRuleException("Not enough money.");
-        career.Money -= card.Price;
-        await AddCardAsync(career.Id, code);
-        await db.SaveChangesAsync();
-    }
-
-    public async Task SellCardAsync(Career career, string code)
-    {
-        var owned = await db.CareerCards.FirstOrDefaultAsync(c => c.CareerId == career.Id && c.Code == code);
-        if (owned == null || owned.Count < 2) throw new GameRuleException("You can only sell duplicates.");
-        var card = (await matches.CatalogAsync()).Get(code)!;
-        owned.Count--;
-        career.Money += card.Price / 3;
-        await db.SaveChangesAsync();
-    }
 
     public async Task<int> UpgradeLevelAsync(int careerId, int teamId) =>
         (await db.ClubUpgrades.FirstOrDefaultAsync(u => u.CareerId == careerId && u.TeamId == teamId))?.Level ?? 0;

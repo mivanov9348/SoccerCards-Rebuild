@@ -1,7 +1,10 @@
 import { useRef, useState, type MouseEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { Icon } from './Icons'
 import { useCardData, zoomCard } from '../cardArt'
 import { loadSettings } from '../settings'
+import { play } from '../sound'
+import { TIER_NAMES, TIER_SHORT, type TieredCard } from '../api'
 /** Colour theme of every card face (the icons are in Icons.tsx). */
 export const cardStyles: Record<string, { theme: string }> = {
   PASS: { theme: 'green' },
@@ -54,19 +57,30 @@ interface FaceProps {
   name: string
   description?: string | null
   size?: 'mini' | 'small' | 'normal' | 'big'
+  /** tier of this copy (1.2): 0 Normal, 1 Rare (silver), 2 Ultra Rare (gold, holo), 3 Legendary (animated, holo) */
+  tier?: number
+}
+
+/** A small tier label: R / UR / L (nothing for Normal). */
+export function TierBadge({ tier, long }: { tier?: number; long?: boolean }) {
+  if (!tier) return null
+  return (
+    <span className={`tier-badge tier-${tier}`} title={TIER_NAMES[tier]}>
+      {long ? TIER_NAMES[tier] : TIER_SHORT[tier]}
+    </span>
+  )
 }
 
 /**
  * A face-up card. With a picture in public/cards it shows the picture, the name underneath and the icon in a corner
- * badge; without one, the big icon. Rare and epic cards shine (holo), larger cards tilt in 3D under the mouse, and a
- * right-click opens the big view.
+ * badge; without one, the big icon. The tier of the copy gives the frame (silver / gold / legendary) and Ultra Rare and
+ * Legendary copies shine (holo). Larger cards tilt in 3D under the mouse, and a right-click opens the big view.
  */
-export function CardFace({ code, name, description, size = 'normal' }: FaceProps) {
-  const { art, info } = useCardData()
+export function CardFace({ code, name, description, size = 'normal', tier = 0 }: FaceProps) {
+  const { art } = useCardData()
   const style = cardStyles[code] ?? { theme: 'grey' }
   const picture = art[code]
-  const rarity = info[code]?.rarity
-  const holo = rarity === 'Rare' || rarity === 'Epic' || rarity === 'Legendary' ? `holo holo-${rarity.toLowerCase()}` : ''
+  const holo = tier >= 2 ? `holo holo-${tier === 3 ? 'legendary' : 'epic'}` : ''
   const ref = useRef<HTMLDivElement>(null)
   const tilt = size !== 'mini' && !loadSettings().reduceMotion
 
@@ -95,12 +109,13 @@ export function CardFace({ code, name, description, size = 'normal' }: FaceProps
   return (
     <div
       ref={ref}
-      className={`card-face theme-${style.theme} size-${size} ${picture ? 'has-art' : ''} ${holo} ${tilt ? 'tilt' : ''}`}
+      className={`card-face theme-${style.theme} size-${size} ${picture ? 'has-art' : ''} ${holo} ${tier ? `tier-frame tier-${tier}` : ''} ${tilt ? 'tilt' : ''}`}
       onMouseMove={move}
       onMouseLeave={leave}
       onContextMenu={zoom}
       title={size === 'mini' ? `${name} (right-click to zoom)` : undefined}
     >
+      {tier > 0 && <TierBadge tier={tier} long={size === 'big'} />}
       {picture ? (
         <>
           <img className="cf-art" src={picture} alt="" draggable={false} loading="lazy" />
@@ -177,48 +192,82 @@ export function CardBack({
   )
 }
 
-export interface PackCard {
-  code: string
-  name: string
-  rarity: string
-  description?: string | null
-}
+export type PackCard = TieredCard
 
-/** Pack opening: three face-down cards that flip one by one (click, or all at once). */
-export function PackOpening({ cards, onClose, onReveal }: { cards: PackCard[]; onClose: () => void; onReveal?: (c: PackCard) => void }) {
+/**
+ * Pack opening (1.2): the sealed pack shakes until you tear it open; the cards come out face down and their backs glow
+ * silver, gold or rainbow for Rare, Ultra Rare and Legendary copies before you flip them. Click a card to flip it, or
+ * "Reveal all". Packs of 10 are laid out in two rows.
+ */
+export function PackOpening({ cards, onClose, title = 'Your pack' }: { cards: PackCard[]; onClose: () => void; title?: string }) {
+  const [stage, setStage] = useState<'sealed' | 'tearing' | 'open'>('sealed')
   const [open, setOpen] = useState<boolean[]>(cards.map(() => false))
+  const calm = loadSettings().reduceMotion
+  const tear = () => {
+    if (stage !== 'sealed') return
+    play('pack')
+    setStage('tearing')
+    window.setTimeout(() => setStage('open'), calm ? 0 : 650)
+  }
   const reveal = (i: number) => {
-    if (open[i]) return
+    if (stage !== 'open' || open[i]) return
     setOpen((o) => o.map((v, j) => v || j === i))
-    onReveal?.(cards[i])
+    const t = cards[i].tier
+    if (t >= 2) play('packEpic')
+    else play(t === 1 ? 'keep' : 'flip')
   }
   const all = open.every(Boolean)
-  return (
+  const best = Math.max(...cards.map((c) => c.tier))
+  // rendered on the page itself: a panel with a backdrop filter would otherwise trap the full-screen overlay
+  return createPortal(
     <div className="pack-modal" role="dialog" aria-label="Pack opening">
-      <h2>🎁 Your pack</h2>
-      <div className="pack-cards">
-        {cards.map((c, i) => (
-          <button key={i} className={`pack-slot rarity-${c.rarity} ${open[i] ? 'open' : ''}`} onClick={() => reveal(i)}>
-            <div className="pack-inner">
-              <PackBack />
-              <div className="pack-front">
-                <CardFace code={c.code} name={c.name} description={c.description} size="normal" />
-              </div>
-            </div>
-            <div className="pack-rarity">{open[i] ? c.rarity : 'click to flip'}</div>
-          </button>
-        ))}
-      </div>
-      {all ? (
-        <button className="btn btn-primary" onClick={onClose}>
-          Great!
+      <h2>🎁 {title}</h2>
+      {stage !== 'open' ? (
+        <button className={`sealed-pack ${stage === 'tearing' ? 'tearing' : ''} glow-${best}`} onClick={tear} title="Tear it open">
+          <span className="sealed-top" />
+          <span className="sealed-body">
+            <Icon code="GOAL" />
+            <b>DUGOUT DECK</b>
+            <small>{cards.length} cards</small>
+          </span>
+          <span className="sealed-hint">click to tear open</span>
         </button>
       ) : (
-        <button className="btn" onClick={() => cards.forEach((_, i) => setTimeout(() => reveal(i), i * 350))}>
-          Flip all
-        </button>
+        <div className={`pack-cards size-${cards.length}`}>
+          {cards.map((c, i) => (
+            <button key={i} className={`pack-slot tier-hint-${c.tier} ${open[i] ? 'open' : ''}`} style={{ animationDelay: `${i * 70}ms` }} onClick={() => reveal(i)}>
+              <div className="pack-inner">
+                <PackBack />
+                <div className="pack-front">
+                  <CardFace code={c.code} name={c.name} description={c.description} size="normal" tier={c.tier} />
+                </div>
+              </div>
+              <div className={`pack-rarity tier-text-${c.tier}`}>
+                {open[i] ? (
+                  <>
+                    {c.tierName}
+                    {c.bonus && <small> · {c.bonus}</small>}
+                  </>
+                ) : (
+                  'click to flip'
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
       )}
-    </div>
+      {stage === 'open' &&
+        (all ? (
+          <button className="btn btn-primary" onClick={onClose}>
+            Great!
+          </button>
+        ) : (
+          <button className="btn" onClick={() => cards.forEach((_, i) => window.setTimeout(() => reveal(i), i * 260))}>
+            Reveal all
+          </button>
+        ))}
+    </div>,
+    document.body,
   )
 }
 

@@ -2,9 +2,8 @@ import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api, money, seasonLabel, type CareerView, type Fixture } from '../api'
 import { Badge, byCountry, ErrorBox, FixtureRow, Screen, StandingsTable, useLoad } from '../components/common'
-import { CardThumb, PackOpening, type PackCard } from '../components/GameCard'
-import { play } from '../sound'
 import { TacticsTab } from '../components/TacticsTab'
+import { CollectionTab, DraftPanel, StoreTab } from '../components/CardMarket'
 
 type Tab = 'overview' | 'tactics' | 'tables' | 'fixtures' | 'cups' | 'collection' | 'store' | 'news'
 
@@ -208,112 +207,6 @@ function TablesTab({ careerId, c }: { careerId: number; c: CareerView }) {
   )
 }
 
-function CollectionTab({ careerId, reload }: { careerId: number; reload: () => void }) {
-  const { data: cards, reload: reloadCards } = useLoad(() => api.collection(careerId), [careerId])
-  const [error, setError] = useState<string | null>(null)
-  const sell = async (code: string) => {
-    try {
-      await api.sellCard(careerId, code)
-      await reloadCards()
-      reload()
-    } catch (e) {
-      setError((e as Error).message)
-    }
-  }
-  return (
-    <div className="panel">
-      <p className="muted">Your collection stays with you when you change clubs. Duplicates can be sold.</p>
-      <ErrorBox error={error} />
-      <div className="collection">
-        {cards?.map((card) => (
-          <div key={card.code} className={`coll-card rarity-${card.rarity.toLowerCase()} ${card.owned === 0 ? 'missing' : ''}`}>
-            <span className="tb-icon"><CardThumb code={card.code} /></span>
-            <b>{card.name}</b>
-            <span className="muted small">
-              {card.kind === 'Field' ? 'Field card' : 'Hand card'} · {card.rarity} · {card.cost} pt
-            </span>
-            <span className="small">{card.description}</span>
-            <span className="coll-count">× {card.owned}</span>
-            {card.owned >= 2 && (
-              <button className="btn btn-small" onClick={() => sell(card.code)}>
-                Sell 1 for {money(card.sellPrice)}
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function StoreTab({ careerId, c, reload }: { careerId: number; c: CareerView; reload: () => void }) {
-  const { data: store, reload: reloadStore } = useLoad(() => api.store(careerId), [careerId])
-  const { data: cards, reload: reloadCards } = useLoad(() => api.collection(careerId), [careerId])
-  const [error, setError] = useState<string | null>(null)
-  const [opened, setOpened] = useState<PackCard[] | null>(null)
-  const act = async (fn: () => Promise<unknown>) => {
-    setError(null)
-    try {
-      await fn()
-      await Promise.all([reloadStore(), reloadCards()])
-      reload()
-    } catch (e) {
-      setError((e as Error).message)
-    }
-  }
-  if (!store) return <div className="panel muted">Loading…</div>
-  return (
-    <div>
-      <ErrorBox error={error} />
-      <div className="two-col">
-        <div className="panel">
-          <h2>Card pack — {money(store.packPrice)}</h2>
-          <p className="muted">3 random cards, at least one rare.</p>
-          <button className="btn btn-primary" disabled={store.money < store.packPrice} onClick={() => act(async () => setOpened((await api.buyPack(careerId)).cards))}>
-            Buy a pack
-          </button>
-          {opened && (
-            <PackOpening cards={opened} onReveal={(card) => play(card.rarity === 'Epic' ? 'packEpic' : 'pack')} onClose={() => setOpened(null)} />
-          )}
-        </div>
-        <div className="panel">
-          <h2>Club upgrade — level {store.upgradeLevel}/10</h2>
-          <p className="muted">
-            +2 rating for {c.team.name} (now {c.team.rating}): more tactic points, more hand cards, a smarter computer when you simulate,
-            and more income.
-          </p>
-          {store.upgradeCost != null ? (
-            <button className="btn btn-primary" disabled={store.money < store.upgradeCost} onClick={() => act(() => api.upgradeClub(careerId))}>
-              Upgrade for {money(store.upgradeCost)}
-            </button>
-          ) : (
-            <p>Fully upgraded.</p>
-          )}
-        </div>
-      </div>
-      <div className="panel">
-        <h2>Single cards</h2>
-        <p className="muted">More expensive, but you pick exactly what you want. Only in-game money — no real money.</p>
-        <div className="collection">
-          {cards?.map((card) => (
-            <div key={card.code} className={`coll-card rarity-${card.rarity.toLowerCase()}`}>
-              <span className="tb-icon"><CardThumb code={card.code} /></span>
-              <b>{card.name}</b>
-              <span className="muted small">
-                {card.rarity} · owned {card.owned}
-              </span>
-              <span className="small">{card.description}</span>
-              <button className="btn btn-small" disabled={store.money < card.price} onClick={() => act(() => api.buyCard(careerId, card.code))}>
-                Buy {money(card.price)}
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export default function CareerHub() {
   const { id } = useParams()
   const careerId = Number(id)
@@ -404,6 +297,8 @@ export default function CareerHub() {
           </div>
         </div>
       </div>
+
+      {c.draft && <DraftPanel careerId={careerId} draft={c.draft} onDone={() => void reload()} />}
 
       <div className="tabs">
         {(

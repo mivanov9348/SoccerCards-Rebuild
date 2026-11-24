@@ -205,8 +205,10 @@ public class MatchAi(Random rng)
     public int RemoveChoice(TeamMatchState victim, CardCatalog catalog)
     {
         if (victim.Hand.Count == 0) return 0;
-        var best = victim.Hand.Max(c => catalog.Cost(c));
-        var top = victim.Hand.Select((c, i) => (i, c)).Where(x => catalog.Cost(x.c) == best).ToList();
+        // value = tactic cost, then tier (a Legendary copy is worth more than a Normal one)
+        int Value(int i) => catalog.Cost(victim.Hand[i]) * 10 + Tiers.At(victim.HandTiers, i);
+        var best = Enumerable.Range(0, victim.Hand.Count).Max(Value);
+        var top = Enumerable.Range(0, victim.Hand.Count).Where(i => Value(i) == best).Select(i => (i, victim.Hand[i])).ToList();
         return top[rng.Next(top.Count)].i;
     }
 }
