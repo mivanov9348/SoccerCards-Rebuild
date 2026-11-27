@@ -1,6 +1,7 @@
 import { Screen } from '../components/common'
 import { PACES, useSettings, type Pace } from '../settings'
 import { DIFFICULTIES, setFullscreen, type Difficulty } from '../display'
+import { NamePacksPanel } from '../components/NamePacks'
 
 export default function SettingsPage() {
   const [s, update] = useSettings()
@@ -36,6 +37,8 @@ export default function SettingsPage() {
           <input type="checkbox" checked={s.autoMiniGames} onChange={(e) => update({ autoMiniGames: e.target.checked })} />
           Decide mini-games automatically (corners, free kicks, Big Chances, penalties)
         </label>
+        <h3>Name packs</h3>
+        <NamePacksPanel />
         <h3>Sound</h3>
         <label className="checkbox">
           <input type="checkbox" checked={!s.muted} onChange={(e) => update({ muted: !e.target.checked })} />

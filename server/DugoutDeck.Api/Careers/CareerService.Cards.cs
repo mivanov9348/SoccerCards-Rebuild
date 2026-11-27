@@ -117,9 +117,12 @@ public partial class CareerService
     public async Task<List<PackCard>> BuyPackAsync(Career career, int size)
     {
         var offer = Packs.FirstOrDefault(p => p.Size == size) ?? throw new GameRuleException("Unknown pack.");
-        if (career.Money < offer.Price) throw new GameRuleException("Not enough money for this pack.");
-        career.Money -= offer.Price;
+        var price = PackPrice(offer, await CareerLeagueFactorAsync(career));
+        if (career.Money < price) throw new GameRuleException("Not enough money for this pack.");
+        career.Money -= price;
         var cards = await OpenPackCardsAsync(career.Id, offer.Size, CardRarity.Rare, offer.GuaranteedRarePlus);
+        await db.SaveChangesAsync();
+        await CollectionAchievementsAsync(career, await CurrentSeasonAsync(career.Id));
         await db.SaveChangesAsync();
         return cards;
     }

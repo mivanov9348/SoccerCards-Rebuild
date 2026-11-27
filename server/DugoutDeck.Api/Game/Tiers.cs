@@ -62,6 +62,9 @@ public static class Tiers
 
     public static int At(List<int>? tiers, int index) => tiers != null && index >= 0 && index < tiers.Count ? Math.Clamp(tiers[index], 0, 3) : Normal;
 
+    /// <summary>Rare and better copies of cards without a chance add 1 to the pass streak of the team that gets the effect (1.3).</summary>
+    public static bool StreakBonus(string code, int tier) => tier >= Rare && HasTiers(code) && !ChanceCards.Contains(code);
+
     /// <summary>A short description of what a tier adds to a card (shown in the collection, the store and the tactic screen).</summary>
     public static string Bonus(string code, int tier)
     {
@@ -73,9 +76,9 @@ public static class Tiers
                 Cards.Var => $"+{ChanceBonus(tier)}% to disallow the goal",
                 _ => $"+{ChanceBonus(tier)}% chance"
             };
-        if (tier < UltraRare) return "";
+        if (tier < UltraRare) return "+1 to your pass streak";
         var n = ExtraUses(tier);
-        return code switch
+        return "+1 pass streak, " + code switch
         {
             Cards.Captain => $"ignores {1 + n} Tackles",
             Cards.Wall => $"stops {1 + n} goals",

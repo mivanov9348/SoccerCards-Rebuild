@@ -15,6 +15,11 @@ YOUR SAVES
   (paste that path into the Explorer address bar). The game saves after every action.
   When an update changes the save format, a backup copy (dugout-deck.db.backup-...) is made first.
 
+NAME PACKS
+  All clubs are fictional. Settings -> Name packs imports a pack (a .json file) that renames clubs, leagues and cups.
+  Make your own from name-pack-template.json (in this folder); see name-packs.md.
+  Packs are kept in %LOCALAPPDATA%\DugoutDeck\name-packs and survive updates.
+
 UPDATING
   Replace the game folder with the new version. Your saves are kept (they are not in the game folder).
 

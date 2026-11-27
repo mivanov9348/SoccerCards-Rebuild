@@ -10,6 +10,7 @@ import { play } from '../sound'
  */
 export function CollectionTab({ careerId, reload }: { careerId: number; reload: () => void }) {
   const { data: cards, reload: reloadCards } = useLoad(() => api.collection(careerId), [careerId])
+  const { data: store, reload: reloadStore } = useLoad(() => api.store(careerId), [careerId])
   const [error, setError] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
   const [showMissing, setShowMissing] = useState(false)
@@ -17,7 +18,7 @@ export function CollectionTab({ careerId, reload }: { careerId: number; reload: 
     setError(null)
     try {
       setNote(await fn())
-      await reloadCards()
+      await Promise.all([reloadCards(), reloadStore()])
       reload()
     } catch (e) {
       setError((e as Error).message)
@@ -30,7 +31,8 @@ export function CollectionTab({ careerId, reload }: { careerId: number; reload: 
       <div className="coll-head">
         <p className="muted">
           The cards belong to the club: if you take another job, they stay here and you get the new club&apos;s squad cards. Selling is
-          cheap — Normal {money(15_000)}, Rare {money(60_000)}, Ultra Rare {money(250_000)}, Legendary {money(1_000_000)}.
+          cheap — Normal {money(15_000)}, Rare {money(60_000)}, Ultra Rare {money(250_000)}, Legendary {money(1_000_000)}. Merge spare
+          copies into a higher tier: 5 Normal → Rare, 4 Rare → Ultra Rare, 3 Ultra Rare → Legendary (for a fee).
         </p>
         <div className="row-buttons">
           <button
@@ -88,6 +90,24 @@ export function CollectionTab({ careerId, reload }: { careerId: number; reload: 
                       >
                         Sell {money(t.sellPrice)}
                       </button>
+                      {t.tier < 3 && store && t.count >= store.merge[t.tier].need && (
+                        <button
+                          className="btn btn-small btn-primary"
+                          disabled={store.money < store.merge[t.tier].fee}
+                          title={`Merge ${store.merge[t.tier].need} ${TIER_NAMES[t.tier]} copies into one ${TIER_NAMES[t.tier + 1]} for ${money(store.merge[t.tier].fee)}`}
+                          onClick={() =>
+                            act(async () => {
+                              const m = store.merge[t.tier]
+                              if (!confirm(`Merge ${m.need} ${TIER_NAMES[t.tier]} ${card.name} into one ${TIER_NAMES[t.tier + 1]} for ${money(m.fee)}?`)) return ''
+                              await api.merge(careerId, card.code, t.tier)
+                              play('packEpic')
+                              return `New ${TIER_NAMES[t.tier + 1]} ${card.name}!`
+                            })
+                          }
+                        >
+                          Merge → {TIER_NAMES[t.tier + 1]}
+                        </button>
+                      )}
                     </div>
                   ))}
                 {card.owned === 0 && <span className="muted small">not in the collection</span>}
@@ -125,6 +145,7 @@ export function StoreTab({ careerId, c, reload }: { careerId: number; c: CareerV
         <p className="muted">
           Every card is Normal (80%), Rare (16%), Ultra Rare (3.2%) or Legendary (0.8%). Higher tiers play better: +4 / +8 / +12% for
           cards with a chance, an extra use for the others. Bigger packs guarantee at least one Rare or better.
+          {store.priceFactor !== 1 && <> Prices in your league: ×{store.priceFactor.toFixed(2).replace(/0$/, '')}.</>}
         </p>
         <div className="pack-offers">
           {store.packs.map((p) => (

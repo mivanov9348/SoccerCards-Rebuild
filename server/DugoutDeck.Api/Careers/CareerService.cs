@@ -29,6 +29,15 @@ public class SeasonSummary
     public bool Fired { get; set; }
     public int ReputationChange { get; set; }
     public long MoneyEarned { get; set; }
+    /// <summary>All income and expenses of the season (1.3).</summary>
+    public long Income { get; set; }
+    public long Expenses { get; set; }
+    public int TeamId { get; set; }
+    public string Team { get; set; } = "";
+    public int GoalsFor { get; set; }
+    public int GoalsAgainst { get; set; }
+    public bool CupWon { get; set; }
+    public bool EuropeWon { get; set; }
     public List<string> CardsWon { get; set; } = new();
     public List<string> Promoted { get; set; } = new();
     public List<string> Relegated { get; set; } = new();
@@ -430,7 +439,9 @@ public partial class CareerService(AppDbContext db, MatchService matches)
         if (fixture == null || career == null || fixture.Played) return;
         ApplyResult(fixture, state);
         var season = await db.CareerSeasons.FindAsync(fixture.CareerSeasonId);
+        if (season != null) await MatchAchievementsAsync(career, season, state);
         if (season != null && season.CurrentWeek == fixture.Week) await CompleteWeekAsync(career, season);
+        await db.SaveChangesAsync();
     }
 
     private static void ApplyResult(Fixture f, MatchState s)
@@ -456,6 +467,7 @@ public partial class CareerService(AppDbContext db, MatchService matches)
 
         var mine = fixtures.FirstOrDefault(f => f.HomeTeamId == season.TeamId || f.AwayTeamId == season.TeamId);
         if (mine != null) await RewardMatchAsync(career, season, mine);
+        await PayWeekAsync(career, season);
 
         await db.SaveChangesAsync();
         await CreateNextKnockoutRoundsAsync(season, week, fixtures);
@@ -480,7 +492,7 @@ public partial class CareerService(AppDbContext db, MatchService matches)
             money += comp.Type == CompetitionType.European
                 ? comp.Code switch { "UCL" => 1_500_000, "UEL" => 800_000, _ => 400_000 }
                 : (long)(200_000 * factor);
-        career.Money += money;
+        Earn(career, season, money);
 
         var pens = mine.HomePenalties.HasValue ? $" (pens {mine.HomePenalties}:{mine.AwayPenalties})" : "";
         var body = $"{mine.HomeTeam!.Name} {mine.HomeGoals}:{mine.AwayGoals} {mine.AwayTeam!.Name}{pens} — " +
@@ -500,7 +512,7 @@ public partial class CareerService(AppDbContext db, MatchService matches)
         if (mine.IsKnockout && won && mine.Stage == KnockoutStages[^1])
         {
             var cards = await OpenPackAsync(career.Id, CardRarity.Epic);
-            career.Money += (long)(1_000_000 * factor);
+            Earn(career, season, (long)(1_000_000 * factor));
             career.Reputation = Math.Min(100, career.Reputation + 5);
             AddMessage(career, season, "TROPHY!", $"You win the {comp.Name}! Bonus cards: {string.Join(", ", cards)}.");
         }
@@ -565,18 +577,24 @@ public partial class CareerService(AppDbContext db, MatchService matches)
                 : $"{euroComp.Name}: out in the {last.Stage}";
         }
 
-        var score = TargetPosition(season.Expectation) - pos + (cupWinnerId == season.TeamId ? 2 : 0) + euroWins;
-        var fired = score <= -4 || pos == table.Count;
-        var verdict = fired ? "The board is unhappy with the results and has sacked you."
+        // money first: the end-of-season prize, then the board looks at the bank balance too
+        var earned = (long)(1_500_000 * factor * ratings[season.TeamId] / 70.0) + (long)((table.Count - pos + 1) * 150_000 * factor);
+        Earn(career, season, earned);
+        var inDebt = career.Money < 0;
+        var deepDebt = career.Money < -DebtLimit(factor);
+        var score = TargetPosition(season.Expectation) - pos + (cupWinnerId == season.TeamId ? 2 : 0) + euroWins - (inDebt ? 2 : 0);
+        var fired = score <= -4 || pos == table.Count || deepDebt;
+        var verdict = deepDebt ? "The club is deep in debt — the board has sacked you."
+            : fired ? "The board is unhappy with the results and has sacked you."
             : score >= 3 ? "The board is delighted! You smashed every target."
             : score >= 0 ? "The board is satisfied — you met the season target."
             : "The board is disappointed, but gives you one more chance.";
         var repChange = Math.Clamp(score * 3, -15, 15) + (cupWinnerId == season.TeamId ? 5 : 0) + euroWins * 2 + (pos == 1 ? 5 : 0);
         career.Reputation = Math.Clamp(career.Reputation + repChange, 0, 100);
 
-        // money and cards
-        var earned = (long)(1_500_000 * factor * ratings[season.TeamId] / 70.0) + (long)((table.Count - pos + 1) * 150_000 * factor);
-        career.Money += earned;
+        if (inDebt && !fired) verdict += " The board warns you about the club's debt.";
+
+        // cards
         var cardsWon = new List<string>();
         if (score >= 0) cardsWon.AddRange(await OpenPackAsync(career.Id));
         if (pos == 1) cardsWon.AddRange(await OpenPackAsync(career.Id, CardRarity.Epic));
@@ -648,11 +666,15 @@ public partial class CareerService(AppDbContext db, MatchService matches)
             CupWinner = cupWinnerId == 0 ? null : teamNames[cupWinnerId], EuropeResult = euroResult,
             Expectation = ExpectationText(season.Expectation), Verdict = verdict, Fired = fired, ReputationChange = repChange,
             MoneyEarned = earned, CardsWon = cardsWon, Promoted = promoted, Relegated = relegated,
+            Income = season.Income, Expenses = season.Expenses, TeamId = season.TeamId, Team = teamNames[season.TeamId],
+            GoalsFor = table[pos - 1].GoalsFor, GoalsAgainst = table[pos - 1].GoalsAgainst,
+            CupWon = cupWinnerId == season.TeamId, EuropeWon = euroResult?.EndsWith("WINNERS!") == true,
             Offers = offers.Select(id => new OfferDto(id, teamNames[id], leagueNames[nextMembership[id]], ratings[id])).ToList(),
             NextMembership = nextMembership, NextEurope = europe
         };
         season.SummaryJson = JsonSerializer.Serialize(summary);
         if (fired) career.Status = CareerStatus.Fired;
+        await SeasonAchievementsAsync(career, season, summary, table, ratings[season.TeamId], score);
 
         AddMessage(career, season, "End of season",
             $"You finished {Ordinal(pos)} in the {myLeague.Name}. Champions: {table[0].Name}. {verdict} Season income: {earned / 1000:N0}K." +
@@ -706,7 +728,7 @@ public partial class CareerService(AppDbContext db, MatchService matches)
 
     // ================================================================== store
 
-    public static long UpgradeCost(int level) => 3_000_000L * (level + 1);
+    public static long UpgradeCost(int level) => 4_000_000L * (level + 1);
 
     public async Task<int> UpgradeLevelAsync(int careerId, int teamId) =>
         (await db.ClubUpgrades.FirstOrDefaultAsync(u => u.CareerId == careerId && u.TeamId == teamId))?.Level ?? 0;

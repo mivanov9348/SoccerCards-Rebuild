@@ -4,8 +4,9 @@ import { api, money, seasonLabel, type CareerView, type Fixture } from '../api'
 import { Badge, byCountry, ErrorBox, FixtureRow, Screen, StandingsTable, useLoad } from '../components/common'
 import { TacticsTab } from '../components/TacticsTab'
 import { CollectionTab, DraftPanel, StoreTab } from '../components/CardMarket'
+import { ClubHistory } from '../components/ClubHistory'
 
-type Tab = 'overview' | 'tactics' | 'tables' | 'fixtures' | 'cups' | 'collection' | 'store' | 'news'
+type Tab = 'overview' | 'history' | 'tactics' | 'tables' | 'fixtures' | 'cups' | 'collection' | 'store' | 'news'
 
 const ordinal = (n: number) => {
   const s = n % 100 >= 11 && n % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'
@@ -116,9 +117,17 @@ function SeasonEnd({ c, busy, onNext }: { c: CareerView; busy: boolean; onNext: 
           <b>{s.expectation}</b>
         </div>
         <div>
-          <span className="muted">Season income</span>
+          <span className="muted">Season prize</span>
           <b>{money(s.moneyEarned)}</b>
         </div>
+        {s.income != null && (
+          <div>
+            <span className="muted">Income / expenses</span>
+            <b>
+              <span className="good">{money(s.income)}</span> / <span className="bad">{money(s.expenses ?? 0)}</span>
+            </b>
+          </div>
+        )}
         <div>
           <span className="muted">Reputation</span>
           <b>
@@ -310,6 +319,7 @@ export default function CareerHub() {
             ['cups', `${c.cupName ?? 'Cup'} & Europe`],
             ['collection', `Collection (${c.collectionCount})`],
             ['store', 'Store'],
+            ['history', 'Club history'],
             ['news', 'News'],
           ] as [Tab, string][]
         ).map(([k, label]) => (
@@ -331,6 +341,29 @@ export default function CareerHub() {
               onSimulate={() => run(() => api.simulateCareer(careerId))}
               onContinue={() => run(() => api.continueCareer(careerId))}
             />
+            <div className={`panel finances ${c.money < 0 ? 'in-debt' : ''}`}>
+              <h2>Club finances</h2>
+              <div className="fin-grid">
+                <div>
+                  <span className="muted small">Income this season</span>
+                  <b className="good">{money(c.finances.income)}</b>
+                </div>
+                <div>
+                  <span className="muted small">Expenses this season</span>
+                  <b className="bad">{money(c.finances.expenses)}</b>
+                </div>
+                <div>
+                  <span className="muted small">Wages &amp; stadium per week</span>
+                  <b>{money(c.finances.weeklyExpenses)}</b>
+                </div>
+              </div>
+              {c.money < 0 && (
+                <p className="bad small">
+                  The club is in debt. More than {money(c.finances.debtLimit)} of debt at the end of the season and the board sacks you — sell
+                  cards or win prize money.
+                </p>
+              )}
+            </div>
             <div className="panel">
               <h2>Season targets</h2>
               <p>
@@ -422,6 +455,8 @@ export default function CareerHub() {
       {tab === 'tactics' && <TacticsTab careerId={careerId} onChanged={reload} />}
       {tab === 'collection' && <CollectionTab careerId={careerId} reload={reload} />}
       {tab === 'store' && <StoreTab careerId={careerId} c={c} reload={reload} />}
+
+      {tab === 'history' && <ClubHistory careerId={careerId} />}
 
       {tab === 'news' && (
         <div className="panel">

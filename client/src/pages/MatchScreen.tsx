@@ -622,7 +622,8 @@ export default function MatchScreen() {
                         peeked={c.peeked && c.card ? { code: c.card, name: c.name ?? '', opponent: c.owner != null && c.owner !== human } : null}
                         selected={targeting?.first === c.index}
                         disabled={!myTurn || busy}
-                        title={c.mine ? `Your ${c.name}${m.ownCardUsed ? ' — wait for your next turn' : ''}` : 'Face-down card'}
+                        title={c.mine ? `Your card — keep the mouse on it to see which${m.ownCardUsed ? ' (wait for your next turn)' : ''}` : 'Face-down card'}
+                        ownName={c.mine ? c.name ?? undefined : undefined}
                         onClick={() => clickCell(c.index)}
                       />
                     )

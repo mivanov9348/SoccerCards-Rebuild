@@ -28,6 +28,8 @@ dotnet publish (Join-Path $root 'server\DugoutDeck.Desktop') -c Release -r win-x
 if ($LASTEXITCODE -ne 0) { throw 'dotnet publish failed' }
 Copy-Item (Join-Path $root 'THIRD-PARTY-NOTICES.txt') $out
 Copy-Item (Join-Path $root 'docs\player-readme.txt') (Join-Path $out 'README.txt')
+Copy-Item (Join-Path $root 'docs\name-pack-template.json') $out
+Copy-Item (Join-Path $root 'docs\name-packs.md') $out
 
 Write-Host '3/3 Creating the zip...' -ForegroundColor Cyan
 New-Item -ItemType Directory -Force (Join-Path $root 'dist') | Out-Null

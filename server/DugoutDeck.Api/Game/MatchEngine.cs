@@ -205,6 +205,7 @@ public class MatchEngine(Random rng, CardCatalog catalog)
         var tier = freeScout ? Tiers.Normal : Tiers.At(team.HandTiers, handIndex);
         var extra = Tiers.ExtraUses(tier);
         var tierText = tier > Tiers.Normal ? $" ({Tiers.Name(tier)})" : "";
+        if (Tiers.StreakBonus(card, tier)) team.PassStreak = Math.Min(team.PassStreak + 1, Rules.PassesForBigChance - 1);
 
         TableCell Target(int? i, string what)
         {
@@ -421,6 +422,8 @@ public class MatchEngine(Random rng, CardCatalog catalog)
         var team = s.Team(side);
         var bonus = Tiers.ChanceBonus(tier);
         var extra = Tiers.ExtraUses(tier);
+        // Rare+ cards without a chance: +1 to the pass streak (never straight to a Big Chance)
+        if (Tiers.StreakBonus(card, tier)) team.PassStreak = Math.Min(team.PassStreak + 1, Rules.PassesForBigChance - 1);
         switch (card)
         {
             case Cards.Striker:

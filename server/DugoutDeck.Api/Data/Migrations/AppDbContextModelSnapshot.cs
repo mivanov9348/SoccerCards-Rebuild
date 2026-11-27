@@ -64,6 +64,9 @@ namespace DugoutDeck.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("AchievementsJson")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
@@ -212,7 +215,13 @@ namespace DugoutDeck.Api.Data.Migrations
                     b.Property<int>("Expectation")
                         .HasColumnType("INTEGER");
 
+                    b.Property<long>("Expenses")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("Finished")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("Income")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("LeagueId")

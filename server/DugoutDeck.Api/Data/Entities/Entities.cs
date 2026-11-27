@@ -110,6 +110,8 @@ public class Career
     public string? TacticPlansJson { get; set; }
     /// <summary>The "pick 1 of 3" draft at the start of a career while it is running (JSON, see CareerService.Cards.cs).</summary>
     public string? DraftJson { get; set; }
+    /// <summary>Unlocked achievements (JSON: code → "season/week"), version 1.3.</summary>
+    public string? AchievementsJson { get; set; }
     public CareerStatus Status { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
@@ -135,6 +137,9 @@ public class CareerSeason
     public int TotalWeeks { get; set; }
     public bool Finished { get; set; }
     public string? SummaryJson { get; set; }
+    /// <summary>Income and expenses of this season (1.3; buying and selling cards are not counted).</summary>
+    public long Income { get; set; }
+    public long Expenses { get; set; }
     /// <summary>JSON: which competition/round is played in which week.</summary>
     public string ScheduleJson { get; set; } = "[]";
     public List<Fixture> Fixtures { get; set; } = new();

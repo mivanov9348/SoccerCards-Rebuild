@@ -17,8 +17,10 @@ namespace DugoutDeck.Api.Data;
 /// </summary>
 public static class DbSeeder
 {
-    public static async Task SeedAsync(AppDbContext db, string seedPath, ILogger logger)
+    /// <param name="names">active name packs (1.3): club, league and cup names that replace the ones in seed.json</param>
+    public static async Task SeedAsync(AppDbContext db, string seedPath, ILogger logger, NameOverlay? names = null)
     {
+        names ??= new NameOverlay();
         if (!File.Exists(seedPath))
         {
             logger.LogWarning("Seed file {Path} not found.", seedPath);
@@ -40,7 +42,10 @@ public static class DbSeeder
         // Renames happen in two steps, so clubs can swap names (e.g. A gets B's old name) without breaking the unique name rule:
         // first every club that will be renamed gets a temporary name, then the new names are applied.
         var seedNames = seed.Leagues.SelectMany(l => l.Teams).Concat(seed.EuropeanClubs)
-            .Select(e => SeedTeam.From(e, null)).Where(t => t.Code != null).ToDictionary(t => t.Code!, t => t.Name);
+            .Select(e => Overlay(SeedTeam.From(e, null), names)).Where(t => t.Code != null).ToDictionary(t => t.Code!, t => t.Name);
+        foreach (var l in seed.Leagues) if (l.Code != null && names.Leagues.TryGetValue(l.Code, out var ln)) l.Name = ln;
+        foreach (var c in seed.Cups) if (names.Competitions.TryGetValue(c.Code, out var cn)) c.Name = cn;
+        foreach (var c in seed.Competitions) if (names.Competitions.TryGetValue(c.Code, out var cn)) c.Name = cn;
         var blocked = teams.Where(t => t.EditedInGame || t.Code == null || !seedNames.ContainsKey(t.Code)).Select(t => t.Name).ToHashSet();
         var renaming = teams.Where(t => t.Code != null && !t.EditedInGame && seedNames.TryGetValue(t.Code, out var n) && n != t.Name && !blocked.Contains(n)).ToList();
         if (renaming.Count > 0)
@@ -86,11 +91,11 @@ public static class DbSeeder
             }
 
             foreach (var row in l.Teams)
-                changes += SyncTeam(db, SeedTeam.From(row, l.Country), league.Id, byCode, byName);
+                changes += SyncTeam(db, Overlay(SeedTeam.From(row, l.Country), names), league.Id, byCode, byName);
         }
 
         foreach (var row in seed.EuropeanClubs)
-            changes += SyncTeam(db, SeedTeam.From(row, null), null, byCode, byName);
+            changes += SyncTeam(db, Overlay(SeedTeam.From(row, null), names), null, byCode, byName);
 
         foreach (var c in seed.Cups)
         {
@@ -127,6 +132,21 @@ public static class DbSeeder
 
         await db.SaveChangesAsync();
         if (changes > 0) logger.LogInformation("Seed: {Count} changes applied.", changes);
+    }
+
+    /// <summary>A name pack entry replaces the name, short name, city, stadium and colours it gives (ratings stay).</summary>
+    private static SeedTeam Overlay(SeedTeam s, NameOverlay names)
+    {
+        if (s.Code == null || !names.Teams.TryGetValue(s.Code, out var o)) return s;
+        return s with
+        {
+            Name = string.IsNullOrWhiteSpace(o.Name) ? s.Name : o.Name.Trim(),
+            Short = string.IsNullOrWhiteSpace(o.Short) ? s.Short : o.Short.Trim(),
+            City = string.IsNullOrWhiteSpace(o.City) ? s.City : o.City.Trim(),
+            Stadium = string.IsNullOrWhiteSpace(o.Stadium) ? s.Stadium : o.Stadium.Trim(),
+            Color1 = o.Colors is { Count: > 0 } && NameOverlay.IsColor(o.Colors[0]) ? o.Colors[0] : s.Color1,
+            Color2 = o.Colors is { Count: > 1 } && NameOverlay.IsColor(o.Colors[1]) ? o.Colors[1] : s.Color2,
+        };
     }
 
     /// <summary>Adds a team that is missing, or updates it from seed.json. Returns 1 when something changed.</summary>

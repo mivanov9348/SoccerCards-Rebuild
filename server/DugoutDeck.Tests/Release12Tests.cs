@@ -164,8 +164,8 @@ public class Release12Tests
     public void BonusTexts_ChanceCardsGetPercent_OthersGetExtrasOnUltraAndLegendary()
     {
         Assert.Equal("+8% chance", Tiers.Bonus(Cards.Striker, Tiers.UltraRare));
-        Assert.Equal("", Tiers.Bonus(Cards.Captain, Tiers.Rare));
-        Assert.Equal("ignores 3 Tackles", Tiers.Bonus(Cards.Captain, Tiers.Legendary));
+        Assert.Equal("+1 to your pass streak", Tiers.Bonus(Cards.Captain, Tiers.Rare));
+        Assert.Equal("+1 pass streak, ignores 3 Tackles", Tiers.Bonus(Cards.Captain, Tiers.Legendary));
         Assert.Equal("", Tiers.Bonus(Cards.SquadPlayer, Tiers.Legendary));
     }
 }

@@ -55,6 +55,11 @@ public static class GameServer
 
         builder.Services.AddScoped<MatchService>();
         builder.Services.AddScoped<CareerService>();
+        // name packs live next to the save file, so they survive updates (desktop app: %LOCALAPPDATA%/DugoutDeck/name-packs)
+        var saveDir = provider == "Sqlite"
+            ? Path.GetDirectoryName(Path.GetFullPath(new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder(connection).DataSource, builder.Environment.ContentRootPath))!
+            : builder.Environment.ContentRootPath;
+        builder.Services.AddSingleton(new NamePacks(Path.Combine(saveDir, "name-packs"), Path.Combine(AppContext.BaseDirectory, "Data", "Seed", "seed.json")));
         builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
         builder.Services.AddCors(o => o.AddDefaultPolicy(p => p.WithOrigins("http://localhost:5173").AllowAnyHeader().AllowAnyMethod()));
 
@@ -100,6 +105,7 @@ public static class GameServer
         app.MapDataEndpoints();
         app.MapMatchEndpoints();
         app.MapCareerEndpoints();
+        app.MapNameEndpoints();
 
         // Serve the built React client, if there is one.
         var clientPath = options.ClientPath;
@@ -125,8 +131,8 @@ public static class GameServer
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await DatabaseUpgrade.RunAsync(db, app.Logger);
-        var seedPath = Path.Combine(AppContext.BaseDirectory, "Data", "Seed", "seed.json");
-        await DbSeeder.SeedAsync(db, seedPath, app.Logger);
+        // seed.json plus the active name packs
+        await app.Services.GetRequiredService<NamePacks>().ApplyAsync(db, app.Logger);
 
         // Unfinished matches saved by an older version of the game cannot be resumed — drop them.
         var version = $"\"Version\":{MatchState.CurrentVersion}";

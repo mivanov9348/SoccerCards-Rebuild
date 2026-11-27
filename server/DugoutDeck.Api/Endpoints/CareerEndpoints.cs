@@ -13,6 +13,7 @@ public record NextSeasonRequest(int? AcceptTeamId);
 public record CardRequest(string Code, int Tier = 0);
 public record PackRequest(int Size = 3);
 public record DraftRequest(int Pick);
+public record MergeRequest(string Code, int Tier);
 public record TacticPlanRequest(string? Name, TacticSpec? Tactic);
 public record ActivePlanRequest(int Slot);
 
@@ -73,6 +74,12 @@ public static class CareerEndpoints
                 career.Id, career.SaveName, career.ManagerName, career.Reputation, career.Money,
                 hasTactic = TacticPlanSet.Preferred(career) != null,
                 draft = await DraftView(career, matches),
+                finances = new
+                {
+                    income = season.Income, expenses = season.Expenses,
+                    weeklyExpenses = CareerService.WeeklyExpenses(await careers.CareerLeagueFactorAsync(career), ratings[season.TeamId], await careers.UpgradeLevelAsync(id, season.TeamId)),
+                    debtLimit = CareerService.DebtLimit(await careers.CareerLeagueFactorAsync(career))
+                },
                 activePlan = TacticPlanSet.Load(career) is var ps && ps.Plans[ps.Active].Tactic != null ? ps.Plans[ps.Active].Name : null,
                 status = career.Status.ToString(),
                 team = new
@@ -91,7 +98,7 @@ public static class CareerEndpoints
                     summary = CareerService.Summary(season) is { } sum ? new
                     {
                         sum.Position, sum.Points, sum.League, sum.Champion, sum.CupWinner, sum.EuropeResult, sum.Expectation,
-                        sum.Verdict, sum.Fired, sum.ReputationChange, sum.MoneyEarned, sum.CardsWon, sum.Promoted, sum.Relegated, sum.Offers
+                        sum.Verdict, sum.Fired, sum.ReputationChange, sum.MoneyEarned, sum.Income, sum.Expenses, sum.CardsWon, sum.Promoted, sum.Relegated, sum.Offers
                     } : null
                 },
                 collectionCount,
@@ -210,10 +217,13 @@ public static class CareerEndpoints
         {
             var career = await careers.LoadAsync(id) ?? throw new GameRuleException("Career not found.");
             var level = await careers.UpgradeLevelAsync(id, career.TeamId);
+            var factor = await careers.CareerLeagueFactorAsync(career);
             return Results.Ok(new
             {
                 money = career.Money,
-                packs = CareerService.Packs.Select(p => new { size = p.Size, price = p.Price, rarePlus = p.GuaranteedRarePlus }),
+                packs = CareerService.Packs.Select(p => new { size = p.Size, price = CareerService.PackPrice(p, factor), rarePlus = p.GuaranteedRarePlus }),
+                priceFactor = CareerService.PackPriceFactor(factor),
+                merge = Enumerable.Range(0, 3).Select(t => new { from = t, to = t + 1, need = CareerService.MergeNeed[t], fee = CareerService.MergeFee[t] }),
                 sellPrices = Enumerable.Range(0, 4).Select(t => new { tier = t, name = Tiers.Name(t), price = Tiers.SellPrice(t) }),
                 upgradeLevel = level, upgradeCost = level >= 10 ? (long?)null : CareerService.UpgradeCost(level)
             });
@@ -231,6 +241,19 @@ public static class CareerEndpoints
                     tier = c.Tier, tierName = Tiers.Name(c.Tier), bonus = Tiers.Bonus(c.Card.Code, c.Tier)
                 })
             });
+        });
+
+        api.MapPost("/{id:int}/store/merge", async (int id, MergeRequest req, CareerService careers) =>
+        {
+            var career = await careers.LoadAsync(id) ?? throw new GameRuleException("Career not found.");
+            return Results.Ok(new { tier = await careers.MergeAsync(career, req.Code, req.Tier) });
+        });
+
+        // ---------------- club history: trophies, seasons, records, statistics, achievements
+        api.MapGet("/{id:int}/history", async (int id, CareerService careers) =>
+        {
+            var career = await careers.LoadAsync(id) ?? throw new GameRuleException("Career not found.");
+            return Results.Ok(await careers.HistoryAsync(career));
         });
 
         api.MapPost("/{id:int}/store/sell-duplicates", async (int id, CareerService careers) =>

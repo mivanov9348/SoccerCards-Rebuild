@@ -146,7 +146,10 @@ export function CardBack({
   onHover,
   marked,
   lifting,
+  ownName,
 }: {
+  /** my own card: its name is shown only after keeping the mouse on it for a moment (hold to peek) */
+  ownName?: string
   marked?: boolean
   /** the card is raised before it turns over (big = an important card: longer, with a glow) */
   lifting?: 'big' | 'small'
@@ -162,13 +165,25 @@ export function CardBack({
 }) {
   const { art } = useCardData()
   const back = art.BACK
+  const [holding, setHolding] = useState(false)
+  const timer = useRef<number | null>(null)
+  const startHold = () => {
+    onHover?.()
+    if (!ownName) return
+    timer.current = window.setTimeout(() => setHolding(true), 800)
+  }
+  const endHold = () => {
+    if (timer.current) window.clearTimeout(timer.current)
+    setHolding(false)
+  }
   return (
     <button
       style={back ? { backgroundImage: `url(${back})` } : undefined}
       className={`card-back-big grey-back ${back ? 'art-back' : ''} ${selected ? 'selected' : ''} ${peeked ? 'peeked' : ''} ${mark?.dim ? 'own-used' : ''} ${aligned ? 'aligned' : ''} ${lifting ? 'lifting lift-' + lifting : ''}`}
-      onMouseEnter={onHover}
-      disabled={disabled}
-      onClick={onClick}
+      onMouseEnter={startHold}
+      onMouseLeave={endHold}
+      aria-disabled={disabled || undefined}
+      onClick={disabled ? undefined : onClick}
       title={title}
       aria-label={title ?? 'Face-down card'}
     >
@@ -179,6 +194,12 @@ export function CardBack({
       )}
       {mark && (
         <i className="own-mark" style={{ background: `linear-gradient(225deg, ${mark.color} 0 30%, ${mark.color2} 30% 42%, ${mark.color} 42% 50%, transparent 50%)` }} />
+      )}
+      {holding && ownName && !peeked && (
+        <span className="peek-label own-peek">
+          <small>Yours</small>
+          {ownName}
+        </span>
       )}
       {peeked ? (
         <span className="peek-label">

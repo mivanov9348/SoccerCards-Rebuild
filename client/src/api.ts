@@ -288,6 +288,8 @@ export interface SeasonSummary {
   fired: boolean
   reputationChange: number
   moneyEarned: number
+  income?: number
+  expenses?: number
   cardsWon: string[]
   promoted: string[]
   relegated: string[]
@@ -301,6 +303,8 @@ export interface CareerView {
   activePlan: string | null
   /** the "pick 1 of 3" draft at the start of a career (null when done) */
   draft: DraftView | null
+  /** money of this season (1.3) */
+  finances: { income: number; expenses: number; weeklyExpenses: number; debtLimit: number }
   saveName: string
   managerName: string
   reputation: number
@@ -374,6 +378,9 @@ export interface CollectionCard {
 export interface StoreInfo {
   money: number
   packs: { size: number; price: number; rarePlus: boolean }[]
+  /** pack prices in this league (×0.7 … ×1.5) */
+  priceFactor: number
+  merge: { from: number; to: number; need: number; fee: number }[]
   sellPrices: { tier: number; name: string; price: number }[]
   upgradeLevel: number
   upgradeCost: number | null
@@ -390,6 +397,38 @@ export interface TieredCard {
   tier: number
   tierName: string
   bonus: string
+}
+
+/** The club history tab (1.3). */
+export interface CareerHistory {
+  seasons: {
+    year: number; team: string; league: string; finished: boolean; position: number | null; points: number | null
+    goalsFor: number | null; goalsAgainst: number | null; cup: boolean; europe: string | null; verdict: string | null; fired: boolean
+    income: number; expenses: number
+  }[]
+  trophies: { kind: 'league' | 'cup' | 'europe'; name: string; year: number; team: string }[]
+  record: { played: number; won: number; drawn: number; lost: number; goalsFor: number; goalsAgainst: number }
+  records: { biggestWin: string | null; worstDefeat: string | null; longestUnbeaten: number; longestWinningRun: number }
+  stats: {
+    matchesPlayed: number
+    goalSources: { source: string; goals: number }[]
+    penaltiesAwarded: number; penaltiesScored: number; stolenByMe: number; stolenFromMe: number; legendaryPlays: number
+    mostStolen: { code: string; name: string; count: number } | null
+    favourite: { code: string; name: string; count: number } | null
+  }
+  achievements: { code: string; name: string; description: string; unlocked: boolean; when: string | null; reward: string }[]
+}
+
+/** Name packs (1.3). */
+export interface NamePack {
+  file: string
+  name: string
+  author: string | null
+  teams: number
+  leagues: number
+  competitions: number
+  enabled: boolean
+  error: string | null
 }
 
 export interface DraftView {
@@ -496,6 +535,14 @@ export const api = {
   buyCard: (id: number, code: string) => request<void>('POST', `/careers/${id}/store/buy`, { code }),
   sellCard: (id: number, code: string, tier: number) => request<{ money: number }>('POST', `/careers/${id}/store/sell`, { code, tier }),
   sellDuplicates: (id: number) => request<{ cards: number; money: number }>('POST', `/careers/${id}/store/sell-duplicates`),
+  merge: (id: number, code: string, tier: number) => request<{ tier: number }>('POST', `/careers/${id}/store/merge`, { code, tier }),
+  careerHistory: (id: number) => request<CareerHistory>('GET', `/careers/${id}/history`),
+  namePacks: () => request<{ folder: string; packs: NamePack[] }>('GET', '/names'),
+  importNamePack: (fileName: string, content: string) => request<{ file: string; packs: NamePack[] }>('POST', '/names/import', { fileName, content }),
+  enableNamePack: (file: string, enabled: boolean) => request<{ packs: NamePack[] }>('POST', `/names/${encodeURIComponent(file)}/enable`, { enabled }),
+  deleteNamePack: (file: string) => request<{ packs: NamePack[] }>('DELETE', `/names/${encodeURIComponent(file)}`),
+  exportNamePack: () => request<{ file: string; content: string; packs: NamePack[] }>('POST', '/names/export'),
+  resetNamePacks: () => request<{ packs: NamePack[] }>('POST', '/names/reset'),
   draftPick: (id: number, pick: number) => request<{ draft: DraftView | null }>('POST', `/careers/${id}/draft`, { pick }),
   upgradeClub: (id: number) => request<{ level: number }>('POST', `/careers/${id}/store/upgrade`),
 }
