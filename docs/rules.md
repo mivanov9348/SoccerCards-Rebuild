@@ -252,6 +252,85 @@ Background matches are not affected. The computer never knows where your team ca
 - **Market, always open (1.2):** any copy can be sold at any time, cheaply — Normal €15K, Rare €60K, Ultra Rare €250K,
   Legendary €1M. "Sell all duplicates" sells every Normal copy beyond the first of each card.
 
+### The economy (1.3)
+
+Money now flows out as well as in:
+
+- **Weekly expenses:** every week the club pays wages and stadium costs: €55K × league factor × (rating / 70)², rounded to
+  €1K, plus **€6K upkeep per club upgrade level**. Examples: a 75-rated Bulgarian club ~€63K a week (~€3.5M a season),
+  a 92-rated English club ~€190K a week (~€10.6M a season), a 50-rated club ~€28K a week.
+- **Pack prices follow the league:** ×(0.5 + league factor / 2), between ×0.7 (second divisions) and ×1.5 (top five).
+  The 3-card pack costs €350K in a second division, €500K in Bulgaria and €750K in England.
+- **Club upgrades** cost €4M × (level + 1) (was €3M) and add upkeep.
+- **Merging (a money and card sink):** 5 Normal → 1 Rare (€50K), 4 Rare → 1 Ultra Rare (€200K), 3 Ultra Rare → 1 Legendary
+  (€600K), in the Collection tab.
+- **Income and expenses** of each season are counted (buying and selling cards are not) and shown in Overview → Club
+  finances, at the end of the season and in the club history.
+- **Debt:** the club can go below zero (the game warns you once). At the end of the season any debt costs 2 points in the board's
+  review; a debt bigger than €2M × league factor gets the manager sacked.
+
+Economy test (9 careers × 3 seasons, money at the end of each season; "saver" buys nothing):
+
+| Club | Start | 1.2: after 3 seasons | 1.3: after 1 / 2 / 3 seasons |
+|---|---|---|---|
+| Strong (92, England), saver | €4.0M | €41.6M | €4.8M / €8.6M / €11.1M |
+| Average (75, Bulgaria), saver | €2.0M | €22.7M | €13.2M / €16.0M / €17.3M (won a European cup in season 1) |
+| Weak (50), saver | €0.8M | €13.4M | €2.2M / €4.3M / €5.8M |
+
+A club that keeps buying packs ends each season with ~€1M and 60–100 cards after three seasons. The one remaining jackpot is
+European prize money (not scaled by league): a small club that goes deep in the Champions Cup earns a lot.
+
+## 9b. Club history and achievements (1.3)
+
+A **Club history** tab in the career:
+
+- **Trophy cabinet:** every league title, national cup and European cup, by season and club.
+- **Record:** played / won / drawn / lost and goals of all results (simulated matches included); biggest win, worst defeat,
+  longest unbeaten run and longest winning run.
+- **Your matches, card by card** (only matches you played yourself): goals by source, penalties scored of awarded, cards you
+  stole and cards stolen from you, your most stolen card, your favourite card, Legendary cards played.
+- **Seasons:** club, league, position, points, goals, cups, income, expenses and the board's verdict.
+- **25 achievements**, each paid once (money is counted as income):
+
+  | Achievement | How | Reward |
+  |---|---|---|
+  | First win | win a match | €100K |
+  | Clean sheet | no goal against | €100K |
+  | Untouchable | the opponent steals none of your cards | €150K |
+  | Pickpocket | steal 3 cards in one match | €200K |
+  | Thanks for the striker | score with a stolen Striker | €200K |
+  | Goal fest | score 5 goals | €200K |
+  | Thrashing | win by 4+ goals | €200K |
+  | Ten men, no problem | win after a red card | €200K |
+  | The keeper guessed right | stop an opponent's penalty | €100K |
+  | Nerves of steel | win a penalty shootout | €200K |
+  | Legend on the pitch | a Legendary card of yours takes effect | €150K |
+  | Trap master | your Offside Traps spring twice in a match | €150K |
+  | VAR saves you | VAR disallows an opponent's goal | €100K |
+  | Collector | the club owns 50 cards | €200K |
+  | Something special | the club owns a Legendary card | €200K |
+  | Full squad | every field card at least once | a pack |
+  | Upgrade! | merge cards | €100K |
+  | Champions! | win the league | an epic pack |
+  | Cup winners | win the national cup | a pack |
+  | Kings of Europe | win a European cup | €1M + an epic pack |
+  | Invincibles | a league season without a defeat | €1M |
+  | Fairy tale | win the league with a club rated below 70 | €1M |
+  | Going up | win promotion | €300K |
+  | Board's favourite | the board is delighted | €300K |
+  | One-club manager | three seasons at the same club | €300K |
+
+Match achievements count only matches you play yourself.
+
+## 9c. Name packs (1.3)
+
+All names are fictional. A **name pack** is a JSON file that renames clubs (name, short name, city, stadium, colours), leagues
+and cups by their code, in every save. Settings → **Name packs**: import a file, switch packs on and off, delete them, export the
+current names as a template, reset to the original names. Packs are kept in `%LOCALAPPDATA%\DugoutDeck\name-packs`
+(`.json` = on, `.json.off` = off) and survive updates. The game ships only `name-pack-template.json` and
+`docs/name-packs.md`; packs with real names are made and shared by players. Clubs changed in the in-game editor keep their
+names; ratings cannot be changed by a pack; badges are always drawn from the colours.
+
 ## 9a. Card tiers (1.2)
 
 Every copy of a field or hand card is **Normal**, **Rare**, **Ultra Rare** or **Legendary** (the free Squad Player has no
@@ -273,8 +352,8 @@ same for every tier. **The bonus travels with the card: a thief who steals a Leg
 | VAR | 40% | 44% | 48% | 52% to disallow the goal |
 | Penalty Taker | +10 | +14 | +18 | +22 to the next penalty |
 
-**Cards without a chance:** the same on Normal and Rare (a Rare copy looks better and sells for more); Ultra Rare and Legendary
-add an extra:
+**Cards without a chance:** Rare and better copies add **+1 to the pass streak** of the team that gets the effect (never
+straight to a Big Chance — the streak stops at 2) *(1.3)*; Ultra Rare and Legendary add an extra:
 
 | Card | Ultra Rare | Legendary |
 |---|---|---|
@@ -298,6 +377,8 @@ Balance with tiers (2,000 career-style matches): 5.2 goals per match (5.1 withou
 
 ## 10. Presentation
 
+- **Hold to peek (1.3):** your own face-down cards show only the corner flag; keep the mouse on one for a moment to see which
+  card it is (also while the opponent is on turn).
 - **Tutorial:** a scripted 14-step match (main menu → Tutorial) that shows every rule once.
 - **Card pictures:** images in `client/public/cards/` (file name = card code) replace the icons on the cards; the name is written under the picture and the icon sits in a corner badge. Larger cards tilt in 3D, rare and epic cards shine (holo), right-click zooms any card.
 - **Card gallery:** every card with its picture, effect, type, cost, how often it turns up in packs, store price and what each

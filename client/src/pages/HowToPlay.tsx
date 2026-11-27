@@ -83,6 +83,14 @@ export default function HowToPlay() {
           Legendary (a Legendary Captain ignores 3 Tackles). The bonus goes with the card — steal a Legendary Striker and it shoots for
           you. Packs of 3, 5 or 10 cards are in the Store; selling is cheap and always possible.
         </p>
+        <h2>Money, history and names</h2>
+        <p>
+          The club pays wages and stadium costs every week, so money no longer piles up: spend it on packs, merge spare copies into a
+          higher tier (5 Normal → Rare, 4 Rare → Ultra Rare, 3 Ultra Rare → Legendary) and watch the debt — a big one at the end of
+          the season gets you sacked. The <b>Club history</b> tab keeps your trophies, every season, records, statistics and 25
+          achievements with small rewards. All names are fictional; <b>Settings → Name packs</b> can rename clubs, leagues and cups
+          with a pack file.
+        </p>
         <h2>During the match</h2>
         <p>
           The <b>Active effects</b> panel next to the grid says in words what is running for both teams (an effect lights up when it is

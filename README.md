@@ -1,4 +1,4 @@
-# Dugout Deck — v1.2.0
+# Dugout Deck — v1.3.0
 
 Футболна игра с карти за един играч срещу компютъра. Цялата игра е на английски. Вдъхновена е от ретро картовите футболни игри, а отгоре има собствен слой с колекция карти и тактика.
 
@@ -15,6 +15,9 @@
 - 35 лиги от 25 държави: десет държави с по две дивизии и още 15 с по една;
 - 10 национални купи и три европейски турнира по 32 отбора;
 - пари, награди с карти, Store и подобрения на клуба;
+- **икономика** (1.3): седмични заплати и разходи за стадиона, цени на пакетите по лига, сливане на копия (5 Normal → Rare …), правила за дълг;
+- **история на клуба** (1.3): витрина с трофеи, сезони, рекорди, статистика на твоите мачове и 25 постижения с награди;
+- **пакети с имена** (1.3): JSON файл преименува клубове, лиги и купи; играта идва само с измислени имена и шаблон ([docs/name-packs.md](docs/name-packs.md));
 - **картите са на клуба** (1.2): всяко копие е Normal, Rare, Ultra Rare или Legendary с бонус; драфт „1 от 3“ в началото, пакети с 3/5/10 карти с интерактивно отваряне, пазар, който е винаги отворен (евтина продажба), безплатен пакет всеки сезон;
 - борд, оферти и уволнения.
 
@@ -31,6 +34,8 @@
 - **План за развитие до 2.0 (Word):** [docs/DugoutDeck-Roadmap-BG.docx](docs/DugoutDeck-Roadmap-BG.docx)
 - **Чеклист за тестване на 1.1 (Word):** [docs/DugoutDeck-Test-Checklist-1.1.docx](docs/DugoutDeck-Test-Checklist-1.1.docx)
 - **Чеклист за тестване на 1.2 (Word):** [docs/DugoutDeck-Test-Checklist-1.2.docx](docs/DugoutDeck-Test-Checklist-1.2.docx)
+- **Чеклист за тестване на 1.3 (Word):** [docs/DugoutDeck-Test-Checklist-1.3.docx](docs/DugoutDeck-Test-Checklist-1.3.docx)
+- **Пакети с имена (за играчите, на английски):** [docs/name-packs.md](docs/name-packs.md), шаблон [docs/name-pack-template.json](docs/name-pack-template.json)
 - **Шаблон за картинките (Photoshop):** [docs/card-template-600x840.png](docs/card-template-600x840.png)
 - **Картинки за картите:** в `client/public/cards/`, имената са в [client/public/cards/README.txt](client/public/cards/README.txt). Играта ги намира сама; след нови картинки пуснете отново играта (настолната версия: `scripts\publish-desktop.ps1`).
 
@@ -87,7 +92,7 @@ powershell -ExecutionPolicy Bypass -File scripts\publish-desktop.ps1
 
 Резултат:
 - `dist\DugoutDeck-win-x64\DugoutDeck.exe` – готовата папка, с `README.txt` за играча и `THIRD-PARTY-NOTICES.txt`;
-- `dist\DugoutDeck-1.2.0-win-x64.zip` – архив от около 50 MB (за itch.io или за пращане);
+- `dist\DugoutDeck-1.3.0-win-x64.zip` – архив от около 50 MB (за itch.io или за пращане);
 - `dist\archive\` – пакетите на всички предишни версии (скриптът мести стария zip там при всеки нов пакет).
 
 Пакетът съдържа .NET, така че на играча не му трябва нищо друго. Записите са в `%LOCALAPPDATA%\DugoutDeck\dugout-deck.db`. Ако нещо се счупи при стартиране, там се появява `error.log`.
@@ -102,7 +107,7 @@ cd server
 dotnet test
 ```
 
-Минават 50 теста. Тестът `Balance_AroundFourGoals_StrongTeamWinsMoreOften` симулира 4000 мача и отпечатва средните голове, откъде идват, колко са кражбите и колко силен е Offside Trap. Ползвайте го при всяка промяна на числата.
+Минават 54 теста. Тестът `Balance_AroundFourGoals_StrongTeamWinsMoreOften` симулира 4000 мача и отпечатва средните голове, откъде идват, колко са кражбите и колко силен е Offside Trap. Ползвайте го при всяка промяна на числата.
 
 ## Имената: къде да ги промените
 
@@ -146,6 +151,8 @@ client/src/
   components/TacticsTab     табът Tactics (3 плана)
   components/MatchEffects   панелите Active effects и Cards played
   components/CardMarket     табовете Collection и Store, драфтът
+  components/ClubHistory    табът Club history
+  components/NamePacks      Settings → Name packs
   pages/About.tsx           версия, credits, лицензи
   pages/CardGallery.tsx     галерията с всички карти
   components/ReviewButton   бутонът „Rate & review“ (адресът е в display.ts: REVIEW_URL)
@@ -162,6 +169,9 @@ server/DugoutDeck.Api/
   Careers/TableZones.cs     цветовете на таблицата (шампион, Европа, промоция, изпадане) за всяка лига
   Careers/TacticPlans.cs    трите плана от таба Tactics
   Careers/CareerService.Cards.cs  колекцията на клуба, пакети 3/5/10, пазар, драфт, сезонен пакет
+  Careers/CareerService.Economy.cs  седмични разходи, цени по лига, сливане, дълг
+  Careers/CareerService.Memory.cs   история, статистика, рекорди, 25 постижения
+  Data/NamePacks.cs         пакетите с имена (папка name-packs до записа)
   Game/Tiers.cs             нивата Normal / Rare / Ultra Rare / Legendary: бонуси, шансове в пакетите, цени за продажба
   Data/Seed/seed.json       лиги, отбори, купи, европейски клубове, карти (ИМЕНАТА СА ТУК)
   Data/Migrations/          миграции на базата (записите оцеляват при обновления)
